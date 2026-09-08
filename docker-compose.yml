@@ -1,0 +1,46 @@
+services:
+  mongo:
+    image: mongo:8
+    container_name: orgflow_mongo
+    restart: unless-stopped
+
+    volumes:
+      - orgflow_mongo_data:/data/db
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping').ok"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  web:
+    build: .
+    container_name: orgflow_web
+    restart: unless-stopped
+
+    command: python manage.py runserver 0.0.0.0:8000
+
+    volumes:
+      - .:/app
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+
+volumes:
+  orgflow_mongo_data:
