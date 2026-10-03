@@ -1,8 +1,8 @@
 # Software-Eng
 
-## SSO and Permissions (1.3)
+## SSO and Permissions (1.3) + Membership and Roster (1.4)
 
-This project implements **Single Sign-On (SSO)** and **Role-Based Access Control (RBAC)** for a Node.js/Express API.
+This project implements **Single Sign-On (SSO)**, **Role-Based Access Control (RBAC)**, and **Team Membership & Roster** management for a Node.js/Express API.
 
 ---
 
@@ -20,13 +20,13 @@ This project implements **Single Sign-On (SSO)** and **Role-Based Access Control
 All authenticated routes use **Bearer JWT** tokens in the `Authorization` header.
 
 ### Roles and Permissions (RBAC)
-Three roles ordered by privilege level:
+Three system roles ordered by privilege level:
 
-| Role | Level | Can read | Can write | Can delete / manage users |
-|------|-------|----------|-----------|--------------------------|
-| `viewer` | 1 | ✅ | ❌ | ❌ |
-| `editor` | 2 | ✅ | ✅ | ❌ |
-| `admin`  | 3 | ✅ | ✅ | ✅ |
+| Role | Level | Can read | Can write | Can delete / manage users | Can manage teams |
+|------|-------|----------|-----------|--------------------------|-----------------|
+| `viewer` | 1 | ✅ | ❌ | ❌ | ❌ |
+| `editor` | 2 | ✅ | ✅ | ❌ | create only |
+| `admin`  | 3 | ✅ | ✅ | ✅ | ✅ |
 
 New users start with the `viewer` role. An `admin` can promote any user via:
 ```
@@ -41,6 +41,63 @@ PUT /api/admin/users/:id/role   { "role": "editor" }
 | `DELETE` | `/api/posts/:id` | `admin` |
 | `GET` | `/api/admin/users` | `admin` |
 | `PUT` | `/api/admin/users/:id/role` | `admin` |
+
+### Membership and Roster (1.4)
+
+Teams are groups of users. Every user in a team has a **team role**: `owner` (the creator) or `member`.
+
+#### Team Roles
+
+| Team Role | Assigned when |
+|-----------|---------------|
+| `owner`   | Automatically on team creation |
+| `member`  | When added by an admin |
+
+#### Team & Roster Routes
+
+| Method | Endpoint | Min System Role | Description |
+|--------|----------|----------------|-------------|
+| `POST` | `/api/teams` | `editor` | Create a team; creator becomes `owner` |
+| `GET` | `/api/teams` | `viewer` | List all teams |
+| `GET` | `/api/teams/:id` | `viewer` | Get team details + full roster |
+| `DELETE` | `/api/teams/:id` | `admin` | Delete team and its memberships |
+| `POST` | `/api/teams/:id/members` | `admin` | Add a user to a team |
+| `DELETE` | `/api/teams/:id/members/:userId` | `admin` | Remove a user from a team |
+| `GET` | `/api/users/:userId/teams` | `viewer` | List all teams a user belongs to |
+
+#### Example: Create a team
+```http
+POST /api/teams
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "name": "Dev Team", "description": "Backend developers" }
+```
+
+#### Example: Add a member
+```http
+POST /api/teams/:teamId/members
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{ "userId": "usr_abc123", "teamRole": "member" }
+```
+
+#### Example: View roster
+```http
+GET /api/teams/:teamId
+Authorization: Bearer <token>
+```
+Response:
+```json
+{
+  "team": { "id": "...", "name": "Dev Team", "description": "Backend developers", "createdBy": "...", "createdAt": "..." },
+  "roster": [
+    { "userId": "...", "teamRole": "owner", "joinedAt": "...", "displayName": "alice@ex.com", "email": "alice@ex.com" },
+    { "userId": "...", "teamRole": "member", "joinedAt": "...", "displayName": "bob@ex.com", "email": "bob@ex.com" }
+  ]
+}
+```
 
 ---
 
@@ -98,14 +155,18 @@ src/
 │   ├── authenticate.js     # JWT Bearer token verification
 │   └── authorize.js        # Role-based access control gate
 ├── models/
-│   └── user.js             # User model, ROLES, hasMinimumRole
+│   ├── user.js             # User model, ROLES, hasMinimumRole
+│   ├── team.js             # Team model (create, list, delete)
+│   └── membership.js       # Membership model, TEAM_ROLES, roster helpers
 └── routes/
     ├── auth.js             # /auth/* endpoints
-    └── protected.js        # /api/* endpoints (require auth)
+    ├── protected.js        # /api/posts and /api/admin/* endpoints
+    └── teams.js            # /api/teams and /api/users/:id/teams endpoints
 
 tests/
 ├── auth.test.js            # Registration, login, /auth/me
-└── permissions.test.js     # RBAC logic + protected routes
+├── permissions.test.js     # RBAC logic + protected routes
+└── membership.test.js      # Team model, Membership model, all team routes
 ```
 
 ---
@@ -115,3 +176,4 @@ tests/
 - JWTs are signed with **HS256** and have configurable expiry
 - The `passwordHash` field is **never** returned in API responses
 - Role enforcement happens server-side in middleware — clients cannot self-elevate
+- Team membership management requires `admin` system role
