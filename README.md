@@ -1,8 +1,17 @@
 # Software-Eng
 
-## SSO and Permissions (1.3) + Membership and Roster (1.4)
-
 This project implements **Single Sign-On (SSO)**, **Role-Based Access Control (RBAC)**, and **Team Membership & Roster** management for a Node.js/Express API.
+
+## Project Backlog
+
+The full product backlog (user stories, acceptance criteria, priorities, and status) is maintained in **[BACKLOG.md](BACKLOG.md)** (PB-01).
+
+| WBS ID | Deliverable | Status |
+|--------|-------------|--------|
+| 1.1 | Requirements and Backlog | ✅ Done |
+| 1.2 | Development Environment Setup | ✅ Done |
+| 1.3 | SSO and Permissions | ✅ Done |
+| 1.4 | Membership and Roster | ✅ Done |
 
 ---
 
