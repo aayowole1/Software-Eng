@@ -97,6 +97,36 @@ class LoginTests(TestCase):
         self.client.post(reverse("accounts:login"), {"username": "who@example.com", "password": PASSWORD})
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def login(self, identifier, password=PASSWORD):
+        self.client.post(reverse("accounts:login"), {"username": identifier, "password": password})
+        return "_auth_user_id" in self.client.session
+
+    def test_email_is_case_insensitive(self):
+        self.assertTrue(self.login("Ada@Example.com"))
+
+    def test_login_with_username_when_it_differs_from_email(self):
+        # e.g. an account made with `createsuperuser` using a plain username
+        User.objects.create_superuser("aayowole1", "mide@example.com", PASSWORD)
+        self.assertTrue(self.login("aayowole1"))
+
+    def test_login_with_email_when_username_differs(self):
+        User.objects.create_superuser("aayowole1", "mide@example.com", PASSWORD)
+        self.assertTrue(self.login("mide@example.com"))
+
+    def test_wrong_password_with_username_rejected(self):
+        User.objects.create_superuser("aayowole1", "mide@example.com", PASSWORD)
+        self.assertFalse(self.login("aayowole1", "wrong-password"))
+
+    def test_email_shared_by_two_accounts_is_ambiguous(self):
+        User.objects.create_user("first", "shared@example.com", PASSWORD)
+        User.objects.create_user("second", "shared@example.com", PASSWORD)
+        self.assertFalse(self.login("shared@example.com"))
+        self.assertTrue(self.login("first"))
+
+    def test_inactive_user_rejected(self):
+        User.objects.filter(username="ada@example.com").update(is_active=False)
+        self.assertFalse(self.login("ada@example.com"))
+
     def test_logout(self):
         self.client.login(username="ada@example.com", password=PASSWORD)
         self.client.post(reverse("accounts:logout"))

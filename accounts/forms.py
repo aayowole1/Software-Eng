@@ -43,10 +43,11 @@ class RegisterForm(forms.Form):
 
 
 class EmailLoginForm(AuthenticationForm):
-    username = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"autofocus": True}))
-
-    def clean_username(self):
-        return self.cleaned_data["username"].strip().lower()
+    # Matched against username or email by accounts.backends.EmailOrUsernameBackend.
+    username = forms.CharField(
+        label="Email or username",
+        widget=forms.TextInput(attrs={"autofocus": True, "autocomplete": "username"}),
+    )
 
 
 class RoleForm(forms.Form):

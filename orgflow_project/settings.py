@@ -146,6 +146,8 @@ STATIC_URL = 'static/'
 
 # Authentication
 
+AUTHENTICATION_BACKENDS = ["accounts.backends.EmailOrUsernameBackend"]
+
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:dashboard"
 LOGOUT_REDIRECT_URL = "core:home"
