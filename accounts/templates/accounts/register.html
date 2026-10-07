@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+  <h1>Create an account</h1>
+  <form method="post" class="card" novalidate>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="muted">Passwords need at least 8 characters and can't be all numbers or a common password.</p>
+    <button type="submit">Create account</button>
+  </form>
+  <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
+{% endblock %}

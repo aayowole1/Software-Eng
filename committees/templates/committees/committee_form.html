@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}New committee{% endblock %}
+{% block content %}
+  <h1>New committee</h1>
+  <form method="post" class="card" novalidate>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="muted">You'll be added as the committee chair.</p>
+    <button type="submit">Create committee</button>
+  </form>
+{% endblock %}

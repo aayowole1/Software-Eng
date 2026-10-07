@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}My account{% endblock %}
+{% block content %}
+  <h1>My account</h1>
+  <div class="card">
+    <p><strong>Email:</strong> {{ user.email|default:user.username }}</p>
+    <p><strong>Role:</strong> <span class="badge">{{ role }}</span></p>
+    <p><strong>Joined:</strong> {{ user.date_joined|date:"M j, Y" }}</p>
+  </div>
+  <h2>Committees</h2>
+  {% for m in committees %}
+    <p><a href="{% url 'committees:detail' m.committee.pk %}">{{ m.committee.name }}</a> <span class="badge">{{ m.get_role_display }}</span></p>
+  {% empty %}
+    <p class="muted">You're not on any committees.</p>
+  {% endfor %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <h1>Dashboard</h1>
+  <p>Signed in as <strong>{{ user.email|default:user.username }}</strong> · <span class="badge">{{ role }}</span></p>
+
+  {% if role == "applicant" %}
+    <div class="card">
+      <h2>Membership</h2>
+      {% if latest_application %}
+        <p>Your latest application is <span class="badge">{{ latest_application.get_status_display }}</span>.</p>
+      {% else %}
+        <p>You're not a member yet.</p>
+      {% endif %}
+      <p><a href="{% url 'membership:apply' %}">View or submit an application</a></p>
+    </div>
+  {% endif %}
+
+  {% if is_officer %}
+    <div class="card">
+      <h2>Needs your attention</h2>
+      <ul>
+        <li><a href="{% url 'membership:application_list' %}">{{ pending_applications }} membership application{{ pending_applications|pluralize }}</a> pending</li>
+        <li><a href="{% url 'meetings:list' %}">{{ pending_drafts }} meeting draft{{ pending_drafts|pluralize }}</a> pending review</li>
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if is_member %}
+    <div class="card">
+      <h2>My committees</h2>
+      {% for m in committees %}
+        <p><a href="{% url 'committees:detail' m.committee.pk %}">{{ m.committee.name }}</a> <span class="badge">{{ m.get_role_display }}</span></p>
+      {% empty %}
+        <p class="muted">You're not on any committees yet.</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

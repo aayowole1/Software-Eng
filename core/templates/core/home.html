@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+  <h1>OrgFlow</h1>
+  <p>One place for your student organization's membership, committees, events, tasks and meeting follow-ups.</p>
+  <p>
+    <a class="button" href="{% url 'accounts:register' %}">Create an account</a>
+    <a href="{% url 'accounts:login' %}">or sign in</a>
+  </p>
+  <div class="card">
+    <h2>How joining works</h2>
+    <ol>
+      <li>Create an account with your email.</li>
+      <li>Submit a membership application.</li>
+      <li>An officer reviews it. Once approved you're on the roster.</li>
+    </ol>
+  </div>
+{% endblock %}

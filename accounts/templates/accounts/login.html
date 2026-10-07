@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+  <h1>Sign in</h1>
+  <form method="post" class="card" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+    {{ form.username.label_tag }} {{ form.username }} {{ form.username.errors }}
+    <p></p>
+    {{ form.password.label_tag }} {{ form.password }} {{ form.password.errors }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <p></p>
+    <button type="submit">Sign in</button>
+  </form>
+  <p>New here? <a href="{% url 'accounts:register' %}">Create an account</a></p>
+{% endblock %}

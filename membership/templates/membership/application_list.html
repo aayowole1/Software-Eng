@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+  <h1>Membership applications</h1>
+  <h2>Pending ({{ pending|length }})</h2>
+  {% for a in pending %}
+    <div class="card">
+      <p><strong>{{ a.user.email }}</strong> <span class="muted">submitted {{ a.submitted_at|date:"M j, Y" }}</span></p>
+      <p>{{ a.statement|linebreaksbr }}</p>
+      <form method="post" action="{% url 'membership:review_application' a.pk %}">
+        {% csrf_token %}
+        <label for="note-{{ a.pk }}">Note (optional)</label>
+        <textarea name="note" id="note-{{ a.pk }}" rows="2"></textarea>
+        <p></p>
+        <button type="submit" name="decision" value="approve">Approve</button>
+        <button type="submit" name="decision" value="reject" class="secondary">Reject</button>
+      </form>
+    </div>
+  {% empty %}
+    <p class="muted">No pending applications.</p>
+  {% endfor %}
+
+  <h2>Reviewed</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Applicant</th><th scope="col">Status</th><th scope="col">Reviewed by</th><th scope="col">Note</th></tr></thead>
+      <tbody>
+        {% for a in reviewed %}
+          <tr><td>{{ a.user.email }}</td><td>{{ a.get_status_display }}</td><td>{{ a.reviewed_by.email|default:"—" }}</td><td>{{ a.review_note|default:"" }}</td></tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">None yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ committee.name }}{% endblock %}
+{% block content %}
+  <h1>{{ committee.name }}</h1>
+  {% if committee.description %}<p>{{ committee.description }}</p>{% endif %}
+
+  <h2>Roster</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Email</th><th scope="col">Committee role</th><th scope="col">Joined</th>{% if is_officer %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for m in roster %}
+          <tr>
+            <td>{{ m.user.email|default:m.user.username }}</td>
+            <td>{{ m.get_role_display }}</td>
+            <td>{{ m.joined_at|date:"M j, Y" }}</td>
+            {% if is_officer %}
+              <td>
+                <form method="post" action="{% url 'committees:remove_member' committee.pk m.user.pk %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="secondary">Remove</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">No members.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_officer %}
+    <h2>Add a member</h2>
+    <form method="post" action="{% url 'committees:add_member' committee.pk %}" class="card">
+      {% csrf_token %}
+      {{ add_form.as_p }}
+      <button type="submit">Add</button>
+    </form>
+  {% endif %}
+
+  {% if is_admin %}
+    <h2>Delete committee</h2>
+    <form method="post" action="{% url 'committees:delete' committee.pk %}" onsubmit="return confirm('Delete this committee and its roster?');">
+      {% csrf_token %}
+      <button type="submit" class="danger">Delete committee</button>
+    </form>
+  {% endif %}
+{% endblock %}

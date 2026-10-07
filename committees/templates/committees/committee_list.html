@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Committees{% endblock %}
+{% block content %}
+  <h1>Committees</h1>
+  {% if is_officer %}<p><a class="button" href="{% url 'committees:create' %}">New committee</a></p>{% endif %}
+  {% for c in committees %}
+    <div class="card">
+      <h2><a href="{% url 'committees:detail' c.pk %}">{{ c.name }}</a></h2>
+      {% if c.description %}<p>{{ c.description }}</p>{% endif %}
+    </div>
+  {% empty %}
+    <p class="muted">No committees yet.</p>
+  {% endfor %}
+{% endblock %}
