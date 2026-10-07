@@ -12,6 +12,7 @@ The full product backlog (user stories, acceptance criteria, priorities, and sta
 | 1.2 | Development Environment Setup | ✅ Done |
 | 1.3 | SSO and Permissions | ✅ Done |
 | 1.4 | Membership and Roster | ✅ Done |
+| 1.9 | AI Drafts and Review Interface | ✅ Done |
 
 ---
 
@@ -110,6 +111,66 @@ Response:
 
 ---
 
+### AI Drafts and Review Interface (1.9)
+
+Editors and admins can request AI-generated drafts by providing a prompt. Drafts start with `pending_review` status and can be reviewed (approved, rejected, or revision requested) by editors or admins.
+
+#### Draft Statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending_review` | Draft created; awaiting reviewer decision |
+| `approved` | Reviewer accepted the draft |
+| `rejected` | Reviewer rejected the draft |
+| `revision_requested` | Reviewer asked for changes |
+
+#### Draft Routes
+
+| Method | Endpoint | Min System Role | Description |
+|--------|----------|----------------|-------------|
+| `POST` | `/api/drafts` | `editor` | Request an AI draft; body: `{ title, prompt }` |
+| `GET` | `/api/drafts` | `viewer` | List all drafts |
+| `GET` | `/api/drafts/:id` | `viewer` | Get a specific draft |
+| `POST` | `/api/drafts/:id/reviews` | `editor` | Submit a review decision |
+| `DELETE` | `/api/drafts/:id` | `admin` | Delete a draft |
+
+#### Example: Request an AI draft
+```http
+POST /api/drafts
+Authorization: Bearer <editor-token>
+Content-Type: application/json
+
+{ "title": "Intro to Node.js", "prompt": "Write a beginner's introduction to Node.js" }
+```
+Response (HTTP 201):
+```json
+{
+  "draft": {
+    "id": "draft_...",
+    "title": "Intro to Node.js",
+    "prompt": "Write a beginner's introduction to Node.js",
+    "content": "[AI-generated draft]\n\n...",
+    "status": "pending_review",
+    "createdBy": "usr_...",
+    "createdAt": "...",
+    "reviewedBy": null,
+    "reviewNote": null,
+    "reviewedAt": null
+  }
+}
+```
+
+#### Example: Submit a review
+```http
+POST /api/drafts/:draftId/reviews
+Authorization: Bearer <editor-token>
+Content-Type: application/json
+
+{ "decision": "approved", "note": "Looks great!" }
+```
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -166,16 +227,19 @@ src/
 ├── models/
 │   ├── user.js             # User model, ROLES, hasMinimumRole
 │   ├── team.js             # Team model (create, list, delete)
-│   └── membership.js       # Membership model, TEAM_ROLES, roster helpers
+│   ├── membership.js       # Membership model, TEAM_ROLES, roster helpers
+│   └── draft.js            # Draft model, DRAFT_STATUSES, REVIEW_DECISIONS
 └── routes/
     ├── auth.js             # /auth/* endpoints
     ├── protected.js        # /api/posts and /api/admin/* endpoints
-    └── teams.js            # /api/teams and /api/users/:id/teams endpoints
+    ├── teams.js            # /api/teams and /api/users/:id/teams endpoints
+    └── drafts.js           # /api/drafts endpoints (AI drafts & reviews)
 
 tests/
 ├── auth.test.js            # Registration, login, /auth/me
 ├── permissions.test.js     # RBAC logic + protected routes
-└── membership.test.js      # Team model, Membership model, all team routes
+├── membership.test.js      # Team model, Membership model, all team routes
+└── drafts.test.js          # Draft model, all draft & review routes
 ```
 
 ---

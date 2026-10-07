@@ -9,6 +9,7 @@ const { configurePassport, passport } = require('./auth/passport');
 const authRoutes = require('./routes/auth');
 const protectedRoutes = require('./routes/protected');
 const teamRoutes = require('./routes/teams');
+const draftRoutes = require('./routes/drafts');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use(passport.initialize());
 app.use('/auth', authRoutes);
 app.use('/api', protectedRoutes);
 app.use('/api', teamRoutes);
+app.use('/api', draftRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

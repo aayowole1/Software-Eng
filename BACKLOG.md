@@ -21,6 +21,7 @@ This document is the authoritative product backlog for the Software-Eng project.
 | 1.2 | Development Environment Setup | ✅ Done |
 | 1.3 | SSO and Permissions | ✅ Done |
 | 1.4 | Membership and Roster | ✅ Done |
+| 1.9 | AI Drafts and Review Interface | ✅ Done |
 
 ---
 
@@ -289,6 +290,118 @@ This document is the authoritative product backlog for the Software-Eng project.
 
 ---
 
+## Epic 1.9 — AI Drafts and Review Interface
+
+> **Backlog ID:** PB-05  
+> **WBS:** 1.9  
+> **Owner:** Jack Pankaj (JP)  
+> **Dependencies:** 1.2 (task interface defined in 1.2; connection to completed task module in 1.10)
+
+### US-14 — Request an AI Draft
+
+> **As an** editor or admin,  
+> **I want to** submit a prompt and receive an AI-generated draft,  
+> **so that** I can quickly produce content for human review.
+
+**Priority:** High  
+**Status:** ✅ Done (SCRUM-19)  
+**WBS:** 1.9  
+
+**Acceptance Criteria:**
+
+- [ ] `POST /api/drafts` accepts `{ title, prompt }` in the request body.
+- [ ] `title` is required; omitting it or sending a blank value returns HTTP 400.
+- [ ] `prompt` is required; omitting it or sending a blank value returns HTTP 400.
+- [ ] The system generates content from the prompt and stores it as a draft.
+- [ ] New drafts have status `pending_review`.
+- [ ] The response (HTTP 201) includes the full draft object including generated `content`.
+- [ ] A `viewer` attempting to create a draft receives HTTP 403.
+- [ ] Returns HTTP 401 when no valid Bearer token is provided.
+
+---
+
+### US-15 — List Drafts
+
+> **As a** viewer (or above),  
+> **I want to** see a list of all AI drafts,  
+> **so that** I can discover which drafts are awaiting review.
+
+**Priority:** Medium  
+**Status:** ✅ Done (SCRUM-19)  
+**WBS:** 1.9  
+
+**Acceptance Criteria:**
+
+- [ ] `GET /api/drafts` returns an array of all draft objects.
+- [ ] Accessible to any authenticated user (`viewer` and above).
+- [ ] Returns an empty array when no drafts exist.
+- [ ] Returns HTTP 401 when no valid JWT is supplied.
+
+---
+
+### US-16 — View a Draft
+
+> **As a** viewer (or above),  
+> **I want to** read a specific AI draft,  
+> **so that** I can review its content before approving or rejecting it.
+
+**Priority:** High  
+**Status:** ✅ Done (SCRUM-19)  
+**WBS:** 1.9  
+
+**Acceptance Criteria:**
+
+- [ ] `GET /api/drafts/:id` returns the full draft object including generated content.
+- [ ] Returns HTTP 404 for an unknown draft id.
+- [ ] Accessible to any authenticated user (`viewer` and above).
+- [ ] Returns HTTP 401 when no valid JWT is supplied.
+
+---
+
+### US-17 — Review a Draft
+
+> **As an** editor or admin,  
+> **I want to** approve, reject, or request revisions on an AI draft,  
+> **so that** only suitable content proceeds further.
+
+**Priority:** High  
+**Status:** ✅ Done (SCRUM-19)  
+**WBS:** 1.9  
+
+**Acceptance Criteria:**
+
+- [ ] `POST /api/drafts/:id/reviews` accepts `{ decision, note? }`.
+- [ ] Valid decisions are `approved`, `rejected`, and `revision_requested`.
+- [ ] Supplying an invalid decision value returns HTTP 400.
+- [ ] Omitting `decision` returns HTTP 400.
+- [ ] Returns HTTP 404 for an unknown draft id.
+- [ ] A successful review updates the draft's `status`, `reviewedBy`, `reviewNote`, and `reviewedAt`.
+- [ ] `note` is optional; when omitted `reviewNote` is `null`.
+- [ ] A `viewer` attempting to review receives HTTP 403.
+- [ ] Returns HTTP 401 when no valid JWT is supplied.
+
+---
+
+### US-18 — Delete a Draft
+
+> **As an** admin,  
+> **I want to** delete an AI draft,  
+> **so that** I can remove drafts that are no longer needed.
+
+**Priority:** Low  
+**Status:** ✅ Done (SCRUM-19)  
+**WBS:** 1.9  
+
+**Acceptance Criteria:**
+
+- [ ] `DELETE /api/drafts/:id` removes the draft.
+- [ ] Returns HTTP 204 on success.
+- [ ] Returns HTTP 404 for an unknown draft id.
+- [ ] Only admins may call this endpoint; non-admins receive HTTP 403.
+- [ ] Returns HTTP 401 when no valid JWT is supplied.
+
+---
+
 ## Non-Functional Requirements
 
 | ID | Requirement | Status |
@@ -319,10 +432,10 @@ Every story is considered **Done** when all of the following are true:
 
 | Metric | Value |
 |--------|-------|
-| Total stories | 13 |
-| Stories Done | 13 |
+| Total stories | 18 |
+| Stories Done | 18 |
 | Stories In Progress | 0 |
 | Stories Not Started | 0 |
-| Test suites | 3 |
-| Total tests | 87 |
-| Overall coverage | 86.49% |
+| Test suites | 5 |
+| Total tests | 156 |
+| Overall coverage | 94.13% |
