@@ -39,22 +39,36 @@ class RegistrationTests(TestCase):
     url = reverse("accounts:register")
 
     def post(self, **overrides):
-        data = {"email": "ada@example.com", "password": PASSWORD, "confirm_password": PASSWORD}
+        data = {
+            "username": "ada",
+            "email": "ada@example.com",
+            "password": PASSWORD,
+            "confirm_password": PASSWORD,
+        }
         data.update(overrides)
         return self.client.post(self.url, data)
 
     def test_register_creates_applicant_and_signs_in(self):
         response = self.post()
         self.assertRedirects(response, reverse("core:dashboard"))
-        user = User.objects.get(username="ada@example.com")
+        user = User.objects.get(username="ada")
+        self.assertEqual(user.email, "ada@example.com")
         self.assertEqual(get_role(user), Role.APPLICANT)
         self.assertTrue(user.check_password(PASSWORD))
         self.assertNotEqual(user.password, PASSWORD)  # stored hashed, never raw
         self.assertEqual(self.client.get(reverse("core:dashboard")).status_code, 200)
 
-    def test_email_is_case_insensitive(self):
+    def test_new_account_can_sign_in_with_username_or_email(self):
+        self.post()
+        for identifier in ["ada", "ada@example.com"]:
+            with self.subTest(identifier=identifier):
+                self.client.logout()
+                self.client.post(reverse("accounts:login"), {"username": identifier, "password": PASSWORD})
+                self.assertIn("_auth_user_id", self.client.session)
+
+    def test_email_is_stored_lowercase(self):
         self.post(email="Ada@Example.com")
-        self.assertTrue(User.objects.filter(username="ada@example.com").exists())
+        self.assertEqual(User.objects.get(username="ada").email, "ada@example.com")
 
     def test_short_password_rejected(self):
         response = self.post(password="short1", confirm_password="short1")
@@ -69,8 +83,37 @@ class RegistrationTests(TestCase):
         self.post(email="")
         self.assertFalse(User.objects.exists())
 
+    def test_missing_username_rejected(self):
+        self.post(username="")
+        self.assertFalse(User.objects.exists())
+
+    def test_taken_username_rejected(self):
+        User.objects.create_user("ada", "other@example.com", PASSWORD)
+        response = self.post()
+        self.assertContains(response, "This username is already taken.")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_taken_username_check_ignores_case(self):
+        User.objects.create_user("ada", "other@example.com", PASSWORD)
+        response = self.post(username="ADA")
+        self.assertContains(response, "This username is already taken.")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_username_with_invalid_characters_rejected(self):
+        for bad in ["ada@example.com", "ada smith", "ada!"]:
+            with self.subTest(username=bad):
+                response = self.post(username=bad)
+                self.assertContains(response, "Use only letters, numbers")
+        self.assertFalse(User.objects.exists())
+
     def test_duplicate_email_rejected(self):
-        make_user("ada@example.com")
+        User.objects.create_user("someone", "ada@example.com", PASSWORD)
+        response = self.post(email="ADA@example.com")
+        self.assertContains(response, "already exists")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_email_used_as_older_accounts_username_rejected(self):
+        make_user("ada@example.com")  # older accounts: username == email
         response = self.post()
         self.assertContains(response, "already exists")
         self.assertEqual(User.objects.count(), 1)
