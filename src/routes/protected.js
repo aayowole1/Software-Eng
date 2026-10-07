@@ -50,16 +50,7 @@ router.delete('/posts/:id', authenticate, authorize('admin'), (req, res) => {
 
 // ── Admin: user management ────────────────────────────────────────────────
 
-router.get('/admin/users', authenticate, authorize('admin'), (_req, res) => {
-  // Build list of all known users (public profiles only)
-  const allUsers = [];
-  // UserModel exposes findById via iteration; we expose a helper here.
-  for (const role of Object.values(UserModel.ROLES)) {
-    // We can't iterate the private Map directly from outside, so we rely on
-    // the fact that the admin calling this endpoint is in the store.
-    // In a real DB you'd run SELECT * FROM users.
-    void role; // placeholder – the endpoint works via the exported helpers
-  }
+router.get('/admin/users', authenticate, authorize('admin'), (req, res) => {
   // Return the requesting admin's own profile as a minimal demo.
   // Replace with a full DB query in production.
   res.json({
@@ -76,8 +67,11 @@ router.put('/admin/users/:id/role', authenticate, authorize('admin'), (req, res)
     const updated = UserModel.setUserRole(req.params.id, role);
     res.json({ user: sanitize(updated) });
   } catch (err) {
-    if (err.message.startsWith('Invalid role') || err.message.startsWith('User not found')) {
+    if (err.message.startsWith('Invalid role')) {
       return res.status(400).json({ error: err.message });
+    }
+    if (err.message.startsWith('User not found')) {
+      return res.status(404).json({ error: err.message });
     }
     res.status(500).json({ error: 'Failed to update role' });
   }
