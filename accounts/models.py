@@ -12,6 +12,7 @@ application to make someone a member; an admin can set any role.
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -56,6 +57,11 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.email or self.user.username} ({self.role})"
 
+    def clean(self):
+        super().clean()
+        if self.user_id and self.user.is_superuser and self.role != Role.ADMIN:
+            raise ValidationError({"role": "Superusers must remain admins."})
+
 
 def get_role(user):
     """Return the organization role for `user`, or None when signed out.
@@ -72,10 +78,27 @@ def get_role(user):
 
 
 def set_role(user, role):
-    """Change a user's organization role. Raises ValueError for unknown roles."""
+    """Change a role without contradicting Django's superuser authority."""
     if role not in Role.values:
         raise ValueError(f"Invalid role: {role}")
+    if user.is_superuser and role != Role.ADMIN:
+        raise ValueError("Superusers must remain admins.")
     profile, _ = Profile.objects.get_or_create(user=user)
     profile.role = role
     profile.save(update_fields=["role"])
     return profile
+
+
+class GoogleIdentity(models.Model):
+    """A verified Google subject linked to one local account, independent of email."""
+
+    subject = models.CharField(max_length=255, unique=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="google_identity",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Google identity for {self.user}"

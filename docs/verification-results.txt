@@ -1,0 +1,166 @@
+OrgFlow Accounts 1.3 verification
+Date: 2026-10-08, America/Chicago
+Assigned owner: Chau Minh Viet Nguyen
+Operator: Codex, with AI-assisted implementation and review
+Chau's personal testing: account creation, superuser approval, and the requested
+login and permission checks reported completed. Broader code review and the
+remaining acceptance checks are pending.
+
+Source and environment
+  Base snapshot: 17835faa170e06c024c1bfa25dcb52be7b374427
+  Source branch: django-conversion
+  Local work branch: chau/accounts-progress
+  Changes were local and uncommitted at initial automated verification.
+  Current local commit history is recorded by Git; changes have not been pushed.
+  Python 3.12.14, Django 5.2.17, django-mongodb-backend 5.2.4
+  PyMongo 4.18.0, google-auth 2.61.0, MongoDB 8.0.32
+  Database server: standalone, 127.0.0.1:27028, isolated temporary data directory
+  Demo database: orgflow_chau_checkpoint
+  No Docker execution. A Google Cloud Web application client is now configured
+  for the local demo in testing mode, after the user's explicit policy and
+  OAuth credential approval. Origins: http://localhost, http://localhost:8000.
+  Public client ID is stored only in ignored local .env; app restarted.
+  No private account email, client ID, or project credentials are recorded here.
+
+Automated results
+  PASS: Original snapshot, python manage.py test --verbosity 2
+        88 tests, 218.535 seconds; original teammate tests, re-executed here.
+        Test database test_orgflow created and removed by Django.
+
+  PASS: Modified checkout, python manage.py test --verbosity 2
+        125 tests, 247.221 seconds; no failures.
+        Includes original 88, 8 account-safety tests, 29 Google tests.
+        Test database test_orgflow_chau_checkpoint created and removed by Django.
+
+  PASS: Latest Google verifier, python manage.py test
+        accounts.test_google_auth.GoogleVerificationTests --verbosity 2
+        5 tests, 0.004 seconds; no database setup required.
+        Includes one new malformed-JWT regression added during independent review.
+        Four checks overlap with the 125-test run. At this point the source
+        declared 126 distinct tests, covered across those two runs.
+
+  PASS: Latest Google login headers and verifier checks, PowerShell command:
+        $env:MONGODB_URI='mongodb://127.0.0.1:27028'
+        $env:MONGODB_NAME='chau_google_header_checks'
+        .\.venv\Scripts\python.exe manage.py test accounts.test_google_auth.GoogleLoginHeaderTests accounts.test_google_auth.GoogleVerificationTests --verbosity 2
+        13 tests, 0.019 seconds; wall time 2.588 seconds; no failures.
+        Eight new GoogleLoginHeaderTests plus the five existing verifier checks.
+        SimpleTestCase checks; no database setup or mutation required.
+        Output confirmed by execution tool; no raw log file was saved.
+        Current source declares 134 distinct tests: 88 original, eight account-
+        safety, and 38 Google tests. These were covered across the 125-test,
+        five-test verifier, and 13-test targeted runs, with overlapping verifier
+        checks. No single 134-test full-suite invocation has been performed.
+
+  PASS: python manage.py check -- zero issues.
+  PASS: python manage.py makemigrations --check --dry-run -- no changes detected.
+  PASS: python manage.py migrate --noinput -- all migrations applied to demo DB.
+  PASS: python -m pip check -- no broken requirements.
+  PASS: git diff --check -- no whitespace errors.
+
+Browser checks performed by Codex with synthetic local accounts
+  PASS: Sign in as demo_admin using username; administrator dashboard displayed.
+  PASS: Users page shows ordinary role editors and superuser fixed Admin role.
+  PASS: Change demo_member from Member to Officer and restore Member; both show
+        the expected persisted role and success feedback.
+  PASS: Sign out and sign in as demo_member@example.com using email.
+  PASS: Direct navigation to /accounts/users/ as Member is rejected, showing
+        'You don't have access to this page'.
+  PASS: Sign out; local sign-in page left ready for Chau's review.
+  Evidence: accounts-role-demo.jpg, accounts-member-denied.jpg.
+
+Live Google provider check on 2026-10-08
+  PASS (limited): Real Google callback passed server-side token verification and
+        session checks, then returned the deliberate existing-local-email error.
+        This verifies acceptance of a real Google token and protection against
+        automatically linking an existing password account by email.
+  No successful Google account sign-in occurred in that error-path check.
+  Screenshot retained locally outside the repository; private account details
+  and configuration identifiers are not included in repository evidence.
+
+  PASS (user-reported, corroborated): Chau reported successful first-time Google
+        sign-in through a regular browser with an email not registered locally.
+        Direct database comparison for that account changed from zero matching
+        users and zero Google identities to one matching user and one identity.
+        Verified account properties: role applicant; active true; staff false;
+        superuser false; usable local password false.
+        Direct server-log evidence: POST /accounts/google/ returned HTTP 302,
+        followed by GET /dashboard/ HTTP 200 and GET /membership/apply/ HTTP 200.
+        This corroborates first-time account creation. Browser sign-in success
+        is Chau's report, not an independently observed browser session here.
+  Private database evidence is retained locally outside the repository. No email,
+  provider subject, internal user ID, client ID, or password is included here.
+
+  PASS (direct server logs and database): Returning Google authentication after
+        logout. POST /accounts/logout/ returned HTTP 302, GET /accounts/login/
+        returned HTTP 200, then the second POST /accounts/google/ returned HTTP
+        302 followed by GET /dashboard/ HTTP 200.
+        Database still contained one matching user and one Google identity,
+        linked to the same account as the first login; last-login advanced.
+        Account remained active Applicant, with no staff/superuser privileges
+        and no usable local password. No duplicate or role escalation observed.
+        Chau also confirmed returning to the Applicant dashboard after the
+        second sign-in. His browser report is corroborated by the logs and
+        database checks; Codex did not directly view the external browser.
+
+  Browser observation: The in-app browser showed a blank Google popup. App login
+  headers were verified correct; Chau reported that the regular-browser path
+  worked. The cause of the in-app popup behavior has not been established.
+
+Manual verification reported by Chau on 2026-10-08
+  PASS (user-reported): Created an account and used a superuser account to
+        approve it. Chau reported that the flow worked successfully.
+  COMPLETED (user-reported): Login checks covering username and email sign-in
+        and rejection of a wrong password, as requested in the prior checklist.
+  COMPLETED (user-reported): Permission checks covering denial of admin user
+        management to an ordinary member and an admin changing an ordinary
+        user's role, as requested in the prior checklist.
+  PASS (user-reported, corroborated): First-time Google sign-in with a previously
+        unregistered email in a regular browser. The direct database check above
+        corroborates account creation and expected Applicant privileges.
+  PASS (user-reported, corroborated): After signing out, Google sign-in returned
+        to the Applicant dashboard. Chau explicitly confirmed this result; the
+        server logs and same-account database check above corroborate it.
+  Confirmation: "done loggin and permission check"; no problems were reported.
+  Source: Chau's confirmation in this chat. No screenshots of his run supplied.
+  This report does not establish personal review of every feature or code path.
+
+Validation and correction log
+  Design: Reviewed official Google ID-token and GIS setup guidance; immutable
+          subject mapping, no email-only account linking, CSRF/session nonce.
+  Review: Added an explicit password-form action so a Google failure page still
+          submits local credentials to the local login endpoint.
+  Review: Independent actual-library reproduction found malformed JWT alg/kid
+          headers could raise TypeError. Handler now returns a safe error;
+          targeted regression passes with certificate fetching mocked.
+  Tests: Corrected an initial multi-tab nonce test that accidentally issued one
+         extra nonce and evicted the entry it intended to test.
+  Review: Confirmed Mongo standalone cannot be assumed to offer multi-document
+          transaction guarantees; no transaction.atomic workaround introduced.
+  Google setup: Configured testing-mode client with localhost origins and kept
+                its public client ID only in ignored local .env.
+  Review: Localized Referrer-Policy=no-referrer-when-downgrade to Google-enabled
+          HTTP localhost/127.0.0.1 responses. HTTPS, remote-host, and disabled-
+          Google policies remain unchanged; eight targeted regressions pass.
+          Both normal login and Google failure responses apply the local policy.
+
+Evidence files
+  evidence/baseline-tests.txt
+  evidence/checkpoint-tests.txt
+  evidence/google-verifier-tests.txt
+  evidence/checkpoint-migrations.txt
+
+Not demonstrated / remaining
+  Supporting screenshots of Chau's run; first-time and returning authentication
+  passed with Chau's browser confirmations and server/database evidence,
+  and existing-account protection passed. Fresh checkouts need their own Google
+  client configuration. Broader provider availability is not established.
+  Cause of the in-app browser's blank Google popup.
+  Docker startup on this machine; production deployment/security configuration.
+  Database-enforced case-folded username/email uniqueness under concurrency.
+  Atomic multi-document signup on standalone MongoDB.
+  Chau's code/design review and explanation, supporting screenshots, and
+  remaining duplicate-sign-up and superuser-safeguard walkthrough steps.
+  Team approval, remote commit/PR/merge, and future WBS 1.6 task workflows.
+  No coverage percentage, performance target, restart durability or complete
+  proposal acceptance claim is inferred from these functional test results.

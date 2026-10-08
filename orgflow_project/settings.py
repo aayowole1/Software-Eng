@@ -11,13 +11,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os 
-#from dotenv import load_dotenv
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-#load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -100,7 +100,7 @@ WSGI_APPLICATION = 'orgflow_project.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django_mongodb_backend",
-        "NAME": "orgflow",
+        "NAME": os.getenv("MONGODB_NAME", "orgflow"),
         "HOST": os.getenv(
             "MONGODB_URI",
             "mongodb://localhost:27018",
@@ -147,6 +147,10 @@ STATIC_URL = 'static/'
 # Authentication
 
 AUTHENTICATION_BACKENDS = ["accounts.backends.EmailOrUsernameBackend"]
+
+# Configure a Google web client ID to enable Google Identity Services sign-in.
+# Authorized JavaScript origins are configured in Google Cloud, not in source.
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:dashboard"

@@ -2,10 +2,16 @@
 
 OrgFlow is a Django web application using MongoDB and Docker for a consistent development environment.
 
+This local `chau/accounts-progress` checkout includes an Accounts 1.3 checkpoint.
+See [the review guide](docs/accounts-checkpoint.md) and
+[verification results](docs/verification-results.txt). The changes have not been
+pushed; the clone command below retrieves the team's baseline branch. Use the
+prepared checkpoint folder/archive to review the new work.
+
 ## Tech Stack
 
 * Python 3.12
-* Django 6.1
+* Django 5.2.17 (matches `requirements.txt`)
 * MongoDB
 * Docker
 * Docker Compose
@@ -16,8 +22,8 @@ OrgFlow is a Django web application using MongoDB and Docker for a consistent de
 Clone the repository:
 
 ```bash
-git clone git@github.com:Tmonstah/OrgFlow.git
-cd OrgFlow
+git clone --branch django-conversion https://github.com/aayowole1/Software-Eng.git
+cd Software-Eng
 ```
 
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
@@ -100,13 +106,25 @@ Each role includes everything the roles below it can do.
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
 
+Superuser accounts retain the Admin role; organization role management cannot
+demote them. Migration `accounts.0002_backfill_profiles` gives preexisting users
+missing profiles an Applicant role (Admin for superusers), preserving existing
+profiles. Run migrations before reviewing the user list.
+
+### Google sign-in (Accounts 1.3)
+
+Google sign-in is available when `GOOGLE_CLIENT_ID` is configured. See
+[Accounts setup and review](docs/accounts-checkpoint.md) for configuration,
+tests, and the remaining live-provider check. Existing password accounts are
+not automatically linked by email. New Google accounts start as applicants.
+
 ### AI meeting drafts
 
 `meetings/ai.py` is a **rule-based placeholder**: lines starting with `Action:`, `TODO:` or `- [ ]` become proposed action items, and the first few sentences become the summary. Replace `summarize_meeting()` with a real model call (keep the same return type) and evaluate it with DeepEval. Approved action items will become tasks once the task module (WBS 1.6) exists.
 
 ### Not yet implemented
 
-Events and attendance (1.5), tasks (1.6), announcements and resources (1.7), reports (1.8), audit history (FR-09), and Google sign-in.
+Events and attendance (1.5), tasks (1.6), announcements and resources (1.7), reports (1.8), and audit history (FR-09). Google sign-in still requires a configured Google client and a live end-to-end check.
 
 ## Running Tests
 
