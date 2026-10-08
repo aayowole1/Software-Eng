@@ -7,8 +7,10 @@ already present in the supplied `django-conversion` snapshot at
 `17835faa170e06c024c1bfa25dcb52be7b374427`.
 
 The changes are on the local branch `chau/accounts-progress`. The original
-prototype remains credited to its contributors. Human code review, a live Google
-login, and integration into the team's remote repository remain separate steps.
+prototype remains credited to its contributors. Human code review and integration
+into the team's remote repository remain separate steps. A limited live Google
+check has verified the existing-account protection; first-time and returning
+Google account sign-in remain pending.
 
 ## Changes in this checkpoint
 
@@ -20,6 +22,9 @@ login, and integration into the team's remote repository remain separate steps.
   after validation, instead of an unhandled server error.
 - Add optional Google sign-in with server-side token verification, a separate
   provider identity, session nonce checks, and Django CSRF protection.
+- Apply Google's local-development referrer policy only to Google-enabled HTTP
+  login responses on `localhost` or `127.0.0.1`; preserve the existing policy for
+  HTTPS, remote hosts, and disabled Google sign-in. Add eight header regressions.
 - Add regression tests and setup documentation; correct the README's Django
   version to the version already pinned by the team, 5.2.17.
 
@@ -65,8 +70,9 @@ The prepared demo is currently at `http://localhost:8000/accounts/login/` on
 Chau's computer. Synthetic demo usernames are `demo_admin`, `demo_member`,
 `demo_officer`, and `demo_root`; their development-only password is
 `OrgFlow-Demo!2026`. These credentials belong only to the isolated local demo,
-not to a team or production deployment. The Google button is disabled until
-the team configures a real client ID.
+not to a team or production deployment. Google sign-in is now enabled in this
+local demo using a configured Google client. A fresh checkout still needs its
+own client configuration.
 
 For Docker, follow the main README. Its `MONGODB_URI=mongodb://mongo:27017`
 environment setting overrides a local `.env` URI. The project folder is mounted
@@ -89,7 +95,20 @@ Rebuild after changing Python requirements, and run migrations before use.
 
 When the client ID is empty, the Google button is hidden and the Google endpoint
 is disabled. The code and mocked tests can be checked without Google credentials.
-Live Google verification is pending until the team configures its own client.
+On October 8, 2026, a Google Cloud test project and Web application client were
+created after the user's explicit policy and OAuth credential approval. The
+client is in testing mode with the two localhost origins listed above. Its public
+client ID is stored only in the ignored local `.env`, and the app was restarted.
+No client ID, private account email, or project credentials are recorded here.
+
+A live Google callback passed server-side token verification and session checks,
+then returned the intended error because the verified email already belonged to
+a local account. This demonstrates that a real Google token was accepted and
+the existing password account was protected from automatic linking. It does not
+demonstrate a successful Google account sign-in. A screenshot is retained locally
+outside the repository. First-time account creation and returning sign-in await
+a Google account whose email is not already registered locally.
+
 Public deployment also needs a production security/configuration review; the
 inherited settings are for development.
 
@@ -109,13 +128,18 @@ its database permissions and naming.
 The new role and upgrade tests are in `accounts/test_account_safety.py`.
 Google tests are in `accounts/test_google_auth.py`. Provider responses are
 mocked: those tests exercise our acceptance/rejection logic and verifier wiring,
-not a real Google login or Google's signing infrastructure. See
-`verification-results.txt` for the actual run results.
+not a real Google login or Google's signing infrastructure. The limited live
+provider check is recorded separately above. See `verification-results.txt` for
+the actual run results.
 
 The original 88 tests passed. The expanded suite passed 125 tests, followed by
-five targeted verifier checks after adding a malformed-token regression. Those
-runs cover all 126 distinct tests in the final source (four verifier checks
-overlap between runs). The suite was not run as one 126-test invocation.
+five targeted verifier checks after adding a malformed-token regression. The
+latest targeted run passed eight new header checks and the same five verifier
+checks: 13 tests in 0.019 seconds, with 2.588 seconds of wall time and no database
+setup. These runs cover the 134 distinct tests currently declared in the source
+(88 original, eight account-safety, and 38 Google tests), with overlapping verifier
+checks. No single 134-test full-suite run has been performed. The latest targeted
+output was confirmed by the execution tool; a raw log was not saved.
 
 ## Chau's review and demonstration
 
@@ -142,7 +166,9 @@ and demonstration checklist is:
    that the server rejects a crafted demotion request.
 4. Explain why migrations use historical models and preserve existing roles.
 5. Explain Google token verification, CSRF, the nonce, and why an email match
-   does not link an existing account. State the live-provider test is still pending.
+   does not link an existing account. Explain the live existing-account protection
+   result and complete first-time and returning Google sign-in when a suitable
+   account is available.
 6. Record actual observations and screenshots, then update Section 9 of the team
    report with the work you can explain and have personally reviewed.
 

@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.test import Client, SimpleTestCase, TestCase, override_settings
+from django.http import HttpResponse
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from google.auth.exceptions import TransportError
 
@@ -17,13 +18,77 @@ from .google_auth import (
     NONCE_SESSION_KEY,
     NONCE_TTL_SECONDS,
     VERIFY_TIMEOUT_SECONDS,
+    _login_error,
+    apply_google_login_headers,
     verify_google_credential,
 )
 from .models import GoogleIdentity, Role, get_role
 from .testing import make_user
+from .views import EmailLoginView
 
 User = get_user_model()
 CLIENT_ID = "orgflow-test.apps.googleusercontent.com"
+
+
+@override_settings(
+    GOOGLE_CLIENT_ID=CLIENT_ID,
+    ALLOWED_HOSTS=["localhost", "127.0.0.1", "app.example"],
+)
+class GoogleLoginHeaderTests(SimpleTestCase):
+    def response_for(self, host, secure=False, referrer_policy="same-origin"):
+        request = RequestFactory().get("/accounts/login/", HTTP_HOST=host, secure=secure)
+        response = HttpResponse(headers={
+            "Referrer-Policy": referrer_policy,
+            "Cross-Origin-Opener-Policy": "same-origin",
+        })
+        return apply_google_login_headers(request, response)
+
+    def test_http_localhost_uses_google_local_development_policy(self):
+        response = self.response_for("localhost:8000")
+        self.assertEqual(response["Referrer-Policy"], "no-referrer-when-downgrade")
+        self.assertEqual(response["Cross-Origin-Opener-Policy"], "same-origin-allow-popups")
+
+    def test_http_loopback_address_uses_google_local_development_policy(self):
+        response = self.response_for("127.0.0.1:8000")
+        self.assertEqual(response["Referrer-Policy"], "no-referrer-when-downgrade")
+
+    def test_https_localhost_retains_existing_referrer_policy(self):
+        response = self.response_for("localhost:8000", secure=True)
+        self.assertEqual(response["Referrer-Policy"], "same-origin")
+
+    def test_remote_http_host_retains_existing_referrer_policy(self):
+        response = self.response_for("app.example:8000")
+        self.assertEqual(response["Referrer-Policy"], "same-origin")
+
+    def test_production_https_retains_custom_referrer_policy(self):
+        response = self.response_for(
+            "app.example", secure=True, referrer_policy="strict-origin-when-cross-origin"
+        )
+        self.assertEqual(response["Referrer-Policy"], "strict-origin-when-cross-origin")
+
+    @override_settings(GOOGLE_CLIENT_ID="")
+    def test_disabled_google_signin_preserves_both_policies(self):
+        response = self.response_for("localhost:8000")
+        self.assertEqual(response["Referrer-Policy"], "same-origin")
+        self.assertEqual(response["Cross-Origin-Opener-Policy"], "same-origin")
+
+    def test_normal_login_response_applies_local_policy(self):
+        request = RequestFactory().get("/accounts/login/", HTTP_HOST="localhost:8000")
+        view = EmailLoginView()
+        view.setup(request)
+        response = view.render_to_response({"google_enabled": True})
+        self.assertEqual(response["Referrer-Policy"], "no-referrer-when-downgrade")
+
+    def test_google_failure_login_response_applies_local_policy(self):
+        request = RequestFactory().post("/accounts/google/", HTTP_HOST="localhost:8000")
+        with (
+            patch("accounts.google_auth.messages.error"),
+            patch("accounts.google_auth.google_login_context", return_value={"google_enabled": True}),
+            patch("accounts.google_auth.render", return_value=HttpResponse(status=400)),
+        ):
+            response = _login_error(request, "Sign-in could not be verified.")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response["Referrer-Policy"], "no-referrer-when-downgrade")
 
 
 @override_settings(GOOGLE_CLIENT_ID=CLIENT_ID)

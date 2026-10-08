@@ -6,6 +6,7 @@ authenticated workflow and is deliberately not offered by this login endpoint.
 
 import secrets
 import time
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from django.conf import settings
@@ -65,6 +66,17 @@ def google_login_context(request):
     entries.append({"token": nonce, "issued": time.time()})
     request.session[NONCE_SESSION_KEY] = entries[-MAX_NONCES:]
     return {"google_enabled": True, "google_client_id": client_id, "google_nonce": nonce}
+
+
+def apply_google_login_headers(request, response):
+    """Permit GIS popups, with Google's referrer policy only for HTTP loopback."""
+    if not getattr(settings, "GOOGLE_CLIENT_ID", "").strip():
+        return response
+    response["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    host = urlsplit(f"//{request.get_host()}").hostname
+    if not request.is_secure() and host in {"localhost", "127.0.0.1"}:
+        response["Referrer-Policy"] = "no-referrer-when-downgrade"
+    return response
 
 
 def _consume_nonce(request, claimed_nonce):
@@ -172,7 +184,7 @@ def _login_error(request, message, status=400):
     }
     response = render(request, "accounts/login.html", context, status=status)
     if context.get("google_enabled"):
-        response["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+        apply_google_login_headers(request, response)
     return response
 
 

@@ -16,7 +16,11 @@ Source and environment
   PyMongo 4.18.0, google-auth 2.61.0, MongoDB 8.0.32
   Database server: standalone, 127.0.0.1:27028, isolated temporary data directory
   Demo database: orgflow_chau_checkpoint
-  No Docker execution; no live Google credentials/provider login
+  No Docker execution. A Google Cloud Web application client is now configured
+  for the local demo in testing mode, after the user's explicit policy and
+  OAuth credential approval. Origins: http://localhost, http://localhost:8000.
+  Public client ID is stored only in ignored local .env; app restarted.
+  No private account email, client ID, or project credentials are recorded here.
 
 Automated results
   PASS: Original snapshot, python manage.py test --verbosity 2
@@ -32,9 +36,21 @@ Automated results
         accounts.test_google_auth.GoogleVerificationTests --verbosity 2
         5 tests, 0.004 seconds; no database setup required.
         Includes one new malformed-JWT regression added during independent review.
-        Four checks overlap with the 125-test run. The final source declares
-        126 distinct tests; all were covered across these runs, not in a single
-        126-test full-suite invocation.
+        Four checks overlap with the 125-test run. At this point the source
+        declared 126 distinct tests, covered across those two runs.
+
+  PASS: Latest Google login headers and verifier checks, PowerShell command:
+        $env:MONGODB_URI='mongodb://127.0.0.1:27028'
+        $env:MONGODB_NAME='chau_google_header_checks'
+        .\.venv\Scripts\python.exe manage.py test accounts.test_google_auth.GoogleLoginHeaderTests accounts.test_google_auth.GoogleVerificationTests --verbosity 2
+        13 tests, 0.019 seconds; wall time 2.588 seconds; no failures.
+        Eight new GoogleLoginHeaderTests plus the five existing verifier checks.
+        SimpleTestCase checks; no database setup or mutation required.
+        Output confirmed by execution tool; no raw log file was saved.
+        Current source declares 134 distinct tests: 88 original, eight account-
+        safety, and 38 Google tests. These were covered across the 125-test,
+        five-test verifier, and 13-test targeted runs, with overlapping verifier
+        checks. No single 134-test full-suite invocation has been performed.
 
   PASS: python manage.py check -- zero issues.
   PASS: python manage.py makemigrations --check --dry-run -- no changes detected.
@@ -52,6 +68,17 @@ Browser checks performed by Codex with synthetic local accounts
         'You don't have access to this page'.
   PASS: Sign out; local sign-in page left ready for Chau's review.
   Evidence: accounts-role-demo.jpg, accounts-member-denied.jpg.
+
+Live Google provider check on 2026-10-08
+  PASS (limited): Real Google callback passed server-side token verification and
+        session checks, then returned the deliberate existing-local-email error.
+        This verifies acceptance of a real Google token and protection against
+        automatically linking an existing password account by email.
+  No successful Google account sign-in occurred in this check.
+  First-time Google account creation and returning sign-in remain pending,
+  awaiting a Google account whose email is not already registered locally.
+  Screenshot retained locally outside the repository; private account details
+  and configuration identifiers are not included in repository evidence.
 
 Manual verification reported by Chau on 2026-10-08
   PASS (user-reported): Created an account and used a superuser account to
@@ -77,6 +104,12 @@ Validation and correction log
          extra nonce and evicted the entry it intended to test.
   Review: Confirmed Mongo standalone cannot be assumed to offer multi-document
           transaction guarantees; no transaction.atomic workaround introduced.
+  Google setup: Configured testing-mode client with localhost origins and kept
+                its public client ID only in ignored local .env.
+  Review: Localized Referrer-Policy=no-referrer-when-downgrade to Google-enabled
+          HTTP localhost/127.0.0.1 responses. HTTPS, remote-host, and disabled-
+          Google policies remain unchanged; eight targeted regressions pass.
+          Both normal login and Google failure responses apply the local policy.
 
 Evidence files
   evidence/baseline-tests.txt
@@ -85,7 +118,9 @@ Evidence files
   evidence/checkpoint-migrations.txt
 
 Not demonstrated / remaining
-  Real Google sign-in, Google Cloud configuration and provider availability.
+  Successful first-time and returning Google sign-in; the completed live callback
+  check covers existing-account protection only. Fresh checkouts need their own
+  Google client configuration. Broader provider availability is not established.
   Docker startup on this machine; production deployment/security configuration.
   Database-enforced case-folded username/email uniqueness under concurrency.
   Atomic multi-document signup on standalone MongoDB.

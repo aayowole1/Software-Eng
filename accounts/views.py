@@ -10,7 +10,7 @@ from committees.models import CommitteeMember
 
 from .decorators import role_required
 from .forms import EmailLoginForm, RegisterForm, RoleForm
-from .google_auth import google_login_context
+from .google_auth import apply_google_login_headers, google_login_context
 from .models import Profile, Role, get_role, set_role
 
 User = get_user_model()
@@ -47,7 +47,7 @@ class EmailLoginView(LoginView):
     def render_to_response(self, context, **response_kwargs):
         response = super().render_to_response(context, **response_kwargs)
         if context.get("google_enabled"):
-            response["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+            apply_google_login_headers(self.request, response)
         return response
 
 
