@@ -8,9 +8,10 @@ already present in the supplied `django-conversion` snapshot at
 
 The changes are on the local branch `chau/accounts-progress`. The original
 prototype remains credited to its contributors. Human code review and integration
-into the team's remote repository remain separate steps. A limited live Google
-check has verified the existing-account protection; first-time and returning
-Google account sign-in remain pending.
+into the team's remote repository remain separate steps. Local live Google checks
+have passed for existing-account protection, first-time creation, and returning
+authentication. Chau reported the first browser success; server logs and direct
+database checks corroborate the first and returning flows.
 
 ## Changes in this checkpoint
 
@@ -104,10 +105,33 @@ No client ID, private account email, or project credentials are recorded here.
 A live Google callback passed server-side token verification and session checks,
 then returned the intended error because the verified email already belonged to
 a local account. This demonstrates that a real Google token was accepted and
-the existing password account was protected from automatic linking. It does not
-demonstrate a successful Google account sign-in. A screenshot is retained locally
-outside the repository. First-time account creation and returning sign-in await
-a Google account whose email is not already registered locally.
+the existing password account was protected from automatic linking. This error-
+path check did not sign in a Google account. A screenshot is retained locally
+outside the repository.
+
+Chau subsequently reported successful first-time Google sign-in through a regular
+browser using an email not already registered locally. A direct database check
+corroborated creation: no matching user or provider identity existed beforehand;
+afterward there was one matching user and one Google identity. The new account
+was active, had the Applicant role, had no staff or superuser privileges, and had
+no usable local password. Server logs also directly recorded the Google callback
+returning HTTP 302, followed by HTTP 200 responses for the dashboard and
+membership application page. Private account identifiers are omitted; the
+database evidence is retained locally outside the repository.
+
+Returning Google authentication also passed after logout. Direct server logs
+recorded logout returning HTTP 302, the login page returning HTTP 200, then a
+second Google callback returning HTTP 302 and the dashboard returning HTTP 200.
+A direct database check found the same account with one matching user and one
+Google identity, an updated last-login value, and the same active Applicant
+properties with no staff/superuser privileges or usable local password. No
+duplicate account or role escalation was observed. The second browser display
+has not been separately confirmed by Chau; the returning result is based on the
+server logs and database checks, not an agent viewing the external browser.
+
+The in-app browser showed a blank Google popup. The application's login headers
+were verified correct, and Chau reported that the regular-browser path worked.
+The cause of the in-app popup behavior has not been established.
 
 Public deployment also needs a production security/configuration review; the
 inherited settings are for development.
@@ -151,6 +175,10 @@ Django demo:
   of an incorrect password.
 - Complete the requested permission checks: an ordinary member cannot access
   admin user management, and an admin can change an ordinary user's role.
+- Complete first-time Google sign-in in a regular browser with a previously
+  unregistered email. Browser success was user-reported; account creation and
+  the expected Applicant account properties were independently checked in the
+  database as described above.
 
 These results are based on Chau's confirmations in this chat; screenshots of his
 run have not been supplied. They establish reported manual verification of those
@@ -167,8 +195,8 @@ and demonstration checklist is:
 4. Explain why migrations use historical models and preserve existing roles.
 5. Explain Google token verification, CSRF, the nonce, and why an email match
    does not link an existing account. Explain the live existing-account protection
-   result and complete first-time and returning Google sign-in when a suitable
-   account is available.
+   and first-time/returning results. Confirm the second browser display and retain
+   screenshots while keeping private account details outside the repository.
 6. Record actual observations and screenshots, then update Section 9 of the team
    report with the work you can explain and have personally reviewed.
 

@@ -74,11 +74,38 @@ Live Google provider check on 2026-10-08
         session checks, then returned the deliberate existing-local-email error.
         This verifies acceptance of a real Google token and protection against
         automatically linking an existing password account by email.
-  No successful Google account sign-in occurred in this check.
-  First-time Google account creation and returning sign-in remain pending,
-  awaiting a Google account whose email is not already registered locally.
+  No successful Google account sign-in occurred in that error-path check.
   Screenshot retained locally outside the repository; private account details
   and configuration identifiers are not included in repository evidence.
+
+  PASS (user-reported, corroborated): Chau reported successful first-time Google
+        sign-in through a regular browser with an email not registered locally.
+        Direct database comparison for that account changed from zero matching
+        users and zero Google identities to one matching user and one identity.
+        Verified account properties: role applicant; active true; staff false;
+        superuser false; usable local password false.
+        Direct server-log evidence: POST /accounts/google/ returned HTTP 302,
+        followed by GET /dashboard/ HTTP 200 and GET /membership/apply/ HTTP 200.
+        This corroborates first-time account creation. Browser sign-in success
+        is Chau's report, not an independently observed browser session here.
+  Private database evidence is retained locally outside the repository. No email,
+  provider subject, internal user ID, client ID, or password is included here.
+
+  PASS (direct server logs and database): Returning Google authentication after
+        logout. POST /accounts/logout/ returned HTTP 302, GET /accounts/login/
+        returned HTTP 200, then the second POST /accounts/google/ returned HTTP
+        302 followed by GET /dashboard/ HTTP 200.
+        Database still contained one matching user and one Google identity,
+        linked to the same account as the first login; last-login advanced.
+        Account remained active Applicant, with no staff/superuser privileges
+        and no usable local password. No duplicate or role escalation observed.
+        A separate confirmation of the second browser display is still awaited.
+        Authentication success is established by logs and database checks;
+        no agent observation of the external browser display is claimed.
+
+  Browser observation: The in-app browser showed a blank Google popup. App login
+  headers were verified correct; Chau reported that the regular-browser path
+  worked. The cause of the in-app popup behavior has not been established.
 
 Manual verification reported by Chau on 2026-10-08
   PASS (user-reported): Created an account and used a superuser account to
@@ -88,6 +115,9 @@ Manual verification reported by Chau on 2026-10-08
   COMPLETED (user-reported): Permission checks covering denial of admin user
         management to an ordinary member and an admin changing an ordinary
         user's role, as requested in the prior checklist.
+  PASS (user-reported, corroborated): First-time Google sign-in with a previously
+        unregistered email in a regular browser. The direct database check above
+        corroborates account creation and expected Applicant privileges.
   Confirmation: "done loggin and permission check"; no problems were reported.
   Source: Chau's confirmation in this chat. No screenshots of his run supplied.
   This report does not establish personal review of every feature or code path.
@@ -118,9 +148,11 @@ Evidence files
   evidence/checkpoint-migrations.txt
 
 Not demonstrated / remaining
-  Successful first-time and returning Google sign-in; the completed live callback
-  check covers existing-account protection only. Fresh checkouts need their own
-  Google client configuration. Broader provider availability is not established.
+  Separate second-login browser-display confirmation and supporting screenshots;
+  first-time and returning authentication passed with server/database evidence,
+  and existing-account protection passed. Fresh checkouts need their own Google
+  client configuration. Broader provider availability is not established.
+  Cause of the in-app browser's blank Google popup.
   Docker startup on this machine; production deployment/security configuration.
   Database-enforced case-folded username/email uniqueness under concurrency.
   Atomic multi-document signup on standalone MongoDB.
