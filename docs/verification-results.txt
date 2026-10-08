@@ -99,9 +99,9 @@ Live Google provider check on 2026-10-08
         linked to the same account as the first login; last-login advanced.
         Account remained active Applicant, with no staff/superuser privileges
         and no usable local password. No duplicate or role escalation observed.
-        A separate confirmation of the second browser display is still awaited.
-        Authentication success is established by logs and database checks;
-        no agent observation of the external browser display is claimed.
+        Chau also confirmed returning to the Applicant dashboard after the
+        second sign-in. His browser report is corroborated by the logs and
+        database checks; Codex did not directly view the external browser.
 
   Browser observation: The in-app browser showed a blank Google popup. App login
   headers were verified correct; Chau reported that the regular-browser path
@@ -118,6 +118,9 @@ Manual verification reported by Chau on 2026-10-08
   PASS (user-reported, corroborated): First-time Google sign-in with a previously
         unregistered email in a regular browser. The direct database check above
         corroborates account creation and expected Applicant privileges.
+  PASS (user-reported, corroborated): After signing out, Google sign-in returned
+        to the Applicant dashboard. Chau explicitly confirmed this result; the
+        server logs and same-account database check above corroborate it.
   Confirmation: "done loggin and permission check"; no problems were reported.
   Source: Chau's confirmation in this chat. No screenshots of his run supplied.
   This report does not establish personal review of every feature or code path.
@@ -148,8 +151,8 @@ Evidence files
   evidence/checkpoint-migrations.txt
 
 Not demonstrated / remaining
-  Separate second-login browser-display confirmation and supporting screenshots;
-  first-time and returning authentication passed with server/database evidence,
+  Supporting screenshots of Chau's run; first-time and returning authentication
+  passed with Chau's browser confirmations and server/database evidence,
   and existing-account protection passed. Fresh checkouts need their own Google
   client configuration. Broader provider availability is not established.
   Cause of the in-app browser's blank Google popup.

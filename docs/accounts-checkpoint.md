@@ -10,7 +10,7 @@ The changes are on the local branch `chau/accounts-progress`. The original
 prototype remains credited to its contributors. Human code review and integration
 into the team's remote repository remain separate steps. Local live Google checks
 have passed for existing-account protection, first-time creation, and returning
-authentication. Chau reported the first browser success; server logs and direct
+authentication. Chau confirmed both browser sign-ins; server logs and direct
 database checks corroborate the first and returning flows.
 
 ## Changes in this checkpoint
@@ -125,9 +125,9 @@ second Google callback returning HTTP 302 and the dashboard returning HTTP 200.
 A direct database check found the same account with one matching user and one
 Google identity, an updated last-login value, and the same active Applicant
 properties with no staff/superuser privileges or usable local password. No
-duplicate account or role escalation was observed. The second browser display
-has not been separately confirmed by Chau; the returning result is based on the
-server logs and database checks, not an agent viewing the external browser.
+duplicate account or role escalation was observed. Chau also confirmed that the
+second sign-in returned to the Applicant dashboard. The browser result is his
+report, corroborated by server logs and database checks.
 
 The in-app browser showed a blank Google popup. The application's login headers
 were verified correct, and Chau reported that the regular-browser path worked.
@@ -179,6 +179,9 @@ Django demo:
   unregistered email. Browser success was user-reported; account creation and
   the expected Applicant account properties were independently checked in the
   database as described above.
+- Sign out and sign in again with Google, returning to the Applicant dashboard.
+  Chau confirmed the browser result; the same-account database and server checks
+  are recorded above.
 
 These results are based on Chau's confirmations in this chat; screenshots of his
 run have not been supplied. They establish reported manual verification of those
@@ -195,7 +198,7 @@ and demonstration checklist is:
 4. Explain why migrations use historical models and preserve existing roles.
 5. Explain Google token verification, CSRF, the nonce, and why an email match
    does not link an existing account. Explain the live existing-account protection
-   and first-time/returning results. Confirm the second browser display and retain
+   and first-time/returning results. Retain supporting
    screenshots while keeping private account details outside the repository.
 6. Record actual observations and screenshots, then update Section 9 of the team
    report with the work you can explain and have personally reviewed.
