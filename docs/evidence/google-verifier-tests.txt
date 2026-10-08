@@ -1,0 +1,13 @@
+test_google_verifier_receives_configured_audience (accounts.test_google_auth.GoogleVerificationTests.test_google_verifier_receives_configured_audience) ... ok
+test_malformed_jwt_header_is_rejected_by_real_google_decoder (accounts.test_google_auth.GoogleVerificationTests.test_malformed_jwt_header_is_rejected_by_real_google_decoder) ... ok
+test_missing_or_oversized_credentials_are_not_verified (accounts.test_google_auth.GoogleVerificationTests.test_missing_or_oversized_credentials_are_not_verified) ... ok
+test_verifier_failures_become_safe_signin_errors (accounts.test_google_auth.GoogleVerificationTests.test_verifier_failures_become_safe_signin_errors) ... ok
+test_verifier_transport_uses_bounded_timeout (accounts.test_google_auth.GoogleVerificationTests.test_verifier_transport_uses_bounded_timeout) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
+Found 5 test(s).
+Skipping setup of unused database(s): default.
+System check identified no issues (0 silenced).

@@ -9,9 +9,11 @@
         {% for p in profiles %}
           <tr>
             <td>{{ p.user.email|default:p.user.username }}</td>
-            <td><span class="badge">{{ p.get_role_display }}</span></td>
+            <td><span class="badge">{% if p.user.is_superuser %}Admin{% else %}{{ p.get_role_display }}{% endif %}</span></td>
             <td>
-              {% if p.user != user %}
+              {% if p.user.is_superuser %}
+                <span class="muted">Superuser (fixed Admin role)</span>
+              {% elif p.user != user %}
                 <form method="post" action="{% url 'accounts:change_role' p.user.pk %}" class="inline">
                   {% csrf_token %}
                   <label for="role-{{ p.pk }}" class="visually-hidden">New role for {{ p.user.email }}</label>

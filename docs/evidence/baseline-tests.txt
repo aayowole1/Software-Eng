@@ -1,0 +1,114 @@
+Creating test database for alias 'default' ('test_orgflow')...
+
+Found 88 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: django_mongodb_backend, messages, staticfiles
+  Apply all migrations: accounts, admin, auth, committees, contenttypes, meetings, membership, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying accounts.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying committees.0001_initial... OK
+  Applying meetings.0001_initial... OK
+  Applying membership.0001_initial... OK
+test_admin_can_change_role (accounts.tests.AdminRoleManagementTests.test_admin_can_change_role) ... ok
+test_admin_cannot_change_own_role (accounts.tests.AdminRoleManagementTests.test_admin_cannot_change_own_role) ... ok
+test_invalid_role_is_ignored (accounts.tests.AdminRoleManagementTests.test_invalid_role_is_ignored) ... ok
+test_non_admins_get_403 (accounts.tests.AdminRoleManagementTests.test_non_admins_get_403) ... ok
+test_unknown_user_is_404 (accounts.tests.AdminRoleManagementTests.test_unknown_user_is_404) ... ok
+test_user_list_for_admin (accounts.tests.AdminRoleManagementTests.test_user_list_for_admin) ... ok
+test_email_is_case_insensitive (accounts.tests.LoginTests.test_email_is_case_insensitive) ... ok
+test_email_shared_by_two_accounts_is_ambiguous (accounts.tests.LoginTests.test_email_shared_by_two_accounts_is_ambiguous) ... ok
+test_inactive_user_rejected (accounts.tests.LoginTests.test_inactive_user_rejected) ... ok
+test_login_with_email_and_password (accounts.tests.LoginTests.test_login_with_email_and_password) ... ok
+test_login_with_email_when_username_differs (accounts.tests.LoginTests.test_login_with_email_when_username_differs) ... ok
+test_login_with_username_when_it_differs_from_email (accounts.tests.LoginTests.test_login_with_username_when_it_differs_from_email) ... ok
+test_logout (accounts.tests.LoginTests.test_logout) ... ok
+test_unknown_email_rejected (accounts.tests.LoginTests.test_unknown_email_rejected) ... ok
+test_wrong_password_rejected (accounts.tests.LoginTests.test_wrong_password_rejected) ... ok
+test_wrong_password_with_username_rejected (accounts.tests.LoginTests.test_wrong_password_with_username_rejected) ... ok
+test_profile_requires_sign_in (accounts.tests.ProfileTests.test_profile_requires_sign_in) ... ok
+test_profile_shows_role_without_password_hash (accounts.tests.ProfileTests.test_profile_shows_role_without_password_hash) ... ok
+test_duplicate_email_rejected (accounts.tests.RegistrationTests.test_duplicate_email_rejected) ... ok
+test_email_is_stored_lowercase (accounts.tests.RegistrationTests.test_email_is_stored_lowercase) ... ok
+test_email_used_as_older_accounts_username_rejected (accounts.tests.RegistrationTests.test_email_used_as_older_accounts_username_rejected) ... ok
+test_mismatched_passwords_rejected (accounts.tests.RegistrationTests.test_mismatched_passwords_rejected) ... ok
+test_missing_email_rejected (accounts.tests.RegistrationTests.test_missing_email_rejected) ... ok
+test_missing_username_rejected (accounts.tests.RegistrationTests.test_missing_username_rejected) ... ok
+test_new_account_can_sign_in_with_username_or_email (accounts.tests.RegistrationTests.test_new_account_can_sign_in_with_username_or_email) ... ok
+test_register_creates_applicant_and_signs_in (accounts.tests.RegistrationTests.test_register_creates_applicant_and_signs_in) ... ok
+test_short_password_rejected (accounts.tests.RegistrationTests.test_short_password_rejected) ... ok
+test_taken_username_check_ignores_case (accounts.tests.RegistrationTests.test_taken_username_check_ignores_case) ... ok
+test_taken_username_rejected (accounts.tests.RegistrationTests.test_taken_username_rejected) ... ok
+test_username_with_invalid_characters_rejected (accounts.tests.RegistrationTests.test_username_with_invalid_characters_rejected) ... ok
+test_each_role_includes_lower_roles (accounts.tests.RoleHierarchyTests.test_each_role_includes_lower_roles) ... ok
+test_new_users_start_as_applicants (accounts.tests.RoleHierarchyTests.test_new_users_start_as_applicants) ... ok
+test_set_role_rejects_unknown_role (accounts.tests.RoleHierarchyTests.test_set_role_rejects_unknown_role) ... ok
+test_superusers_are_admins (accounts.tests.RoleHierarchyTests.test_superusers_are_admins) ... ok
+test_unknown_or_missing_roles_never_pass (accounts.tests.RoleHierarchyTests.test_unknown_or_missing_roles_never_pass) ... ok
+test_admin_deletes_committee_and_roster (committees.tests.CommitteeTests.test_admin_deletes_committee_and_roster) ... ok
+test_applicants_cannot_be_added (committees.tests.CommitteeTests.test_applicants_cannot_be_added) ... ok
+test_applicants_cannot_view (committees.tests.CommitteeTests.test_applicants_cannot_view) ... ok
+test_cannot_add_same_member_twice (committees.tests.CommitteeTests.test_cannot_add_same_member_twice) ... ok
+test_duplicate_name_rejected (committees.tests.CommitteeTests.test_duplicate_name_rejected) ... ok
+test_invalid_committee_role_rejected (committees.tests.CommitteeTests.test_invalid_committee_role_rejected) ... ok
+test_malformed_id_is_404 (committees.tests.CommitteeTests.test_malformed_id_is_404) ... ok
+test_members_can_view_list_and_roster (committees.tests.CommitteeTests.test_members_can_view_list_and_roster) ... ok
+test_members_cannot_change_roster (committees.tests.CommitteeTests.test_members_cannot_change_roster) ... ok
+test_members_cannot_create (committees.tests.CommitteeTests.test_members_cannot_create) ... ok
+test_name_is_required (committees.tests.CommitteeTests.test_name_is_required) ... ok
+test_officer_adds_member (committees.tests.CommitteeTests.test_officer_adds_member) ... ok
+test_officer_creates_committee_and_becomes_chair (committees.tests.CommitteeTests.test_officer_creates_committee_and_becomes_chair) ... ok
+test_officer_removes_member (committees.tests.CommitteeTests.test_officer_removes_member) ... ok
+test_officers_cannot_delete (committees.tests.CommitteeTests.test_officers_cannot_delete) ... ok
+test_profile_lists_users_committees (committees.tests.CommitteeTests.test_profile_lists_users_committees) ... ok
+test_removing_non_member_is_404 (committees.tests.CommitteeTests.test_removing_non_member_is_404) ... ok
+test_unknown_committee_is_404 (committees.tests.CommitteeTests.test_unknown_committee_is_404) ... ok
+test_applicant_dashboard_shows_application_status (core.tests.CoreTests.test_applicant_dashboard_shows_application_status) ... ok
+test_dashboard_requires_sign_in (core.tests.CoreTests.test_dashboard_requires_sign_in) ... ok
+test_health (core.tests.CoreTests.test_health) ... ok
+test_home_is_public (core.tests.CoreTests.test_home_is_public) ... ok
+test_home_redirects_signed_in_users (core.tests.CoreTests.test_home_redirects_signed_in_users) ... ok
+test_navigation_hides_officer_links_from_members (core.tests.CoreTests.test_navigation_hides_officer_links_from_members) ... ok
+test_officer_dashboard_shows_pending_counts (core.tests.CoreTests.test_officer_dashboard_shows_pending_counts) ... ok
+test_approve_with_edits_untick_and_new_items (meetings.tests.MeetingDraftTests.test_approve_with_edits_untick_and_new_items) ... ok
+test_cannot_review_twice (meetings.tests.MeetingDraftTests.test_cannot_review_twice) ... ok
+test_cannot_revise_unless_revision_requested (meetings.tests.MeetingDraftTests.test_cannot_revise_unless_revision_requested) ... ok
+test_invalid_decision_does_nothing (meetings.tests.MeetingDraftTests.test_invalid_decision_does_nothing) ... ok
+test_members_cannot_see_or_create_drafts (meetings.tests.MeetingDraftTests.test_members_cannot_see_or_create_drafts) ... ok
+test_officer_submits_notes_and_gets_ai_draft (meetings.tests.MeetingDraftTests.test_officer_submits_notes_and_gets_ai_draft) ... ok
+test_only_admin_can_delete (meetings.tests.MeetingDraftTests.test_only_admin_can_delete) ... ok
+test_reject (meetings.tests.MeetingDraftTests.test_reject) ... ok
+test_revision_cycle_regenerates_draft (meetings.tests.MeetingDraftTests.test_revision_cycle_regenerates_draft) ... ok
+test_title_and_notes_required (meetings.tests.MeetingDraftTests.test_title_and_notes_required) ... ok
+test_applicant_can_submit_application (membership.tests.ApplyTests.test_applicant_can_submit_application) ... ok
+test_apply_requires_sign_in (membership.tests.ApplyTests.test_apply_requires_sign_in) ... ok
+test_members_cannot_apply (membership.tests.ApplyTests.test_members_cannot_apply) ... ok
+test_only_one_pending_application (membership.tests.ApplyTests.test_only_one_pending_application) ... ok
+test_statement_is_required (membership.tests.ApplyTests.test_statement_is_required) ... ok
+test_application_cannot_be_reviewed_twice (membership.tests.ReviewTests.test_application_cannot_be_reviewed_twice) ... ok
+test_approval_never_demotes_an_officer (membership.tests.ReviewTests.test_approval_never_demotes_an_officer) ... ok
+test_invalid_decision_does_nothing (membership.tests.ReviewTests.test_invalid_decision_does_nothing) ... ok
+test_members_cannot_review (membership.tests.ReviewTests.test_members_cannot_review) ... ok
+test_officer_approval_makes_applicant_a_member (membership.tests.ReviewTests.test_officer_approval_makes_applicant_a_member) ... ok
+test_officer_rejection_keeps_applicant_role (membership.tests.ReviewTests.test_officer_rejection_keeps_applicant_role) ... ok
+test_officer_sees_pending_applications (membership.tests.ReviewTests.test_officer_sees_pending_applications) ... ok
+test_rejected_applicant_can_reapply (membership.tests.ReviewTests.test_rejected_applicant_can_reapply) ... ok
+test_applicants_cannot_see_roster (membership.tests.RosterTests.test_applicants_cannot_see_roster) ... ok
+test_roster_lists_members_but_not_applicants (membership.tests.RosterTests.test_roster_lists_members_but_not_applicants) ... ok
+test_empty_notes (meetings.tests.SummarizerTests.test_empty_notes) ... ok
+test_extracts_marked_action_items (meetings.tests.SummarizerTests.test_extracts_marked_action_items) ... ok
+test_summary_uses_non_action_text (meetings.tests.SummarizerTests.test_summary_uses_non_action_text) ... ok
+
+----------------------------------------------------------------------
+Ran 88 tests in 218.535s
+
+OK
+Destroying test database for alias 'default' ('test_orgflow')...
+
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).

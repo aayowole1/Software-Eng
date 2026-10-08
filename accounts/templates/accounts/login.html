@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Sign in{% endblock %}
 {% block content %}
   <h1>Sign in</h1>
-  <form method="post" class="card" novalidate>
+  <form method="post" action="{% url 'accounts:login' %}" class="card" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
     {{ form.username.label_tag }} {{ form.username }} {{ form.username.errors }}
@@ -12,5 +13,20 @@
     <p></p>
     <button type="submit">Sign in</button>
   </form>
+  {% if google_enabled %}
+    <p>Or sign in with Google</p>
+    <div id="g_id_onload" data-client_id="{{ google_client_id }}"
+         data-callback="orgflowGoogleSignIn" data-nonce="{{ google_nonce }}"
+         data-auto_prompt="false" data-auto_select="false"></div>
+    <div class="g_id_signin" data-type="standard" data-size="large"></div>
+    <p id="google-signin-error" class="errorlist" role="alert" hidden></p>
+    <form id="google-signin-form" method="post" action="{% url 'accounts:google_signin' %}">
+      {% csrf_token %}
+      <input type="hidden" name="credential" value="">
+      <input type="hidden" name="next" value="{{ next }}">
+    </form>
+    <script src="{% static 'accounts/google_signin.js' %}" defer></script>
+    <script src="https://accounts.google.com/gsi/client" defer></script>
+  {% endif %}
   <p>New here? <a href="{% url 'accounts:register' %}">Create an account</a></p>
 {% endblock %}

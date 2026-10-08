@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -9,6 +10,7 @@ from committees.models import CommitteeMember
 
 from .decorators import role_required
 from .forms import EmailLoginForm, RegisterForm, RoleForm
+from .google_auth import google_login_context
 from .models import Profile, Role, get_role, set_role
 
 User = get_user_model()
@@ -19,10 +21,16 @@ def register(request):
         return redirect("core:dashboard")
     form = RegisterForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()
-        login(request, user)
-        messages.success(request, "Account created. You can now apply for membership.")
-        return redirect("core:dashboard")
+        try:
+            user = form.save()
+        except IntegrityError:
+            # A username can be claimed after form validation but before save.
+            # Email/case-folded uniqueness still needs a separate schema change.
+            form.add_error(None, "Account creation could not be completed. Try a different username or sign in.")
+        else:
+            login(request, user)
+            messages.success(request, "Account created. You can now apply for membership.")
+            return redirect("core:dashboard")
     return render(request, "accounts/register.html", {"form": form})
 
 
@@ -30,6 +38,17 @@ class EmailLoginView(LoginView):
     template_name = "accounts/login.html"
     authentication_form = EmailLoginForm
     redirect_authenticated_user = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(google_login_context(self.request))
+        return context
+
+    def render_to_response(self, context, **response_kwargs):
+        response = super().render_to_response(context, **response_kwargs)
+        if context.get("google_enabled"):
+            response["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+        return response
 
 
 @login_required
@@ -59,6 +78,9 @@ def change_role(request, pk):
     if target == request.user:
         # Prevents an admin from accidentally locking themselves out.
         messages.error(request, "You cannot change your own role.")
+        return redirect("accounts:user_list")
+    if target.is_superuser:
+        messages.error(request, "Superuser accounts always have the Admin role.")
         return redirect("accounts:user_list")
     form = RoleForm(request.POST)
     if form.is_valid():
