@@ -7,7 +7,7 @@ already present in the supplied `django-conversion` snapshot at
 `17835faa170e06c024c1bfa25dcb52be7b374427`.
 
 The changes are on the local branch `chau/accounts-progress`. The original
-prototype remains credited to its contributors. Human review, a live Google
+prototype remains credited to its contributors. Human code review, a live Google
 login, and integration into the team's remote repository remain separate steps.
 
 ## Changes in this checkpoint
@@ -119,20 +119,27 @@ overlap between runs). The suite was not run as one 126-test invocation.
 
 ## Chau's review and demonstration
 
-Chau reported successfully creating an account and approving it using a
-superuser account on October 8, 2026. This is user-reported manual verification
-of that flow; screenshots of his run have not been supplied. Review of the
-remaining behavior and code is still pending. The checklist below covers the
-full walkthrough, including steps beyond that reported check.
+On October 8, 2026, Chau reported completing these manual checks in the local
+Django demo:
+
+- Create an account and approve it using a superuser account.
+- Complete the requested login checks: username and email sign-in, and rejection
+  of an incorrect password.
+- Complete the requested permission checks: an ordinary member cannot access
+  admin user management, and an admin can change an ordinary user's role.
+
+These results are based on Chau's confirmations in this chat; screenshots of his
+run have not been supplied. They establish reported manual verification of those
+flows, not personal review of every feature or code path. The remaining review
+and demonstration checklist is:
 
 1. Explain the before/after behavior of the superuser-role bug and show its
    regression test. Explain why a superuser has Admin authority even if an old
    profile contains a lower role.
-2. Create a local account. Sign out and sign in once by username and once by email.
-   Submit a duplicate username and a mismatched password and explain the feedback.
-3. As an applicant, try the Users page and confirm access is forbidden. As an
-   administrator, change an ordinary user's role. Confirm a superuser has no role
-   editor and that the server also rejects a crafted demotion request.
+2. Submit a duplicate username and mismatched sign-up passwords and explain the
+   feedback; these are separate from the completed login checks.
+3. Confirm a superuser has no role editor. Review the regression test showing
+   that the server rejects a crafted demotion request.
 4. Explain why migrations use historical models and preserve existing roles.
 5. Explain Google token verification, CSRF, the nonce, and why an email match
    does not link an existing account. State the live-provider test is still pending.

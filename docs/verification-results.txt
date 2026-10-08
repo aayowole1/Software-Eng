@@ -2,8 +2,9 @@ OrgFlow Accounts 1.3 verification
 Date: 2026-10-08, America/Chicago
 Assigned owner: Chau Minh Viet Nguyen
 Operator: Codex, with AI-assisted implementation and review
-Chau's personal testing: account creation and superuser approval reported passed;
-broader code review and remaining acceptance checks are pending.
+Chau's personal testing: account creation, superuser approval, and the requested
+login and permission checks reported completed. Broader code review and the
+remaining acceptance checks are pending.
 
 Source and environment
   Base snapshot: 17835faa170e06c024c1bfa25dcb52be7b374427
@@ -55,6 +56,12 @@ Browser checks performed by Codex with synthetic local accounts
 Manual verification reported by Chau on 2026-10-08
   PASS (user-reported): Created an account and used a superuser account to
         approve it. Chau reported that the flow worked successfully.
+  COMPLETED (user-reported): Login checks covering username and email sign-in
+        and rejection of a wrong password, as requested in the prior checklist.
+  COMPLETED (user-reported): Permission checks covering denial of admin user
+        management to an ordinary member and an admin changing an ordinary
+        user's role, as requested in the prior checklist.
+  Confirmation: "done loggin and permission check"; no problems were reported.
   Source: Chau's confirmation in this chat. No screenshots of his run supplied.
   This report does not establish personal review of every feature or code path.
 
@@ -82,7 +89,8 @@ Not demonstrated / remaining
   Docker startup on this machine; production deployment/security configuration.
   Database-enforced case-folded username/email uniqueness under concurrency.
   Atomic multi-document signup on standalone MongoDB.
-  Chau's broader code review, supporting screenshots, and remaining walkthrough.
+  Chau's code/design review and explanation, supporting screenshots, and
+  remaining duplicate-sign-up and superuser-safeguard walkthrough steps.
   Team approval, remote commit/PR/merge, and future WBS 1.6 task workflows.
   No coverage percentage, performance target, restart durability or complete
   proposal acceptance claim is inferred from these functional test results.
