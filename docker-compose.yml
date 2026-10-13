@@ -42,5 +42,25 @@ services:
         condition: service_healthy
 
 
+  # Deletes rejected membership applications 7 days after the decision.
+  # Runs the cleanup once an hour.
+  cleanup:
+    build: .
+    container_name: orgflow_cleanup
+    restart: unless-stopped
+
+    command: sh -c "while true; do python manage.py purge_rejected_applications; sleep 3600; done"
+
+    volumes:
+      - .:/app
+
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+
 volumes:
   orgflow_mongo_data:

@@ -27,7 +27,11 @@
       {% if latest_application.status == "rejected" %}
         <p>Your application was <span class="badge">Not approved</span>.</p>
         <p><strong>Reason:</strong> {{ latest_application.review_note }}</p>
-        <p><a class="button" href="{% url 'membership:apply' %}">Apply again</a></p>
+        {% if reapply_at %}
+          <p>You can apply again after <strong>{{ reapply_at|date:"M j, Y, g:i A" }}</strong>.</p>
+        {% else %}
+          <p><a class="button" href="{% url 'membership:apply' %}">Apply again</a></p>
+        {% endif %}
       {% elif latest_application %}
         <p>Your latest application is <span class="badge">{{ latest_application.get_status_display }}</span>.</p>
       {% else %}

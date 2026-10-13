@@ -4,7 +4,7 @@ from django.shortcuts import render
 from accounts.models import Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
 from meetings.models import DraftStatus, MeetingDraft
-from membership.models import ApplicationStatus, MembershipApplication
+from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 
 
 def dashboard(request):
@@ -16,6 +16,7 @@ def dashboard(request):
             role=role,
             latest_application=MembershipApplication.objects.filter(user=request.user).first(),
             committees=CommitteeMember.objects.filter(user=request.user).select_related("committee"),
+            reapply_at=next_application_allowed_at(request.user),
         )
         if has_minimum_role(role, Role.OFFICER):
             context["pending_applications"] = MembershipApplication.objects.filter(

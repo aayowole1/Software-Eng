@@ -163,14 +163,18 @@ LOGOUT_REDIRECT_URL = "core:home"
 
 # Email
 #
-# During development, email is printed to the terminal instead of
-# actually being sent.
+# Used for password-reset links. By default, emails are printed to the
+# terminal / `docker compose logs web` instead of being sent. To send real
+# email, set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend and the
+# EMAIL_HOST* settings in .env.
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OrgFlow <no-reply@orgflow.local>")
 
 
 # MongoDB-compatible migrations for Django's built-in apps.

@@ -7,7 +7,12 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
 
-from .models import ApplicationStatus, MembershipApplication
+from .models import (
+    REJECTED_RETENTION,
+    ApplicationStatus,
+    MembershipApplication,
+    next_application_allowed_at,
+)
 
 
 class ApplicationForm(forms.ModelForm):
@@ -37,12 +42,17 @@ def apply(request):
     """Applicants submit an application and can see the status of past ones."""
     applications = MembershipApplication.objects.filter(user=request.user)
     has_pending = applications.filter(status=ApplicationStatus.PENDING).exists()
-    can_apply = get_role(request.user) == Role.APPLICANT and not has_pending
+    # After a rejection there's a short wait before applying again.
+    wait_until = next_application_allowed_at(request.user)
+    can_apply = get_role(request.user) == Role.APPLICANT and not has_pending and wait_until is None
 
     form = ApplicationForm(request.POST or None)
     if request.method == "POST":
         if not can_apply:
-            messages.error(request, "You cannot submit a new application right now.")
+            if wait_until is not None:
+                messages.error(request, "You can't apply again yet. Please try after the time shown below.")
+            else:
+                messages.error(request, "You cannot submit a new application right now.")
             return redirect("membership:apply")
         if form.is_valid():
             application = form.save(commit=False)
@@ -54,7 +64,7 @@ def apply(request):
     return render(
         request,
         "membership/apply.html",
-        {"form": form, "applications": applications, "can_apply": can_apply},
+        {"form": form, "applications": applications, "can_apply": can_apply, "wait_until": wait_until},
     )
 
 
@@ -68,6 +78,7 @@ def application_list(request):
             "pending": applications.filter(status=ApplicationStatus.PENDING),
             "reviewed": applications.exclude(status=ApplicationStatus.PENDING),
             "review_form": ReviewForm(),
+            "retention_days": REJECTED_RETENTION.days,
         },
     )
 

@@ -19,6 +19,8 @@
     </form>
   {% elif is_member %}
     <p>You're already a member.</p>
+  {% elif wait_until %}
+    <p>You can apply again after <strong>{{ wait_until|date:"M j, Y, g:i A" }}</strong> ({{ wait_until|timeuntil }} from now).</p>
   {% else %}
     <p>Your application is waiting for an officer to review it.</p>
   {% endif %}

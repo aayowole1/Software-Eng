@@ -72,6 +72,7 @@ http://192.168.x.x:8000
 
 * `web` — Django application
 * `mongo` — MongoDB database
+* `cleanup` — once an hour, deletes rejected membership applications 7 days after the decision
 
 Django connects to MongoDB internally using:
 
@@ -108,9 +109,21 @@ Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
 
 ### Joining
 
-Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting requires a reason. The rejected person can then sign in with applicant-only access, see "Not approved" with the officer's reason, and apply again from the same account. Every application is kept, with who reviewed it, when, and why (see **Applications → Reviewed**). Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
+Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting requires a reason. The rejected person can then sign in with applicant-only access, see "Not approved" with the officer's reason, and apply again from the same account **1 day** after the decision. Applications are kept with who reviewed them, when, and why (see **Applications → Reviewed**); **rejected applications are deleted 7 days after the decision** by the `cleanup` service (the person's account stays). Without Docker, run `python manage.py purge_rejected_applications` on a schedule instead. Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
 
 The dashboard is public, so anyone can see how to join and the list of committees without signing in.
+
+### Forgot password
+
+The sign-in page has a **Forgot your password?** link that emails a reset link. Accounts that sign in with Google, or that are still waiting for approval, don't get one.
+
+By default, emails aren't actually sent: they're printed to the app's log. To see a reset link while developing:
+
+```bash
+docker compose logs web
+```
+
+To send real email, set `EMAIL_BACKEND` and the `EMAIL_HOST*` settings in `.env` (see `.env.example`), then run `docker compose restart web`.
 
 Superuser accounts retain the Admin role; organization role management cannot
 demote them. Migration `accounts.0002_backfill_profiles` gives preexisting users
@@ -190,7 +203,7 @@ Check the account's username and email:
 docker compose exec web python manage.py shell -c "from django.contrib.auth.models import User; print(list(User.objects.values_list('username', 'email')))"
 ```
 
-To reset a password, use the **username** (not the email):
+Use **Forgot your password?** on the sign-in page, or reset it from the command line using the **username** (not the email):
 
 ```bash
 docker compose exec web python manage.py changepassword <username>

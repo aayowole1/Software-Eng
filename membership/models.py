@@ -5,15 +5,25 @@ Signing up submits an application along with the new account, which stays
 switched off (inactive) until an officer approves it. Approving switches the
 account on and promotes the applicant to the `member` role. Rejecting needs a
 reason; it also switches the account on, but only with applicant access, so
-the person can sign in, read the reason, and apply again. Every application
-is kept, with who reviewed it, when, and why.
+the person can sign in, read the reason, and apply again once
+REAPPLY_WAIT has passed. Applications are kept with who reviewed them, when,
+and why; rejected ones are deleted REJECTED_RETENTION after the decision
+(see `purge_old_rejected_applications`).
 """
+
+from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 from accounts.models import Role, get_role, set_role
+
+
+# How long a rejected applicant waits before applying again.
+REAPPLY_WAIT = timedelta(days=1)
+# How long a rejected application (with its reason and reviewer) is kept.
+REJECTED_RETENTION = timedelta(days=7)
 
 
 class ApplicationStatus(models.TextChoices):
@@ -92,3 +102,27 @@ def inactive_account_message(user):
             "You can sign in once an officer approves it."
         )
     return "This account is inactive."
+
+
+def next_application_allowed_at(user):
+    """When `user` may apply again after a rejection, or None if there's no wait."""
+    latest = user.membership_applications.order_by("-submitted_at").first()
+    if latest is None or latest.status != ApplicationStatus.REJECTED or latest.reviewed_at is None:
+        return None
+    allowed_at = latest.reviewed_at + REAPPLY_WAIT
+    return allowed_at if allowed_at > timezone.now() else None
+
+
+def purge_old_rejected_applications(now=None):
+    """Delete rejected applications decided more than REJECTED_RETENTION ago.
+
+    Only the application is deleted; the person's account stays, so they can
+    still sign in and apply again. Returns how many were deleted.
+    """
+    cutoff = (now or timezone.now()) - REJECTED_RETENTION
+    old = MembershipApplication.objects.filter(
+        status=ApplicationStatus.REJECTED, reviewed_at__lt=cutoff
+    )
+    count = old.count()
+    old.delete()
+    return count

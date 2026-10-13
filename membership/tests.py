@@ -1,10 +1,22 @@
+from datetime import timedelta
+from io import StringIO
+
+from django.core.management import call_command
 from django.test import TestCase
+from django.utils import timezone
 from django.urls import reverse
 
 from accounts.models import Role, get_role
 from accounts.testing import make_user
 
-from .models import ApplicationStatus, MembershipApplication
+from .models import (
+    REAPPLY_WAIT,
+    REJECTED_RETENTION,
+    ApplicationStatus,
+    MembershipApplication,
+    next_application_allowed_at,
+    purge_old_rejected_applications,
+)
 
 
 class ApplyTests(TestCase):
@@ -99,9 +111,34 @@ class ReviewTests(TestCase):
         self.assertTrue(self.applicant.is_active)
         self.assertEqual(get_role(self.applicant), Role.APPLICANT)
 
+    def age_rejection(self, by):
+        MembershipApplication.objects.filter(pk=self.application.pk).update(
+            reviewed_at=timezone.now() - by
+        )
+
+    def test_rejected_applicant_must_wait_a_day_to_reapply(self):
+        self.client.force_login(self.officer)
+        self.review("reject", "Not this time.")
+        self.client.force_login(self.applicant)
+        page = self.client.get(reverse("membership:apply"))
+        self.assertContains(page, "You can apply again after")
+        self.assertNotContains(page, "Apply again</button>")
+        self.assertContains(self.client.get(reverse("core:dashboard")), "You can apply again after")
+        self.client.post(reverse("membership:apply"), {"statement": "Too soon"})
+        self.assertEqual(MembershipApplication.objects.filter(user=self.applicant).count(), 1)
+
+    def test_wait_ends_after_one_day(self):
+        self.client.force_login(self.officer)
+        self.review("reject", "Not this time.")
+        self.age_rejection(REAPPLY_WAIT - timedelta(minutes=1))
+        self.assertIsNotNone(next_application_allowed_at(self.applicant))
+        self.age_rejection(REAPPLY_WAIT + timedelta(minutes=1))
+        self.assertIsNone(next_application_allowed_at(self.applicant))
+
     def test_rejected_applicant_sees_reason_and_can_reapply(self):
         self.client.force_login(self.officer)
         self.review("reject", "Please come to one meeting first.")
+        self.age_rejection(REAPPLY_WAIT + timedelta(minutes=1))
         self.client.force_login(self.applicant)
         page = self.client.get(reverse("membership:apply"))
         self.assertContains(page, "Not approved")
@@ -166,3 +203,46 @@ class RosterTests(TestCase):
     def test_applicants_cannot_see_roster(self):
         self.client.force_login(make_user("applicant@example.com"))
         self.assertEqual(self.client.get(reverse("membership:roster")).status_code, 403)
+
+
+class PurgeRejectedApplicationsTests(TestCase):
+    def setUp(self):
+        self.officer = make_user("officer@example.com", Role.OFFICER)
+
+    def application(self, email, status, reviewed_days_ago):
+        user = make_user(email)
+        return MembershipApplication.objects.create(
+            user=user,
+            statement="Hi",
+            status=status,
+            reviewed_by=self.officer if status != ApplicationStatus.PENDING else None,
+            reviewed_at=timezone.now() - timedelta(days=reviewed_days_ago) if reviewed_days_ago is not None else None,
+            review_note="Reason" if status == ApplicationStatus.REJECTED else "",
+        )
+
+    def test_only_rejected_applications_older_than_seven_days_are_deleted(self):
+        old_rejected = self.application("old@example.com", ApplicationStatus.REJECTED, REJECTED_RETENTION.days + 1)
+        new_rejected = self.application("new@example.com", ApplicationStatus.REJECTED, REJECTED_RETENTION.days - 1)
+        old_approved = self.application("member@example.com", ApplicationStatus.APPROVED, 30)
+        pending = self.application("pending@example.com", ApplicationStatus.PENDING, None)
+
+        self.assertEqual(purge_old_rejected_applications(), 1)
+        remaining = set(MembershipApplication.objects.values_list("pk", flat=True))
+        self.assertNotIn(old_rejected.pk, remaining)
+        self.assertEqual(remaining, {new_rejected.pk, old_approved.pk, pending.pk})
+        # The person's account stays; they can still sign in and apply.
+        self.assertTrue(old_rejected.user.__class__.objects.filter(pk=old_rejected.user_id).exists())
+
+    def test_management_command_reports_count(self):
+        self.application("old@example.com", ApplicationStatus.REJECTED, REJECTED_RETENTION.days + 1)
+        out = StringIO()
+        call_command("purge_rejected_applications", stdout=out)
+        self.assertIn("Deleted 1 rejected application(s)", out.getvalue())
+        self.assertFalse(MembershipApplication.objects.exists())
+
+    def test_purged_applicant_can_apply_again(self):
+        app = self.application("old@example.com", ApplicationStatus.REJECTED, REJECTED_RETENTION.days + 1)
+        purge_old_rejected_applications()
+        self.client.force_login(app.user)
+        self.client.post(reverse("membership:apply"), {"statement": "Fresh start"})
+        self.assertEqual(MembershipApplication.objects.get(user=app.user).statement, "Fresh start")
