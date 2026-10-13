@@ -274,8 +274,9 @@ Do not commit:
 __pycache__/
 ```
 
-The repository is available at:
+<!-- The repository is available at:
 
 ```text
 git@github.com:Tmonstah/OrgFlow.git
 ```
+-->
