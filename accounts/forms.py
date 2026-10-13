@@ -2,9 +2,21 @@ from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 
+from membership.models import MembershipApplication, inactive_account_message
+
+from .backends import find_user
 from .models import Role
 
 User = get_user_model()
+
+
+def application_statement_field():
+    """The membership application question asked at sign-up."""
+    return forms.CharField(
+        label="Why do you want to join?",
+        widget=forms.Textarea(attrs={"rows": 4}),
+        help_text="This is your membership application. An officer reviews it before you can sign in.",
+    )
 
 
 class RegisterForm(forms.Form):
@@ -20,6 +32,7 @@ class RegisterForm(forms.Form):
     email = forms.EmailField(label="Email")
     password = forms.CharField(label="Password", widget=forms.PasswordInput)
     confirm_password = forms.CharField(label="Confirm password", widget=forms.PasswordInput)
+    statement = application_statement_field()
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
@@ -55,11 +68,20 @@ class RegisterForm(forms.Form):
         return cleaned
 
     def save(self):
-        return User.objects.create_user(
+        """Create a switched-off account plus its membership application."""
+        user = User.objects.create_user(
             username=self.cleaned_data["username"],
             email=self.cleaned_data["email"],
             password=self.cleaned_data["password"],
+            is_active=False,
         )
+        try:
+            MembershipApplication.objects.create(user=user, statement=self.cleaned_data["statement"])
+        except Exception:
+            # Don't leave an account behind that has no application to approve.
+            user.delete()
+            raise
+        return user
 
 
 class EmailLoginForm(AuthenticationForm):
@@ -68,6 +90,23 @@ class EmailLoginForm(AuthenticationForm):
         label="Email or username",
         widget=forms.TextInput(attrs={"autofocus": True, "autocomplete": "username"}),
     )
+
+    def clean(self):
+        try:
+            return super().clean()
+        except forms.ValidationError:
+            # Accounts waiting on (or refused) membership can't sign in. Say why,
+            # but only to someone who knows the password, so the message can't
+            # be used to find out who has applied.
+            user = find_user(self.cleaned_data.get("username"))
+            password = self.cleaned_data.get("password")
+            if user is not None and not user.is_active and password and user.check_password(password):
+                raise forms.ValidationError(inactive_account_message(user), code="inactive")
+            raise
+
+
+class GoogleApplicationForm(forms.Form):
+    statement = application_statement_field()
 
 
 class RoleForm(forms.Form):

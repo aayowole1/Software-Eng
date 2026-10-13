@@ -25,11 +25,16 @@ from google.auth.exceptions import GoogleAuthError
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 
-from .forms import EmailLoginForm
+from membership.models import MembershipApplication, inactive_account_message
+
+from .forms import EmailLoginForm, GoogleApplicationForm
 from .models import GoogleIdentity
 
 NONCE_SESSION_KEY = "google_signin_nonces"
 NONCE_TTL_SECONDS = 300
+# A verified Google identity waiting for its membership application.
+PENDING_SIGNUP_SESSION_KEY = "google_signup_pending"
+PENDING_SIGNUP_TTL_SECONDS = 600
 MAX_NONCES = 5
 VERIFY_TIMEOUT_SECONDS = 5
 
@@ -111,7 +116,8 @@ def verify_google_credential(credential):
         raise GoogleSignInError("Google sign-in could not be verified. Please try again.") from error
 
 
-def _identity_user(claims):
+def _validated_claims(claims):
+    """Return (subject, email) from verified claims, or raise a safe error."""
     subject = claims.get("sub")
     email = claims.get("email")
     if not isinstance(subject, str) or not subject.strip() or len(subject) > 255:
@@ -125,44 +131,68 @@ def _identity_user(claims):
         raise GoogleSignInError("Google did not provide a valid email address.") from error
     if len(email) > 254:
         raise GoogleSignInError("Google did not provide a valid email address.")
+    return subject, email
 
+
+def _existing_identity_user(subject):
+    """The account already linked to this Google subject, if any."""
     identity = GoogleIdentity.objects.filter(subject=subject).select_related("user").first()
-    if identity is not None:
-        if not identity.user.is_active:
-            raise GoogleSignInError("This account is inactive.")
-        # The subject, not a mutable email address, identifies returning users.
-        return identity.user
+    if identity is None:
+        return None
+    if not identity.user.is_active:
+        # Pending or refused membership applications land here too.
+        raise GoogleSignInError(inactive_account_message(identity.user))
+    # The subject, not a mutable email address, identifies returning users.
+    return identity.user
 
-    User = get_user_model()
-    collision = Q(email__iexact=email) | Q(username__iexact=email)
-    if User.objects.filter(collision).exists():
+
+def _email_collision(email):
+    return Q(email__iexact=email) | Q(username__iexact=email)
+
+
+def _ensure_email_unused(email):
+    if get_user_model().objects.filter(_email_collision(email)).exists():
         raise GoogleSignInError(
             "An account already uses this email. Sign in with that account; "
             "Google accounts are not linked automatically."
         )
+
+
+def create_google_applicant(subject, email, statement):
+    """Create a switched-off account, its Google link, and its membership application.
+
+    Like password sign-up, the account can't sign in until an officer
+    approves the application.
+    """
+    User = get_user_model()
+    if GoogleIdentity.objects.filter(subject=subject).exists():
+        raise GoogleSignInError("This Google account has already applied. Sign in to check its status.")
+    _ensure_email_unused(email)
     try:
         user = User.objects.create_user(
-            username=f"google_{uuid4().hex}", email=email, password=None
+            username=f"google_{uuid4().hex}", email=email, password=None, is_active=False
         )
     except IntegrityError as error:
         raise GoogleSignInError("This account could not be created. Please try again.") from error
     # MongoDB's standalone development service cannot provide a multi-document
     # transaction. Recheck observed collisions and clean up failed provisioning;
     # a database-wide canonical-email constraint remains a separate improvement.
-    if User.objects.filter(collision).exclude(pk=user.pk).exists():
+    if User.objects.filter(_email_collision(email)).exclude(pk=user.pk).exists():
         user.delete()
         raise GoogleSignInError("An account already uses this email. Sign in with that account.")
     try:
         GoogleIdentity.objects.create(subject=subject, user=user)
     except IntegrityError as error:
         user.delete()
-        # A simultaneous sign-in with the same subject may have completed first.
-        identity = GoogleIdentity.objects.filter(subject=subject).select_related("user").first()
-        if identity is None:
-            raise GoogleSignInError("Google sign-in could not be completed. Please try again.") from error
-        if not identity.user.is_active:
-            raise GoogleSignInError("This account is inactive.")
-        return identity.user
+        # A simultaneous sign-up with the same subject may have completed first.
+        raise GoogleSignInError(
+            "This Google account has already applied. Sign in to check its status."
+        ) from error
+    try:
+        MembershipApplication.objects.create(user=user, statement=statement)
+    except Exception:
+        user.delete()
+        raise
     return user
 
 
@@ -199,10 +229,63 @@ def google_signin(request):
         claims = verify_google_credential(request.POST.get("credential", ""))
         if not isinstance(claims, dict) or not _consume_nonce(request, claims.get("nonce")):
             raise GoogleSignInError("This Google sign-in has expired. Please try again.")
-        user = _identity_user(claims)
+        subject, email = _validated_claims(claims)
+        user = _existing_identity_user(subject)
+        if user is None:
+            _ensure_email_unused(email)
     except GoogleSignInError as error:
         return _login_error(request, str(error))
-    target = _safe_next(request)
     request.session.pop(NONCE_SESSION_KEY, None)
+    if user is None:
+        # New to OrgFlow: collect the membership application before creating
+        # anything. Only the verified subject and email are kept, briefly.
+        request.session[PENDING_SIGNUP_SESSION_KEY] = {
+            "subject": subject,
+            "email": email,
+            "issued": time.time(),
+        }
+        return redirect("accounts:google_apply")
+    target = _safe_next(request)
     login(request, user, backend="accounts.backends.EmailOrUsernameBackend")
     return redirect(target)
+
+
+def _pending_signup(request):
+    pending = request.session.get(PENDING_SIGNUP_SESSION_KEY)
+    if (
+        isinstance(pending, dict)
+        and isinstance(pending.get("subject"), str)
+        and isinstance(pending.get("email"), str)
+        and isinstance(pending.get("issued"), (int, float))
+        and 0 <= time.time() - pending["issued"] <= PENDING_SIGNUP_TTL_SECONDS
+    ):
+        return pending
+    request.session.pop(PENDING_SIGNUP_SESSION_KEY, None)
+    return None
+
+
+@csrf_protect
+def google_apply(request):
+    """Second step of Google sign-up: the membership application."""
+    if request.user.is_authenticated:
+        return redirect("core:dashboard")
+    pending = _pending_signup(request)
+    if pending is None:
+        messages.error(request, "Your Google sign-up expired. Please sign in with Google again.")
+        return redirect("accounts:login")
+
+    form = GoogleApplicationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            create_google_applicant(pending["subject"], pending["email"], form.cleaned_data["statement"])
+        except GoogleSignInError as error:
+            request.session.pop(PENDING_SIGNUP_SESSION_KEY, None)
+            messages.error(request, str(error))
+            return redirect("accounts:login")
+        request.session.pop(PENDING_SIGNUP_SESSION_KEY, None)
+        messages.success(
+            request,
+            "Application submitted. You can sign in with Google once an officer approves it.",
+        )
+        return redirect("core:home")
+    return render(request, "accounts/google_apply.html", {"form": form, "email": pending["email"]})

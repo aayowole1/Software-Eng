@@ -58,6 +58,23 @@ class ReviewTests(TestCase):
         self.assertEqual(self.application.review_note, "Welcome!")
         self.assertEqual(get_role(self.applicant), Role.MEMBER)
 
+    def test_approval_switches_on_an_inactive_account(self):
+        self.applicant.is_active = False
+        self.applicant.save()
+        self.client.force_login(self.officer)
+        self.review("approve")
+        self.applicant.refresh_from_db()
+        self.assertTrue(self.applicant.is_active)
+        self.assertEqual(get_role(self.applicant), Role.MEMBER)
+
+    def test_rejection_leaves_an_inactive_account_off(self):
+        self.applicant.is_active = False
+        self.applicant.save()
+        self.client.force_login(self.officer)
+        self.review("reject")
+        self.applicant.refresh_from_db()
+        self.assertFalse(self.applicant.is_active)
+
     def test_officer_rejection_keeps_applicant_role(self):
         self.client.force_login(self.officer)
         self.review("reject")

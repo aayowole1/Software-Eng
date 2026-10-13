@@ -1,8 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-  <h1>Dashboard</h1>
-  <p>Signed in as <strong>{{ user.email|default:user.username }}</strong> · <span class="badge">{{ role }}</span></p>
+  <h1>{% if user.is_authenticated %}Dashboard{% else %}OrgFlow{% endif %}</h1>
+
+  {% if user.is_authenticated %}
+    <p>Signed in as <strong>{{ user.email|default:user.username }}</strong> · <span class="badge">{{ role }}</span></p>
+  {% else %}
+    <p>One place for your student organization's membership, committees, events, tasks and meeting follow-ups.</p>
+    <p>
+      <a class="button" href="{% url 'accounts:register' %}">Create an account and apply</a>
+      <a href="{% url 'accounts:login' %}">or sign in</a>
+    </p>
+    <div class="card">
+      <h2>How joining works</h2>
+      <ol>
+        <li>Create an account and tell us why you want to join. That's your membership application.</li>
+        <li>An officer reviews it.</li>
+        <li>Once it's approved, you can sign in and you're on the roster.</li>
+      </ol>
+    </div>
+  {% endif %}
 
   {% if role == "applicant" %}
     <div class="card">
@@ -36,4 +53,16 @@
       {% endfor %}
     </div>
   {% endif %}
+
+  <div class="card">
+    <h2>Our committees</h2>
+    {% for c in committees_public %}
+      <p>
+        {% if is_member %}<a href="{% url 'committees:detail' c.pk %}">{{ c.name }}</a>{% else %}<strong>{{ c.name }}</strong>{% endif %}
+        {% if c.description %}<br><span class="muted">{{ c.description }}</span>{% endif %}
+      </p>
+    {% empty %}
+      <p class="muted">No committees yet.</p>
+    {% endfor %}
+  </div>
 {% endblock %}

@@ -95,6 +95,7 @@ class RegistrationConflictTests(TestCase):
         response = self.client.post(reverse("accounts:register"), {
             "username": "ada", "email": "ada@example.com",
             "password": PASSWORD, "confirm_password": PASSWORD,
+            "statement": "Hello",
         })
         self.assertContains(response, "Account creation could not be completed.")
         save.assert_called_once()

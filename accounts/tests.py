@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from membership.models import ApplicationStatus, MembershipApplication
+
 from .models import Profile, Role, get_role, has_minimum_role, set_role
 from .testing import PASSWORD, make_user
 
@@ -44,27 +46,66 @@ class RegistrationTests(TestCase):
             "email": "ada@example.com",
             "password": PASSWORD,
             "confirm_password": PASSWORD,
+            "statement": "I want to help run events.",
         }
         data.update(overrides)
         return self.client.post(self.url, data)
 
-    def test_register_creates_applicant_and_signs_in(self):
+    def sign_in(self, identifier):
+        self.client.post(reverse("accounts:login"), {"username": identifier, "password": PASSWORD})
+        return "_auth_user_id" in self.client.session
+
+    def test_register_creates_inactive_applicant_with_application(self):
         response = self.post()
-        self.assertRedirects(response, reverse("core:dashboard"))
+        self.assertRedirects(response, reverse("core:home"))
         user = User.objects.get(username="ada")
         self.assertEqual(user.email, "ada@example.com")
+        self.assertFalse(user.is_active)
         self.assertEqual(get_role(user), Role.APPLICANT)
         self.assertTrue(user.check_password(PASSWORD))
         self.assertNotEqual(user.password, PASSWORD)  # stored hashed, never raw
-        self.assertEqual(self.client.get(reverse("core:dashboard")).status_code, 200)
+        application = MembershipApplication.objects.get(user=user)
+        self.assertEqual(application.statement, "I want to help run events.")
+        self.assertEqual(application.status, ApplicationStatus.PENDING)
+        self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_new_account_can_sign_in_with_username_or_email(self):
+    def test_statement_is_required(self):
+        response = self.post(statement="")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.exists())
+        self.assertFalse(MembershipApplication.objects.exists())
+
+    def test_pending_account_cannot_sign_in_and_is_told_why(self):
         self.post()
+        response = self.client.post(reverse("accounts:login"), {"username": "ada", "password": PASSWORD})
+        self.assertContains(response, "still pending")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_pending_status_is_not_revealed_without_the_password(self):
+        self.post()
+        response = self.client.post(reverse("accounts:login"), {"username": "ada", "password": "wrong-password"})
+        self.assertNotContains(response, "pending")
+        self.assertContains(response, "Please enter a correct")
+
+    def test_rejected_account_cannot_sign_in_and_is_told_why(self):
+        self.post()
+        officer = make_user("officer@example.com", Role.OFFICER)
+        MembershipApplication.objects.get().review(officer, approve=False)
+        response = self.client.post(reverse("accounts:login"), {"username": "ada", "password": PASSWORD})
+        self.assertContains(response, "was not approved")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_approved_account_can_sign_in_with_username_or_email(self):
+        self.post()
+        officer = make_user("officer@example.com", Role.OFFICER)
+        MembershipApplication.objects.get().review(officer, approve=True)
+        user = User.objects.get(username="ada")
+        self.assertTrue(user.is_active)
+        self.assertEqual(get_role(user), Role.MEMBER)
         for identifier in ["ada", "ada@example.com"]:
             with self.subTest(identifier=identifier):
                 self.client.logout()
-                self.client.post(reverse("accounts:login"), {"username": identifier, "password": PASSWORD})
-                self.assertIn("_auth_user_id", self.client.session)
+                self.assertTrue(self.sign_in(identifier))
 
     def test_email_is_stored_lowercase(self):
         self.post(email="Ada@Example.com")

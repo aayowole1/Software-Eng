@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db import IntegrityError
@@ -28,10 +28,19 @@ def register(request):
             # Email/case-folded uniqueness still needs a separate schema change.
             form.add_error(None, "Account creation could not be completed. Try a different username or sign in.")
         else:
-            login(request, user)
-            messages.success(request, "Account created. You can now apply for membership.")
-            return redirect("core:dashboard")
-    return render(request, "accounts/register.html", {"form": form})
+            # The account stays switched off until an officer approves the
+            # application, so don't sign in yet.
+            messages.success(
+                request,
+                f"Thanks, {user.username}! Your application was submitted. "
+                "You can sign in once an officer approves it.",
+            )
+            return redirect("core:home")
+    context = {"form": form, **google_login_context(request)}
+    response = render(request, "accounts/register.html", context)
+    if context.get("google_enabled"):
+        apply_google_login_headers(request, response)
+    return response
 
 
 class EmailLoginView(LoginView):

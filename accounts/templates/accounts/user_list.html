@@ -8,7 +8,7 @@
       <tbody>
         {% for p in profiles %}
           <tr>
-            <td>{{ p.user.email|default:p.user.username }}</td>
+            <td>{{ p.user.email|default:p.user.username }}{% if not p.user.is_active %} <span class="badge">Not active yet</span>{% endif %}</td>
             <td><span class="badge">{% if p.user.is_superuser %}Admin{% else %}{{ p.get_role_display }}{% endif %}</span></td>
             <td>
               {% if p.user.is_superuser %}

@@ -1,8 +1,9 @@
 """
 Membership applications (FR-02).
 
-An applicant submits an application; an officer approves or rejects it.
-Approving an application promotes the applicant to the `member` role.
+Signing up submits an application along with the new account, which stays
+switched off (inactive) until an officer approves it. Approving switches the
+account on and promotes the applicant to the `member` role.
 """
 
 from django.conf import settings
@@ -60,6 +61,29 @@ class MembershipApplication(models.Model):
         self.reviewed_at = timezone.now()
         self.review_note = note
         self.save()
-        # Only promote applicants; never demote an officer/admin who applied.
-        if approve and get_role(self.user) == Role.APPLICANT:
-            set_role(self.user, Role.MEMBER)
+        if approve:
+            # New accounts stay switched off until their application is approved.
+            if not self.user.is_active:
+                self.user.is_active = True
+                self.user.save(update_fields=["is_active"])
+            # Only promote applicants; never demote an officer/admin who applied.
+            if get_role(self.user) == Role.APPLICANT:
+                set_role(self.user, Role.MEMBER)
+
+
+def inactive_account_message(user):
+    """Explain to a switched-off account why it can't sign in yet."""
+    latest = user.membership_applications.order_by("-submitted_at").first()
+    if latest is None:
+        return "This account is inactive."
+    if latest.status == ApplicationStatus.PENDING:
+        return (
+            "Your membership application is still pending. "
+            "You can sign in once an officer approves it."
+        )
+    if latest.status == ApplicationStatus.REJECTED:
+        return (
+            "Your membership application was not approved. "
+            "Contact an officer if you think this is a mistake."
+        )
+    return "This account is inactive."

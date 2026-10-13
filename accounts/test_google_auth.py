@@ -11,12 +11,16 @@ from django.test import Client, RequestFactory, SimpleTestCase, TestCase, overri
 from django.urls import reverse
 from google.auth.exceptions import TransportError
 
+from membership.models import ApplicationStatus, MembershipApplication
+
 from .google_auth import (
     BoundedGoogleRequest,
     GoogleSignInError,
     MAX_NONCES,
     NONCE_SESSION_KEY,
     NONCE_TTL_SECONDS,
+    PENDING_SIGNUP_SESSION_KEY,
+    PENDING_SIGNUP_TTL_SECONDS,
     VERIFY_TIMEOUT_SECONDS,
     _login_error,
     apply_google_login_headers,
@@ -169,6 +173,24 @@ class GoogleSignInTests(TestCase):
         self.verifier.return_value = claims if claims is not None else self.claims(active_client)
         return active_client.post(self.url, {"credential": "verified-by-mock", **post})
 
+    def apply(self, statement="I'd like to help with events.", client=None):
+        return (client or self.client).post(reverse("accounts:google_apply"), {"statement": statement})
+
+    def google_signup(self, claims=None):
+        """Sign in with a new Google account and submit the application."""
+        self.assertRedirects(self.signin(claims), reverse("accounts:google_apply"))
+        self.assertRedirects(self.apply(), reverse("core:home"))
+        return GoogleIdentity.objects.select_related("user").get(
+            subject=(claims or {}).get("sub", "google-subject-123")
+        ).user
+
+    def approved_google_user(self, claims=None):
+        user = self.google_signup(claims)
+        officer = make_user("officer@example.com", Role.OFFICER)
+        MembershipApplication.objects.get(user=user).review(officer, approve=True)
+        user.refresh_from_db()
+        return user
+
     @override_settings(GOOGLE_CLIENT_ID="")
     def test_disabled_google_signin_hides_button_and_rejects_endpoint(self):
         self.assertNotContains(self.client.get(self.login_url), "g_id_onload")
@@ -191,25 +213,86 @@ class GoogleSignInTests(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 405)
         self.assertFalse(User.objects.exists())
 
-    def test_new_google_user_is_applicant_with_unusable_password(self):
+    def test_new_google_user_must_apply_before_anything_is_created(self):
         response = self.signin(self.claims(email="Ada@Gmail.com", role="admin", is_superuser=True))
-        self.assertRedirects(response, reverse("core:dashboard"))
+        self.assertRedirects(response, reverse("accounts:google_apply"))
+        self.assertFalse(User.objects.exists())
+        self.assertNotIn("_auth_user_id", self.client.session)
+        page = self.client.get(reverse("accounts:google_apply"))
+        self.assertContains(page, "ada@gmail.com")
+        self.assertContains(page, "Why do you want to join?")
+
+    def test_google_application_creates_inactive_applicant_with_unusable_password(self):
+        self.signin(self.claims(email="Ada@Gmail.com", role="admin", is_superuser=True))
+        response = self.apply("Please let me join")
+        self.assertRedirects(response, reverse("core:home"))
         identity = GoogleIdentity.objects.select_related("user").get()
         user = identity.user
         self.assertEqual(identity.subject, "google-subject-123")
         self.assertEqual(user.email, "ada@gmail.com")
+        self.assertFalse(user.is_active)
         self.assertFalse(user.has_usable_password())
         self.assertFalse(user.is_staff)
         self.assertFalse(user.is_superuser)
         self.assertEqual(get_role(user), Role.APPLICANT)
+        application = MembershipApplication.objects.get(user=user)
+        self.assertEqual(application.statement, "Please let me join")
+        self.assertEqual(application.status, ApplicationStatus.PENDING)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertNotIn(PENDING_SIGNUP_SESSION_KEY, self.client.session)
+
+    def test_google_application_statement_is_required(self):
+        self.signin()
+        response = self.apply("")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.exists())
+
+    def test_google_apply_without_verified_signin_is_refused(self):
+        response = self.apply()
+        self.assertRedirects(response, self.login_url)
+        self.assertFalse(User.objects.exists())
+
+    def test_expired_google_signup_is_refused(self):
+        with patch("accounts.google_auth.time.time", return_value=1000):
+            self.signin(self.claims())
+        with patch("accounts.google_auth.time.time", return_value=1000 + PENDING_SIGNUP_TTL_SECONDS + 1):
+            response = self.apply()
+        self.assertRedirects(response, self.login_url)
+        self.assertFalse(User.objects.exists())
+
+    def test_email_taken_between_steps_is_refused(self):
+        self.signin()
+        make_user("ada@gmail.com")
+        response = self.apply()
+        self.assertRedirects(response, self.login_url)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertFalse(GoogleIdentity.objects.exists())
+
+    def test_pending_google_account_cannot_sign_in_and_is_told_why(self):
+        self.google_signup()
+        response = self.signin()
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "still pending", status_code=400)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_rejected_google_account_is_told_why(self):
+        user = self.google_signup()
+        MembershipApplication.objects.get(user=user).review(make_user("o@example.com", Role.OFFICER), approve=False)
+        response = self.signin()
+        self.assertContains(response, "was not approved", status_code=400)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_approved_google_account_signs_in_as_member(self):
+        user = self.approved_google_user()
+        response = self.signin()
+        self.assertRedirects(response, reverse("core:dashboard"))
         self.assertEqual(self.client.session["_auth_user_id"], str(user.pk))
+        self.assertEqual(get_role(user), Role.MEMBER)
 
     def test_returning_google_subject_uses_same_user_when_email_changes(self):
-        self.signin()
-        original = GoogleIdentity.objects.get().user
-        self.client.logout()
+        original = self.approved_google_user()
         self.signin(self.claims(email="changed@gmail.com"))
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.exclude(username="officer@example.com").count(), 1)
         self.assertEqual(GoogleIdentity.objects.count(), 1)
         self.assertEqual(self.client.session["_auth_user_id"], str(original.pk))
         original.refresh_from_db()
@@ -233,8 +316,7 @@ class GoogleSignInTests(TestCase):
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_second_google_subject_with_same_email_is_not_linked(self):
-        self.signin()
-        self.client.logout()
+        self.google_signup()
         response = self.signin(self.claims(sub="different-subject"))
         self.assertEqual(response.status_code, 400)
         self.assertEqual(User.objects.count(), 1)
@@ -242,8 +324,8 @@ class GoogleSignInTests(TestCase):
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_inactive_linked_user_cannot_sign_in(self):
-        self.signin()
-        self.client.logout()
+        user = self.approved_google_user()
+        MembershipApplication.objects.filter(user=user).delete()
         User.objects.update(is_active=False)
         response = self.signin()
         self.assertEqual(response.status_code, 400)
@@ -316,23 +398,30 @@ class GoogleSignInTests(TestCase):
             "email_verified": True,
             "nonce": entries[0]["token"],
         })
-        self.assertRedirects(response, reverse("core:dashboard"))
+        self.assertRedirects(response, reverse("accounts:google_apply"))
         self.assertNotIn(NONCE_SESSION_KEY, self.client.session)
 
     def test_failed_identity_creation_cleans_up_new_user(self):
-        claims = self.claims()
+        self.signin()
         with patch("accounts.google_auth.GoogleIdentity.objects.create", side_effect=IntegrityError("duplicate")):
-            response = self.signin(claims)
-        self.assertEqual(response.status_code, 400)
+            response = self.apply()
+        self.assertRedirects(response, self.login_url)
         self.assertFalse(User.objects.exists())
         self.assertFalse(GoogleIdentity.objects.exists())
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_failed_application_creation_cleans_up_new_user(self):
+        self.signin()
+        with patch("accounts.google_auth.MembershipApplication.objects.create", side_effect=IntegrityError("x")):
+            with self.assertRaises(IntegrityError):
+                self.apply()
+        self.assertFalse(User.objects.exists())
+
     def test_failed_user_creation_is_a_safe_login_error(self):
-        claims = self.claims()
+        self.signin()
         with patch.object(User.objects, "create_user", side_effect=IntegrityError("duplicate")):
-            response = self.signin(claims)
-        self.assertEqual(response.status_code, 400)
+            response = self.apply()
+        self.assertRedirects(response, self.login_url)
         self.assertFalse(User.objects.exists())
         self.assertFalse(GoogleIdentity.objects.exists())
         self.assertNotIn("_auth_user_id", self.client.session)
@@ -354,14 +443,29 @@ class GoogleSignInTests(TestCase):
             self.url,
             {"credential": "token", "csrfmiddlewaretoken": strict_client.cookies["csrftoken"].value},
         )
-        self.assertRedirects(response, reverse("core:dashboard"))
-        self.assertIn("_auth_user_id", strict_client.session)
+        self.assertRedirects(response, reverse("accounts:google_apply"))
+        self.assertIn(PENDING_SIGNUP_SESSION_KEY, strict_client.session)
+        self.assertNotIn("_auth_user_id", strict_client.session)
+
+    def test_google_application_requires_csrf(self):
+        strict_client = Client(enforce_csrf_checks=True)
+        claims = self.claims(strict_client)
+        self.verifier.return_value = claims
+        strict_client.post(
+            self.url,
+            {"credential": "token", "csrfmiddlewaretoken": strict_client.cookies["csrftoken"].value},
+        )
+        response = self.apply(client=strict_client)
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(User.objects.exists())
 
     def test_google_login_does_not_redirect_to_external_next(self):
+        self.approved_google_user()
         response = self.signin(next="https://attacker.example/steal")
         self.assertRedirects(response, reverse("core:dashboard"))
 
     def test_google_login_preserves_safe_local_next(self):
+        self.approved_google_user()
         response = self.signin(next=reverse("accounts:profile"))
         self.assertRedirects(response, reverse("accounts:profile"))
 

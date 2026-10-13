@@ -87,11 +87,11 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 
 | App | What it does | Proposal |
 |-----|--------------|----------|
-| `accounts` | Sign-up with a username and email, sign-in with either, organization roles, admin role management | FR-01, NFR-02 |
+| `accounts` | Sign-up (with a membership application) by username/email or Google, sign-in with either, organization roles, admin role management | FR-01, NFR-02 |
 | `membership` | Membership applications, officer approve/reject, member roster | FR-02 |
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
-| `core` | Public landing page, dashboard, `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
+| `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
 ### Roles
 
@@ -99,12 +99,18 @@ Each role includes everything the roles below it can do.
 
 | Role | Can |
 |------|-----|
-| `applicant` | Apply for membership (default for new accounts) |
+| `applicant` | Waiting on a membership application (default for new accounts) |
 | `member` | View the roster and committees |
 | `officer` | Review applications, create committees and manage their rosters, submit and review meeting drafts |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
+
+### Joining
+
+Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending" (or "was not approved" if it was rejected). Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
+
+The dashboard is public, so anyone can see how to join and the list of committees without signing in.
 
 Superuser accounts retain the Admin role; organization role management cannot
 demote them. Migration `accounts.0002_backfill_profiles` gives preexisting users

@@ -1,0 +1,14 @@
+{% load static %}
+{# Google Identity Services button. Pass button_text="signin_with" or "signup_with". #}
+<div id="g_id_onload" data-client_id="{{ google_client_id }}"
+     data-callback="orgflowGoogleSignIn" data-nonce="{{ google_nonce }}"
+     data-auto_prompt="false" data-auto_select="false"></div>
+<div class="g_id_signin" data-type="standard" data-size="large" data-text="{{ button_text }}"></div>
+<p id="google-signin-error" class="errorlist" role="alert" hidden></p>
+<form id="google-signin-form" method="post" action="{% url 'accounts:google_signin' %}">
+  {% csrf_token %}
+  <input type="hidden" name="credential" value="">
+  <input type="hidden" name="next" value="{{ next }}">
+</form>
+<script src="{% static 'accounts/google_signin.js' %}" defer></script>
+<script src="https://accounts.google.com/gsi/client" defer></script>
