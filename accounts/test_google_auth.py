@@ -275,15 +275,16 @@ class GoogleSignInTests(TestCase):
         self.assertContains(response, "still pending", status_code=400)
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_rejected_google_account_is_deleted_and_can_apply_again(self):
+    def test_rejected_google_account_can_sign_in_as_applicant(self):
         user = self.google_signup()
-        MembershipApplication.objects.get(user=user).review(make_user("o@example.com", Role.OFFICER), approve=False)
-        self.assertFalse(User.objects.filter(pk=user.pk).exists())
-        self.assertFalse(GoogleIdentity.objects.exists())
+        MembershipApplication.objects.get(user=user).review(
+            make_user("o@example.com", Role.OFFICER), approve=False, note="Not this time."
+        )
         response = self.signin()
-        self.assertRedirects(response, reverse("accounts:google_apply"))
-        self.assertRedirects(self.apply("Second try"), reverse("core:home"))
-        self.assertEqual(MembershipApplication.objects.get().statement, "Second try")
+        self.assertRedirects(response, reverse("core:dashboard"))
+        self.assertEqual(self.client.session["_auth_user_id"], str(user.pk))
+        self.assertEqual(get_role(user), Role.APPLICANT)
+        self.assertEqual(GoogleIdentity.objects.count(), 1)
 
     def test_approved_google_account_signs_in_as_member(self):
         user = self.approved_google_user()

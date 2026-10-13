@@ -19,7 +19,17 @@ class ApplicationForm(forms.ModelForm):
 
 class ReviewForm(forms.Form):
     decision = forms.ChoiceField(choices=[("approve", "Approve"), ("reject", "Reject")])
-    note = forms.CharField(label="Note (optional)", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+    note = forms.CharField(
+        label="Reason (required when rejecting)",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("decision") == "reject" and not (cleaned.get("note") or "").strip():
+            raise forms.ValidationError("Give a reason when rejecting. The applicant will see it.")
+        return cleaned
 
 
 @login_required
@@ -56,7 +66,7 @@ def application_list(request):
         "membership/application_list.html",
         {
             "pending": applications.filter(status=ApplicationStatus.PENDING),
-            "approved": applications.filter(status=ApplicationStatus.APPROVED),
+            "reviewed": applications.exclude(status=ApplicationStatus.PENDING),
             "review_form": ReviewForm(),
         },
     )
@@ -68,17 +78,19 @@ def review_application(request, pk):
     application = get_object_or_404(MembershipApplication, pk=pk)
     form = ReviewForm(request.POST)
     if not form.is_valid():
-        messages.error(request, "Choose approve or reject.")
+        messages.error(request, " ".join(form.non_field_errors()) or "Choose approve or reject.")
     elif not application.is_pending:
         messages.error(request, "This application has already been reviewed.")
     else:
         approve = form.cleaned_data["decision"] == "approve"
-        email = application.user.email
         application.review(request.user, approve, form.cleaned_data["note"])
         if approve:
-            messages.success(request, f"Application from {email} approved.")
+            messages.success(request, f"Application from {application.user.email} approved.")
         else:
-            messages.success(request, f"Application from {email} rejected and removed. They can apply again.")
+            messages.success(
+                request,
+                f"Application from {application.user.email} rejected. They can sign in to see your reason and apply again.",
+            )
     return redirect("membership:application_list")
 
 

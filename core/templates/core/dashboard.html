@@ -24,7 +24,11 @@
   {% if role == "applicant" %}
     <div class="card">
       <h2>Membership</h2>
-      {% if latest_application %}
+      {% if latest_application.status == "rejected" %}
+        <p>Your application was <span class="badge">Not approved</span>.</p>
+        <p><strong>Reason:</strong> {{ latest_application.review_note }}</p>
+        <p><a class="button" href="{% url 'membership:apply' %}">Apply again</a></p>
+      {% elif latest_application %}
         <p>Your latest application is <span class="badge">{{ latest_application.get_status_display }}</span>.</p>
       {% else %}
         <p>You're not a member yet.</p>

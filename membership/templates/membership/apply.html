@@ -2,11 +2,20 @@
 {% block title %}Membership application{% endblock %}
 {% block content %}
   <h1>Membership application</h1>
+  {% with latest=applications.0 %}
+    {% if latest and latest.status == "rejected" and not is_member %}
+      <div class="card">
+        <p><span class="badge">Not approved</span> <span class="muted">reviewed {{ latest.reviewed_at|date:"M j, Y" }}</span></p>
+        <p><strong>Reason:</strong> {{ latest.review_note }}</p>
+      </div>
+    {% endif %}
+  {% endwith %}
+
   {% if can_apply %}
     <form method="post" class="card" novalidate>
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit">Submit application</button>
+      <button type="submit">{% if applications %}Apply again{% else %}Submit application{% endif %}</button>
     </form>
   {% elif is_member %}
     <p>You're already a member.</p>
@@ -18,9 +27,9 @@
     <h2>My applications</h2>
     {% for a in applications %}
       <div class="card">
-        <p><span class="badge">{{ a.get_status_display }}</span> <span class="muted">submitted {{ a.submitted_at|date:"M j, Y" }}</span></p>
+        <p><span class="badge">{% if a.status == "rejected" %}Not approved{% else %}{{ a.get_status_display }}{% endif %}</span> <span class="muted">submitted {{ a.submitted_at|date:"M j, Y" }}</span></p>
         <p>{{ a.statement|linebreaksbr }}</p>
-        {% if a.review_note %}<p><strong>Officer note:</strong> {{ a.review_note }}</p>{% endif %}
+        {% if a.review_note %}<p><strong>{% if a.status == "rejected" %}Reason{% else %}Officer note{% endif %}:</strong> {{ a.review_note }}</p>{% endif %}
       </div>
     {% endfor %}
   {% endif %}

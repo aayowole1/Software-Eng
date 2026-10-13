@@ -9,29 +9,28 @@
       <p>{{ a.statement|linebreaksbr }}</p>
       <form method="post" action="{% url 'membership:review_application' a.pk %}">
         {% csrf_token %}
-        <label for="note-{{ a.pk }}">Note (optional)</label>
+        <label for="note-{{ a.pk }}">Reason (required when rejecting)</label>
         <textarea name="note" id="note-{{ a.pk }}" rows="2"></textarea>
         <p></p>
         <button type="submit" name="decision" value="approve">Approve</button>
-        <button type="submit" name="decision" value="reject" class="secondary"
-                onclick="return confirm('Reject and delete this application? If they never had an approved account, their account is deleted too. They can apply again.');">Reject</button>
+        <button type="submit" name="decision" value="reject" class="secondary">Reject</button>
       </form>
     </div>
   {% empty %}
     <p class="muted">No pending applications.</p>
   {% endfor %}
 
-  <p class="muted">Rejecting deletes the application, and the account if it was never approved, so the person can apply again.</p>
+  <p class="muted">Rejected applicants can sign in to see your reason and apply again.</p>
 
-  <h2>Approved</h2>
+  <h2>Reviewed</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Applicant</th><th scope="col">Status</th><th scope="col">Reviewed by</th><th scope="col">Note</th></tr></thead>
+      <thead><tr><th scope="col">Applicant</th><th scope="col">Status</th><th scope="col">Reviewed by</th><th scope="col">Date</th><th scope="col">Reason / note</th></tr></thead>
       <tbody>
-        {% for a in approved %}
-          <tr><td>{{ a.user.email }}</td><td>{{ a.get_status_display }}</td><td>{{ a.reviewed_by.email|default:"—" }}</td><td>{{ a.review_note|default:"" }}</td></tr>
+        {% for a in reviewed %}
+          <tr><td>{{ a.user.email }}</td><td>{{ a.get_status_display }}</td><td>{{ a.reviewed_by.email|default:"—" }}</td><td>{{ a.reviewed_at|date:"M j, Y" }}</td><td>{{ a.review_note|default:"" }}</td></tr>
         {% empty %}
-          <tr><td colspan="4" class="muted">None yet.</td></tr>
+          <tr><td colspan="5" class="muted">None yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
