@@ -56,7 +56,7 @@ def application_list(request):
         "membership/application_list.html",
         {
             "pending": applications.filter(status=ApplicationStatus.PENDING),
-            "reviewed": applications.exclude(status=ApplicationStatus.PENDING),
+            "approved": applications.filter(status=ApplicationStatus.APPROVED),
             "review_form": ReviewForm(),
         },
     )
@@ -73,9 +73,12 @@ def review_application(request, pk):
         messages.error(request, "This application has already been reviewed.")
     else:
         approve = form.cleaned_data["decision"] == "approve"
+        email = application.user.email
         application.review(request.user, approve, form.cleaned_data["note"])
-        verb = "approved" if approve else "rejected"
-        messages.success(request, f"Application from {application.user.email} {verb}.")
+        if approve:
+            messages.success(request, f"Application from {email} approved.")
+        else:
+            messages.success(request, f"Application from {email} rejected and removed. They can apply again.")
     return redirect("membership:application_list")
 
 

@@ -108,7 +108,7 @@ Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
 
 ### Joining
 
-Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending" (or "was not approved" if it was rejected). Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
+Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting deletes everything the person submitted (their account, email, application, and Google link), so they can sign up again with the same details. For accounts that were already active before applying, only the application is deleted. Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
 
 The dashboard is public, so anyone can see how to join and the list of committees without signing in.
 

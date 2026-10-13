@@ -3,7 +3,8 @@ Membership applications (FR-02).
 
 Signing up submits an application along with the new account, which stays
 switched off (inactive) until an officer approves it. Approving switches the
-account on and promotes the applicant to the `member` role.
+account on and promotes the applicant to the `member` role. Rejecting deletes
+what the person submitted so they can apply again from scratch.
 """
 
 from django.conf import settings
@@ -53,22 +54,35 @@ class MembershipApplication(models.Model):
         return self.status == ApplicationStatus.PENDING
 
     def review(self, reviewer, approve, note=""):
-        """Approve or reject this application. Only pending applications can be reviewed."""
+        """Approve or reject this application. Only pending applications can be reviewed.
+
+        Rejecting keeps nothing the person submitted, so they can reapply with
+        the same email and username:
+        - an account that was never approved (still switched off) is deleted,
+          along with its application, profile and any Google link;
+        - an account that was already active keeps the account, and only the
+          application is deleted.
+        """
         if not self.is_pending:
             raise ValueError("This application has already been reviewed.")
-        self.status = ApplicationStatus.APPROVED if approve else ApplicationStatus.REJECTED
+        if not approve:
+            if self.user.is_active:
+                self.delete()
+            else:
+                self.user.delete()
+            return
+        self.status = ApplicationStatus.APPROVED
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
         self.review_note = note
         self.save()
-        if approve:
-            # New accounts stay switched off until their application is approved.
-            if not self.user.is_active:
-                self.user.is_active = True
-                self.user.save(update_fields=["is_active"])
-            # Only promote applicants; never demote an officer/admin who applied.
-            if get_role(self.user) == Role.APPLICANT:
-                set_role(self.user, Role.MEMBER)
+        # New accounts stay switched off until their application is approved.
+        if not self.user.is_active:
+            self.user.is_active = True
+            self.user.save(update_fields=["is_active"])
+        # Only promote applicants; never demote an officer/admin who applied.
+        if get_role(self.user) == Role.APPLICANT:
+            set_role(self.user, Role.MEMBER)
 
 
 def inactive_account_message(user):
@@ -80,10 +94,5 @@ def inactive_account_message(user):
         return (
             "Your membership application is still pending. "
             "You can sign in once an officer approves it."
-        )
-    if latest.status == ApplicationStatus.REJECTED:
-        return (
-            "Your membership application was not approved. "
-            "Contact an officer if you think this is a mistake."
         )
     return "This account is inactive."

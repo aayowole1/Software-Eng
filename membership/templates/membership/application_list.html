@@ -13,19 +13,22 @@
         <textarea name="note" id="note-{{ a.pk }}" rows="2"></textarea>
         <p></p>
         <button type="submit" name="decision" value="approve">Approve</button>
-        <button type="submit" name="decision" value="reject" class="secondary">Reject</button>
+        <button type="submit" name="decision" value="reject" class="secondary"
+                onclick="return confirm('Reject and delete this application? If they never had an approved account, their account is deleted too. They can apply again.');">Reject</button>
       </form>
     </div>
   {% empty %}
     <p class="muted">No pending applications.</p>
   {% endfor %}
 
-  <h2>Reviewed</h2>
+  <p class="muted">Rejecting deletes the application, and the account if it was never approved, so the person can apply again.</p>
+
+  <h2>Approved</h2>
   <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">Applicant</th><th scope="col">Status</th><th scope="col">Reviewed by</th><th scope="col">Note</th></tr></thead>
       <tbody>
-        {% for a in reviewed %}
+        {% for a in approved %}
           <tr><td>{{ a.user.email }}</td><td>{{ a.get_status_display }}</td><td>{{ a.reviewed_by.email|default:"—" }}</td><td>{{ a.review_note|default:"" }}</td></tr>
         {% empty %}
           <tr><td colspan="4" class="muted">None yet.</td></tr>

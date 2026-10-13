@@ -87,13 +87,15 @@ class RegistrationTests(TestCase):
         self.assertNotContains(response, "pending")
         self.assertContains(response, "Please enter a correct")
 
-    def test_rejected_account_cannot_sign_in_and_is_told_why(self):
+    def test_rejected_person_can_sign_up_again_with_same_details(self):
         self.post()
         officer = make_user("officer@example.com", Role.OFFICER)
         MembershipApplication.objects.get().review(officer, approve=False)
-        response = self.client.post(reverse("accounts:login"), {"username": "ada", "password": PASSWORD})
-        self.assertContains(response, "was not approved")
-        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertFalse(User.objects.filter(username="ada").exists())
+        self.assertFalse(MembershipApplication.objects.exists())
+        response = self.post(statement="Second try")
+        self.assertRedirects(response, reverse("core:home"))
+        self.assertEqual(MembershipApplication.objects.get().statement, "Second try")
 
     def test_approved_account_can_sign_in_with_username_or_email(self):
         self.post()

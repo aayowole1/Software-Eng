@@ -1,10 +1,14 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from accounts.models import Role, get_role
+from django.contrib.auth import get_user_model
+
+from accounts.models import Profile, Role, get_role
 from accounts.testing import make_user
 
 from .models import ApplicationStatus, MembershipApplication
+
+User = get_user_model()
 
 
 class ApplyTests(TestCase):
@@ -67,35 +71,50 @@ class ReviewTests(TestCase):
         self.assertTrue(self.applicant.is_active)
         self.assertEqual(get_role(self.applicant), Role.MEMBER)
 
-    def test_rejection_leaves_an_inactive_account_off(self):
+    def test_rejecting_a_never_approved_account_deletes_everything(self):
         self.applicant.is_active = False
         self.applicant.save()
         self.client.force_login(self.officer)
-        self.review("reject")
-        self.applicant.refresh_from_db()
-        self.assertFalse(self.applicant.is_active)
+        response = self.review("reject")
+        self.assertFalse(User.objects.filter(pk=self.applicant.pk).exists())
+        self.assertFalse(Profile.objects.filter(user_id=self.applicant.pk).exists())
+        self.assertFalse(MembershipApplication.objects.exists())
+        self.assertContains(self.client.get(response.url), "rejected and removed")
 
-    def test_officer_rejection_keeps_applicant_role(self):
+    def test_rejecting_an_active_applicant_keeps_account_but_deletes_application(self):
         self.client.force_login(self.officer)
         self.review("reject")
-        self.application.refresh_from_db()
-        self.assertEqual(self.application.status, ApplicationStatus.REJECTED)
+        self.assertTrue(User.objects.filter(pk=self.applicant.pk).exists())
+        self.assertFalse(MembershipApplication.objects.exists())
         self.assertEqual(get_role(self.applicant), Role.APPLICANT)
 
-    def test_rejected_applicant_can_reapply(self):
+    def test_rejected_active_applicant_can_reapply(self):
         self.client.force_login(self.officer)
         self.review("reject")
         self.client.force_login(self.applicant)
         self.client.post(reverse("membership:apply"), {"statement": "Second try"})
-        self.assertEqual(MembershipApplication.objects.filter(user=self.applicant).count(), 2)
+        application = MembershipApplication.objects.get(user=self.applicant)
+        self.assertEqual(application.statement, "Second try")
+        self.assertEqual(application.status, ApplicationStatus.PENDING)
 
     def test_application_cannot_be_reviewed_twice(self):
         self.client.force_login(self.officer)
-        self.review("reject")
         self.review("approve")
+        self.assertEqual(self.review("reject").status_code, 302)
         self.application.refresh_from_db()
-        self.assertEqual(self.application.status, ApplicationStatus.REJECTED)
+        self.assertEqual(self.application.status, ApplicationStatus.APPROVED)
+        self.assertTrue(User.objects.filter(pk=self.applicant.pk).exists())
+
+    def test_rejected_application_is_gone(self):
+        self.client.force_login(self.officer)
+        self.review("reject")
+        self.assertEqual(self.review("approve").status_code, 404)
         self.assertEqual(get_role(self.applicant), Role.APPLICANT)
+
+    def test_rejecting_keeps_the_reviewing_officer(self):
+        self.client.force_login(self.officer)
+        self.review("reject")
+        self.assertTrue(User.objects.filter(pk=self.officer.pk).exists())
 
     def test_approval_never_demotes_an_officer(self):
         self.client.force_login(self.officer)
