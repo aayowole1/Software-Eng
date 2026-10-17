@@ -34,3 +34,7 @@ Thumbs.db
 
 # Docker
 *.pid
+.aider*
+
+# ML Models
+models/

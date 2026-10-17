@@ -30,6 +30,7 @@ services:
 
     volumes:
       - .:/app
+      - ./models:/app/models:ro
 
     ports:
       - "8000:8000"
@@ -60,7 +61,5 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-
-
 volumes:
   orgflow_mongo_data:
