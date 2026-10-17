@@ -21,13 +21,12 @@
       </p>
       <p>
         <label for="meeting-status">Meeting Status</label>
-        <input
+        <textarea
           id="meeting-status"
           class="meeting-status"
-          type="text"
-          value="{{ meeting_status }}"
+          rows="12"
           readonly
-        >
+        >{{ meeting_status }}</textarea>
       </p>
     </div>
     <p class="muted">The AI will draft a summary and proposed action items. Nothing is saved as a task until an officer approves it.</p>

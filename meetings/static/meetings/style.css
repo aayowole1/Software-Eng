@@ -3,4 +3,8 @@
     background-color: #dddddd !important;
     color: #000000;
     cursor: not-allowed;
+    border: 1px solid #ccc;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    resize: none;
 }
