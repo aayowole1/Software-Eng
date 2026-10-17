@@ -84,14 +84,29 @@
     <div class="sidebar-content">
       <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
 
-      <div class="sidebar-group">
-        <h3>Meeting Actions</h3>
-        <ul>
-          <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
-        </ul>
-      </div>
-
       {% if user.is_authenticated %}
+        <div class="sidebar-group">
+          <h3>Account</h3>
+          <ul>
+            <li><a href="{% url 'accounts:profile' %}">My account</a></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="link-button">Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+
+        {% if is_admin %}
+          <div class="sidebar-group">
+            <h3>Admin</h3>
+            <ul>
+              <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
+            </ul>
+          </div>
+        {% endif %}
+
         <div class="sidebar-group">
           <h3>Navigation</h3>
           <ul>
@@ -115,25 +130,10 @@
           </div>
         {% endif %}
 
-        {% if is_admin %}
-          <div class="sidebar-group">
-            <h3>Admin</h3>
-            <ul>
-              <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
-            </ul>
-          </div>
-        {% endif %}
-
         <div class="sidebar-group">
-          <h3>Account</h3>
+          <h3>Meeting Actions</h3>
           <ul>
-            <li><a href="{% url 'accounts:profile' %}">My account</a></li>
-            <li>
-              <form method="post" action="{% url 'accounts:logout' %}" class="inline">
-                {% csrf_token %}
-                <button type="submit" class="link-button">Sign out</button>
-              </form>
-            </li>
+            <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
           </ul>
         </div>
       {% else %}
