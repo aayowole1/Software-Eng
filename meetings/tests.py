@@ -47,7 +47,10 @@ class MeetingDraftTests(TestCase):
 
     def create_draft(self):
         self.client.force_login(self.officer)
-        self.client.post(reverse("meetings:create"), {"title": "Week 2", "notes": NOTES})
+        self.client.post(
+            reverse("meetings:create"),
+            {"title": "Week 2", "notes": NOTES, "action": "submit"},
+        )
         return MeetingDraft.objects.get(title="Week 2")
 
     def review(self, draft, decision, **extra):
@@ -62,9 +65,34 @@ class MeetingDraftTests(TestCase):
         self.assertIn("spring hackathon", draft.summary)
         self.assertEqual(draft.action_items.count(), 3)
 
-    def test_title_and_notes_required(self):
+    def test_submit_requires_title_and_notes(self):
         self.client.force_login(self.officer)
-        self.client.post(reverse("meetings:create"), {"title": "", "notes": ""})
+        self.client.post(
+            reverse("meetings:create"),
+            {"title": "", "notes": "", "action": "submit"},
+        )
+        self.assertFalse(MeetingDraft.objects.exists())
+
+    def test_start_updates_notes_without_creating_draft(self):
+        self.client.force_login(self.officer)
+        response = self.client.post(
+            reverse("meetings:create"),
+            {"title": "", "notes": "Opening discussion", "action": "start"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Opening discussion\nMeeting started.")
+        self.assertContains(response, 'value="Started"')
+        self.assertFalse(MeetingDraft.objects.exists())
+
+    def test_stop_updates_notes_without_creating_draft(self):
+        self.client.force_login(self.officer)
+        response = self.client.post(
+            reverse("meetings:create"),
+            {"title": "", "notes": "Closing discussion", "action": "stop"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Closing discussion\nMeeting stopped.")
+        self.assertContains(response, 'value="Stopped"')
         self.assertFalse(MeetingDraft.objects.exists())
 
     def test_members_cannot_see_or_create_drafts(self):
@@ -72,7 +100,10 @@ class MeetingDraftTests(TestCase):
         self.client.force_login(self.member)
         self.assertEqual(self.client.get(reverse("meetings:list")).status_code, 403)
         self.assertEqual(self.client.get(reverse("meetings:detail", args=[draft.pk])).status_code, 403)
-        response = self.client.post(reverse("meetings:create"), {"title": "X", "notes": "Y"})
+        response = self.client.post(
+            reverse("meetings:create"),
+            {"title": "X", "notes": "Y", "action": "submit"},
+        )
         self.assertEqual(response.status_code, 403)
 
     def test_approve_with_edits_untick_and_new_items(self):

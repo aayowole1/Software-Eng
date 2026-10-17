@@ -1,11 +1,38 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ heading }}{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
+{% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
   <form method="post" class="card" novalidate>
     {% csrf_token %}
-    {{ form.as_p }}
+    <p>
+      {{ form.title.label_tag }}
+      {{ form.title }}
+      {{ form.title.errors }}
+    </p>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+      <p>
+        {{ form.notes.label_tag }}
+        {{ form.notes }}
+        {{ form.notes.errors }}
+      </p>
+      <p>
+        <label for="meeting-status">Meeting Status</label>
+        <input
+          id="meeting-status"
+          class="meeting-status"
+          type="text"
+          value="{{ meeting_status }}"
+          readonly
+        >
+      </p>
+    </div>
     <p class="muted">The AI will draft a summary and proposed action items. Nothing is saved as a task until an officer approves it.</p>
-    <button type="submit">Generate draft</button>
+    <button type="button" name="action" value="start">Start Meeting</button>
+    <button type="button" name="action" value="stop">Stop Meeting</button>
+    <button type="submit" name="action" value="submit">Submit Meeting</button>
   </form>
 {% endblock %}

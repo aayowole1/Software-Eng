@@ -1,0 +1,6 @@
+#meeting-status,
+.meeting-status {
+    background-color: #dddddd !important;
+    color: #000000;
+    cursor: not-allowed;
+}

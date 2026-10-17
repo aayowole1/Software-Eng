@@ -20,8 +20,10 @@ class MeetingNotesForm(forms.ModelForm):
         help_texts = {
             "notes": 'Put action items on their own line starting with "Action:", "TODO:" or "- [ ]".',
         }
-        widgets = {"notes": forms.Textarea(attrs={"rows": 12})}
-        required = {"title": False, "notes": False}
+        widgets = {
+            "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
+            "notes": forms.Textarea(attrs={"rows": 12}),
+        }
 
 
 class ReviewForm(forms.Form):
@@ -46,14 +48,51 @@ def draft_list(request):
 @role_required(Role.OFFICER)
 def draft_create(request):
     form = MeetingNotesForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    action = request.POST.get("action")
+    meeting_status = "Not started"
+
+    if request.method == "POST" and action == "start":
+        updated_data = request.POST.copy()
+        notes = updated_data.get("notes", "").strip()
+        updated_data["notes"] = f"{notes}\nMeeting started.".strip()
+        form = MeetingNotesForm(data=updated_data)
+        meeting_status = "Started"
+        messages.info(request, "Meeting started.")
+        return render(
+            request,
+            "meetings/draft_form.html",
+            {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
+        )
+
+    if request.method == "POST" and action == "stop":
+        updated_data = request.POST.copy()
+        notes = updated_data.get("notes", "").strip()
+        updated_data["notes"] = f"{notes}\nMeeting stopped.".strip()
+        form = MeetingNotesForm(data=updated_data)
+        meeting_status = "Stopped"
+        messages.info(request, "Meeting stopped.")
+        return render(
+            request,
+            "meetings/draft_form.html",
+            {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
+        )
+
+    if request.method == "POST" and action == "submit" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
+
+        if not draft.title:
+            draft.title = "Untitled Meeting"
+
         draft.save()
         draft.generate()
-        messages.success(request, "AI draft generated. Review it before anything is saved as a task.")
-        return redirect("meetings:detail", pk=draft.pk)
-    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+        messages.success(request, "Meeting started.")
+        form = MeetingNotesForm(instance=draft)
+    return render(
+        request,
+        "meetings/draft_form.html",
+        {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
+    )
 
 
 @role_required(Role.OFFICER)
