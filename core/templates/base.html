@@ -5,49 +5,184 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}OrgFlow{% endblock %} · OrgFlow</title>
   <link rel="stylesheet" href="{% static 'core/site.css' %}">
+  <style>
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      width: 250px;
+      background: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .sidebar-toggle {
+      display: none;
+      position: absolute;
+      top: 1rem;
+      right: -1.5rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .sidebar-content {
+      margin-top: 2rem;
+    }
+    .sidebar-group {
+      margin-bottom: 1.5rem;
+    }
+    .sidebar-group h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #6c757d;
+      margin-bottom: 0.5rem;
+    }
+    .sidebar-group ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar-group li {
+      margin-bottom: 0.25rem;
+    }
+    .sidebar-group a {
+      display: block;
+      padding: 0.25rem 0;
+      color: #212529;
+      text-decoration: none;
+    }
+    .sidebar-group a:hover {
+      color: #0d6efd;
+    }
+    .main-content {
+      margin-left: 250px;
+      padding: 1rem;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-toggle {
+        display: block;
+      }
+      .main-content {
+        margin-left: 0;
+      }
+    }
+  </style>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header">
-    <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
-    <nav aria-label="Main">
-      {% if user.is_authenticated %}
-        <a href="{% url 'core:dashboard' %}">Dashboard</a>
-        {% if is_member %}
-          <a href="{% url 'membership:roster' %}">Roster</a>
-          <a href="{% url 'committees:list' %}">Committees</a>
-        {% else %}
-          <a href="{% url 'membership:apply' %}">Apply</a>
-        {% endif %}
-        {% if is_officer %}
-          <a href="{% url 'membership:application_list' %}">Applications</a>
-          <a href="{% url 'meetings:list' %}">Meeting drafts</a>
-        {% endif %}
-        {% if is_admin %}
-          <a href="{% url 'accounts:user_list' %}">Users</a>
-        {% endif %}
-        <a href="{% url 'accounts:profile' %}">My account</a>
-        <form method="post" action="{% url 'accounts:logout' %}" class="inline">
-          {% csrf_token %}
-          <button type="submit" class="link-button">Sign out</button>
-        </form>
-      {% else %}
-        <a href="{% url 'core:dashboard' %}">Dashboard</a>
-        <a href="{% url 'accounts:login' %}">Sign in</a>
-        <a href="{% url 'accounts:register' %}">Create account</a>
-      {% endif %}
-    </nav>
-  </header>
+  <div class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">×</button>
+    <div class="sidebar-content">
+      <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
 
-  <main id="main">
-    {% if messages %}
-      <ul class="messages" role="status">
-        {% for message in messages %}
-          <li class="message {{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
+      <div class="sidebar-group">
+        <h3>Meeting Actions</h3>
+        <ul>
+          <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
+        </ul>
+      </div>
+
+      {% if user.is_authenticated %}
+        <div class="sidebar-group">
+          <h3>Navigation</h3>
+          <ul>
+            <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
+            {% if is_member %}
+              <li><a href="{% url 'membership:roster' %}">Roster</a></li>
+              <li><a href="{% url 'committees:list' %}">Committees</a></li>
+            {% else %}
+              <li><a href="{% url 'membership:apply' %}">Apply</a></li>
+            {% endif %}
+          </ul>
+        </div>
+
+        {% if is_officer %}
+          <div class="sidebar-group">
+            <h3>Officer Tools</h3>
+            <ul>
+              <li><a href="{% url 'membership:application_list' %}">Applications</a></li>
+              <li><a href="{% url 'meetings:list' %}">Meeting drafts</a></li>
+            </ul>
+          </div>
+        {% endif %}
+
+        {% if is_admin %}
+          <div class="sidebar-group">
+            <h3>Admin</h3>
+            <ul>
+              <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
+            </ul>
+          </div>
+        {% endif %}
+
+        <div class="sidebar-group">
+          <h3>Account</h3>
+          <ul>
+            <li><a href="{% url 'accounts:profile' %}">My account</a></li>
+            <li>
+              <form method="post" action="{% url 'accounts:logout' %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="link-button">Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      {% else %}
+        <div class="sidebar-group">
+          <h3>Authentication</h3>
+          <ul>
+            <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
+            <li><a href="{% url 'accounts:login' %}">Sign in</a></li>
+            <li><a href="{% url 'accounts:register' %}">Create account</a></li>
+          </ul>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="main-content">
+    <button class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Toggle sidebar">☰</button>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main id="main">
+      {% if messages %}
+        <ul class="messages" role="status">
+          {% for message in messages %}
+            <li class="message {{ message.tags }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+
+      function toggleSidebar() {
+        sidebar.classList.toggle('open');
+      }
+
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+      }
+
+      if (sidebarToggleMobile) {
+        sidebarToggleMobile.addEventListener('click', toggleSidebar);
+      }
+    });
+  </script>
 </body>
 </html>
