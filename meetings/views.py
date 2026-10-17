@@ -21,6 +21,7 @@ class MeetingNotesForm(forms.ModelForm):
             "notes": 'Put action items on their own line starting with "Action:", "TODO:" or "- [ ]".',
         }
         widgets = {"notes": forms.Textarea(attrs={"rows": 12})}
+        required = {"title": False, "notes": False}
 
 
 class ReviewForm(forms.Form):
