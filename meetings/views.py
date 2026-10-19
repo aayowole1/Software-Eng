@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required
@@ -53,6 +54,8 @@ def draft_create(request):
 
     if request.method == "POST" and action == "start":
         updated_data = request.POST.copy()
+        if not updated_data.get("title", "").strip():
+            updated_data["title"] = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
         notes = updated_data.get("notes", "").strip()
         updated_data["notes"] = f"{notes}\nMeeting started.".strip()
         form = MeetingNotesForm(data=updated_data)

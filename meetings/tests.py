@@ -81,7 +81,8 @@ class MeetingDraftTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Opening discussion\nMeeting started.")
-        self.assertContains(response, 'value="Started"')
+        self.assertContains(response, "Untitled Transcript")
+        self.assertContains(response, ">Started</textarea>")
         self.assertFalse(MeetingDraft.objects.exists())
 
     def test_stop_updates_notes_without_creating_draft(self):
@@ -92,7 +93,7 @@ class MeetingDraftTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Closing discussion\nMeeting stopped.")
-        self.assertContains(response, 'value="Stopped"')
+        self.assertContains(response, ">Stopped</textarea>")
         self.assertFalse(MeetingDraft.objects.exists())
 
     def test_members_cannot_see_or_create_drafts(self):

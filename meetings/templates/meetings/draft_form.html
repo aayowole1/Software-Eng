@@ -13,25 +13,33 @@
       {{ form.title }}
       {{ form.title.errors }}
     </p>
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+    <div class="meeting-fields">
       <p>
         {{ form.notes.label_tag }}
         {{ form.notes }}
         {{ form.notes.errors }}
       </p>
+
       <p>
-        <label for="meeting-status">Meeting Status</label>
+        <label for="meeting-transcript">Transcript</label>
         <textarea
-          id="meeting-status"
-          class="meeting-status"
+          id="meeting-transcript"
+          class="meeting-transcript"
           rows="12"
           readonly
         >{{ meeting_status }}</textarea>
       </p>
     </div>
     <p class="muted">The AI will draft a summary and proposed action items. Nothing is saved as a task until an officer approves it.</p>
-    <button type="button" name="action" value="start">Start Meeting</button>
-    <button type="button" name="action" value="stop">Stop Meeting</button>
-    <button type="submit" name="action" value="submit">Submit Meeting</button>
+    <div class="meeting-actions">
+      <div class="meeting-recording-actions">
+        <button type="submit" name="action" value="start">Start Meeting</button>
+        <button type="submit" name="action" value="stop" class="stop-meeting">
+          <span aria-hidden="true">■</span>
+          Stop Meeting
+        </button>
+      </div>
+      <button type="submit" name="action" value="submit">Submit Meeting</button>
+    </div>
   </form>
 {% endblock %}
