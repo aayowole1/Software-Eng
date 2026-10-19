@@ -57,7 +57,8 @@ def draft_create(request):
         if not updated_data.get("title", "").strip():
             updated_data["title"] = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
         notes = updated_data.get("notes", "").strip()
-        updated_data["notes"] = f"{notes}\nMeeting started.".strip()
+        if "Meeting started" not in notes.rsplit("\n", 1)[-1]:
+            updated_data["notes"] = f"{notes}\nMeeting started.".strip()
         form = MeetingNotesForm(data=updated_data)
         meeting_status = "Started"
         messages.info(request, "Meeting started.")
@@ -70,7 +71,8 @@ def draft_create(request):
     if request.method == "POST" and action == "stop":
         updated_data = request.POST.copy()
         notes = updated_data.get("notes", "").strip()
-        updated_data["notes"] = f"{notes}\nMeeting stopped.".strip()
+        if "Meeting stopped" not in notes.rsplit("\n", 1)[-1]:
+            updated_data["notes"] = f"{notes}\nMeeting stopped.".strip()
         form = MeetingNotesForm(data=updated_data)
         meeting_status = "Stopped"
         messages.info(request, "Meeting stopped.")
