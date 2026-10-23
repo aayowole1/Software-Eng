@@ -83,7 +83,7 @@ class DeepgramTranscriber:
 
     def current_result(self) -> str:
         with self.lock:
-            return " ".join(
+            return "\n".join(
                 segment
                 for segment in (*self.final_segments, self.interim_segment)
                 if segment
@@ -196,19 +196,34 @@ class DeepgramTranscriber:
 
     @staticmethod
     def _format_speakers(alternative: dict, text: str) -> str:
+        print(alternative, text)
         words = alternative.get("words", [])
         if not words or "speaker" not in words[0]:
             return text
+
         grouped = []
         current_speaker = words[0].get("speaker")
         current_words = []
+
         for word in words:
             speaker = word.get("speaker", current_speaker)
+
             if speaker != current_speaker and current_words:
-                grouped.append(f"Speaker {current_speaker}: {' '.join(current_words)}")
+                grouped.append(
+                    f"Speaker {current_speaker}: "
+                    f"{' '.join(current_words)}"
+                )
                 current_speaker = speaker
                 current_words = []
-            current_words.append(word.get("punctuated_word", word.get("word", "")))
+
+            current_words.append(
+                word.get("punctuated_word", word.get("word", ""))
+            )
+
         if current_words:
-            grouped.append(f"Speaker {current_speaker}: {' '.join(current_words)}")
-        return " ".join(grouped) or text
+            grouped.append(
+                f"Speaker {current_speaker}: "
+                f"{' '.join(current_words)}"
+            )
+
+        return "\n".join(grouped) or text
