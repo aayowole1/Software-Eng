@@ -26,9 +26,19 @@ git clone --branch django-conversion https://github.com/aayowole1/Software-Eng.g
 cd Software-Eng
 ```
 
+Initialize the STT directory:
+```bash
+mkdir -p models/asr && cd models/asr
+curl -O -L https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
+tar xvf sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
+rm sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
+
+cd ..
+```
+
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
-Build and start the containers:
+Build and start the containers (takes approx. 157 seconds):
 
 ```bash
 docker compose up -d --build
