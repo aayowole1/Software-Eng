@@ -53,6 +53,18 @@
 
   {% if is_member %}
     <div class="card">
+      <h2>Upcoming events</h2>
+      {% for event in upcoming_events %}
+        <p><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a><br><span class="muted">{{ event.starts_at|date:"D, M j · g:i A" }} · {{ event.location }}</span></p>
+      {% empty %}
+        <p class="muted">No upcoming events.</p>
+      {% endfor %}
+      <p><a href="{% url 'events:list' %}">All events</a></p>
+    </div>
+  {% endif %}
+
+  {% if is_member %}
+    <div class="card">
       <h2>My committees</h2>
       {% for m in committees %}
         <p><a href="{% url 'committees:detail' m.committee.pk %}">{{ m.committee.name }}</a> <span class="badge">{{ m.get_role_display }}</span></p>
