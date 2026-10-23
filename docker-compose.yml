@@ -37,6 +37,7 @@ services:
 
     environment:
       MONGODB_URI: mongodb://mongo:27017
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
 
     depends_on:
       mongo:

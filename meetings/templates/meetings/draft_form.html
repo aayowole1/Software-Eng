@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" class="card" novalidate>
+  <form method="post" class="card" novalidate id="meeting-form">
     {% csrf_token %}
     <p>
       {{ form.title.label_tag }}
@@ -27,19 +27,192 @@
           class="meeting-transcript"
           rows="12"
           readonly
-        >{{ meeting_status }}</textarea>
+        >{{ form.notes.value|default:"" }}</textarea>
       </p>
     </div>
     <p class="muted">The AI will draft a summary and proposed action items. Nothing is saved as a task until an officer approves it.</p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
-        <button type="submit" name="action" value="start">Start Meeting</button>
-        <button type="submit" name="action" value="stop" class="stop-meeting">
+        <button type="button" id="start-recording">Start Recording</button>
+        <button type="button" id="stop-recording" class="stop-meeting" disabled>
           <span aria-hidden="true">■</span>
-          Stop Meeting
+          Stop Recording
         </button>
       </div>
-      <button type="submit" name="action" value="submit">Submit Meeting</button>
+      <button type="submit">Submit Meeting</button>
     </div>
   </form>
+  <p id="recording-status" class="muted" role="status">
+    Click Start Recording and allow microphone access to begin transcription.
+  </p>
+  <script>
+    (() => {
+      const form = document.getElementById("meeting-form");
+      const title = document.getElementById("id_title");
+      const notes = document.getElementById("id_notes");
+      const transcript = document.getElementById("meeting-transcript");
+      const startButton = document.getElementById("start-recording");
+      const stopButton = document.getElementById("stop-recording");
+      const status = document.getElementById("recording-status");
+      const transcribeUrl = "{% url 'meetings:transcribe' %}";
+      const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
+      let audioContext;
+      let processor;
+      let source;
+      let muteGain;
+      let stream;
+      let recordingId;
+      let pendingUploads = Promise.resolve();
+      let isRecording = false;
+      let isStopping = false;
+      let audioBuffer = [];
+      let bufferedSamples = 0;
+      let committedTranscript = transcript.value.trim();
+      let currentSegment = "";
+
+      function setTranscript(value) {
+        currentSegment = value.trim();
+        const parts = [committedTranscript, currentSegment].filter(Boolean);
+        const fullTranscript = parts.join("\n");
+        transcript.value = fullTranscript;
+      }
+
+      function downsample(buffer, inputRate, outputRate) {
+        if (inputRate === outputRate) return buffer;
+        const ratio = inputRate / outputRate;
+        const length = Math.round(buffer.length / ratio);
+        const result = new Float32Array(length);
+        for (let i = 0; i < length; i++) {
+          result[i] = buffer[Math.min(Math.floor(i * ratio), buffer.length - 1)];
+        }
+        return result;
+      }
+
+      function toPcm16(samples) {
+        const pcm = new Int16Array(samples.length);
+        for (let i = 0; i < samples.length; i++) {
+          const sample = Math.max(-1, Math.min(1, samples[i]));
+          pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        }
+        return pcm.buffer;
+      }
+
+      function flushAudioBuffer() {
+        if (!bufferedSamples) return Promise.resolve();
+        const combined = new Float32Array(bufferedSamples);
+        let offset = 0;
+        for (const chunk of audioBuffer) {
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+        audioBuffer = [];
+        bufferedSamples = 0;
+        return upload(toPcm16(combined));
+      }
+
+      function upload(audio, isFinal = false) {
+        pendingUploads = pendingUploads.then(async () => {
+          const response = await fetch(transcribeUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "X-CSRFToken": csrfToken,
+              "X-Recording-ID": recordingId,
+              "X-Recording-Final": String(isFinal),
+            },
+            body: audio,
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Transcription failed.");
+          if (isRecording || isFinal) {
+            setTranscript(data.transcript);
+          }
+        });
+        return pendingUploads;
+      }
+
+      async function stopRecording() {
+        if (!isRecording || isStopping) return;
+        isRecording = false;
+        isStopping = true;
+        processor.disconnect();
+        muteGain.disconnect();
+        source.disconnect();
+        stream.getTracks().forEach((track) => track.stop());
+        await flushAudioBuffer();
+        await pendingUploads;
+        await upload(new ArrayBuffer(0), true);
+        committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
+        currentSegment = "";
+        audioBuffer = [];
+        bufferedSamples = 0;
+        await audioContext.close();
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        isStopping = false;
+        status.textContent = "Recording stopped. You can edit the transcript before submitting.";
+      }
+
+      startButton.addEventListener("click", async () => {
+        if (isRecording || isStopping) return;
+        if (!title.value.trim()) {
+          const date = new Date().toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          });
+          title.value = `${date} - Untitled Transcript`;
+        }
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          audioContext = new AudioContextClass();
+          source = audioContext.createMediaStreamSource(stream);
+          processor = audioContext.createScriptProcessor(4096, 1, 1);
+          muteGain = audioContext.createGain();
+          muteGain.gain.value = 0;
+          recordingId = crypto.randomUUID();
+          currentSegment = "";
+          isStopping = false;
+          pendingUploads = Promise.resolve();
+          processor.onaudioprocess = (event) => {
+            if (!isRecording) return;
+            const samples = downsample(
+              event.inputBuffer.getChannelData(0),
+              audioContext.sampleRate,
+              16000
+            );
+            audioBuffer.push(samples);
+            bufferedSamples += samples.length;
+            if (bufferedSamples >= 16000) {
+              flushAudioBuffer().catch((error) => {
+                status.textContent = error.message;
+                stopRecording();
+              });
+            }
+          };
+          source.connect(processor);
+          processor.connect(muteGain);
+          muteGain.connect(audioContext.destination);
+          isRecording = true;
+          startButton.disabled = true;
+          stopButton.disabled = false;
+          status.textContent = "Recording and transcribing…";
+        } catch (error) {
+          stream?.getTracks().forEach((track) => track.stop());
+          status.textContent = error.message || "Microphone access is required.";
+        }
+      });
+
+      stopButton.addEventListener("click", () => stopRecording().catch((error) => {
+        status.textContent = error.message;
+      }));
+      form.addEventListener("submit", (event) => {
+        if (isRecording) {
+          event.preventDefault();
+          stopRecording().then(() => form.requestSubmit());
+        }
+      });
+    })();
+  </script>
 {% endblock %}

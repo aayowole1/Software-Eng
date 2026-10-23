@@ -1,109 +1,214 @@
-"""Speech-to-text helpers used by the meetings app."""
+"""Deepgram streaming speech-to-text helpers used by the meetings app."""
 
-from functools import lru_cache
-from pathlib import Path
-from threading import Lock
-import wave
+import json
+import os
+from queue import Queue
+from threading import Event, Lock, Thread
+import time
 
 
-MODEL_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "models"
-    / "asr"
-    / "sherpa-onnx-streaming-zipformer-en-2023-06-26"
+DEEPGRAM_URL = (
+    "wss://api.deepgram.com/v1/listen"
+    "?encoding=linear16&sample_rate=16000&channels=1"
+    "&model=nova-3&language=en-US&interim_results=true"
+    "&smart_format=true&diarize=true&endpointing=500"
 )
-SAMPLE_RATE = 16_000
-FEATURE_DIM = 80
 
 
-@lru_cache(maxsize=1)
-def get_recognizer():
-    """Load and cache the meeting transcription recognizer."""
-    import sherpa_onnx
-
-    required_files = (
-        "tokens.txt",
-        "encoder-epoch-99-avg-1-chunk-16-left-128.onnx",
-        "decoder-epoch-99-avg-1-chunk-16-left-128.onnx",
-        "joiner-epoch-99-avg-1-chunk-16-left-128.onnx",
-    )
-    missing_files = [name for name in required_files if not (MODEL_DIR / name).is_file()]
-    if missing_files:
-        missing = ", ".join(missing_files)
-        raise FileNotFoundError(f"Missing STT model files in {MODEL_DIR}: {missing}")
-
-    return sherpa_onnx.OnlineRecognizer.from_transducer(
-        tokens=str(MODEL_DIR / "tokens.txt"),
-        encoder=str(MODEL_DIR / "encoder-epoch-99-avg-1-chunk-16-left-128.onnx"),
-        decoder=str(MODEL_DIR / "decoder-epoch-99-avg-1-chunk-16-left-128.onnx"),
-        joiner=str(MODEL_DIR / "joiner-epoch-99-avg-1-chunk-16-left-128.onnx"),
-        num_threads=2,
-        sample_rate=SAMPLE_RATE,
-        feature_dim=FEATURE_DIM,
-        decoding_method="greedy_search",
-    )
-
-
-class StreamingTranscriber:
-    """Maintain one Sherpa stream while browser audio chunks arrive."""
+class DeepgramTranscriber:
+    """Stream browser PCM to Deepgram without exposing the API key."""
 
     def __init__(self):
-        self.recognizer = get_recognizer()
-        self.stream = self.recognizer.create_stream()
+        api_key = os.getenv("DEEPGRAM_API_KEY", "").strip()
+        if not api_key:
+            raise RuntimeError("DEEPGRAM_API_KEY is not configured.")
+
+        self.receiver_done = Event()
+        self.socket = None
+
+        self.api_key = api_key
+        self.audio_queue = Queue()
+        self.ready = Event()
+        self.closed = Event()
         self.lock = Lock()
+        self.final_segments = []
+        self.interim_segment = ""
+        self.error = None
+        self.worker = Thread(target=self._run, daemon=True)
+        self.worker.start()
+        if not self.ready.wait(timeout=5):
+            self.discard()
+            raise RuntimeError("Deepgram connection timed out.")
+        if self.error:
+            error = self.error
+            self.discard()
+            raise RuntimeError(f"Deepgram connection failed: {error}")
 
     def add_pcm(self, audio: bytes) -> str:
-        """Decode little-endian, mono, 16-bit PCM and return the current result."""
         if len(audio) % 2:
-            raise ValueError("Audio chunks must contain complete 16-bit PCM samples.")
+            raise ValueError(
+                "Audio chunks must contain complete 16-bit PCM samples."
+            )
 
-        samples = [
-            sample / 32768.0
-            for sample in memoryview(audio).cast("h")
-        ]
-        with self.lock:
-            self.stream.accept_waveform(SAMPLE_RATE, samples)
-            while self.recognizer.is_ready(self.stream):
-                self.recognizer.decode_stream(self.stream)
-            return self.recognizer.get_result(self.stream).strip()
+        if self.error:
+            raise RuntimeError(
+                f"Deepgram transcription failed: {self.error}"
+            )
+
+        self.audio_queue.put(audio)
+        return self.current_result()
 
     def finish(self) -> str:
-        """Flush buffered audio and return the final result."""
-        with self.lock:
-            self.stream.input_finished()
-            while self.recognizer.is_ready(self.stream):
-                self.recognizer.decode_stream(self.stream)
-            return self.recognizer.get_result(self.stream).strip()
+        if self.error:
+            raise RuntimeError(
+                f"Deepgram transcription failed: {self.error}"
+            )
+
+        self.audio_queue.put(None)
+
+        # _run() will send CloseStream and wait for the receiver.
+        self.worker.join(timeout=65)
+
+        if self.worker.is_alive():
+            raise RuntimeError(
+                "Deepgram transcription timed out while finalizing."
+            )
+
+        if self.error:
+            raise RuntimeError(
+                f"Deepgram transcription failed: {self.error}"
+            )
+
+        return self.current_result()
 
     def current_result(self) -> str:
-        """Return the current result without adding more audio."""
         with self.lock:
-            return self.recognizer.get_result(self.stream).strip()
+            return " ".join(
+                segment
+                for segment in (*self.final_segments, self.interim_segment)
+                if segment
+            ).strip()
 
+    def discard(self) -> None:
+        self.closed.set()
+        self.audio_queue.put(None)
+        if self.worker.is_alive():
+            self.worker.join(timeout=2)
+        with self.lock:
+            self.final_segments.clear()
+            self.interim_segment = ""
 
-def transcribe_wav(audio_path: str | Path) -> str:
-    """Transcribe a mono, 16-bit PCM WAV file used by a meeting."""
-    recognizer = get_recognizer()
-    stream = recognizer.create_stream()
+    def _run(self) -> None:
+        try:
+            import websocket
 
-    with wave.open(str(audio_path), "rb") as audio:
-        if audio.getnchannels() != 1 or audio.getsampwidth() != 2:
-            raise ValueError("Meeting audio must be a mono, 16-bit PCM WAV file.")
+            socket = websocket.create_connection(
+                DEEPGRAM_URL,
+                header=[f"Authorization: Token {self.api_key}"],
+                timeout=60,
+            )
+            self.socket = socket
+            self.ready.set()
 
-        if audio.getframerate() != SAMPLE_RATE:
-            raise ValueError(f"Meeting audio must use a {SAMPLE_RATE} Hz sample rate.")
+            receiver = Thread(
+                target=self._receive,
+                args=(socket,),
+                daemon=True,
+            )
+            receiver.start()
 
-        while frames := audio.readframes(4096):
-            samples = [
-                sample / 32768.0
-                for sample in memoryview(frames).cast("h")
-            ]
-            stream.accept_waveform(SAMPLE_RATE, samples)
-            while recognizer.is_ready(stream):
-                recognizer.decode_stream(stream)
+            while not self.closed.is_set():
+                audio = self.audio_queue.get()
 
-    stream.input_finished()
-    while recognizer.is_ready(stream):
-        recognizer.decode_stream(stream)
+                if audio is None:
+                    # Tell Deepgram that no more audio is coming.
+                    socket.send(json.dumps({"type": "CloseStream"}))
 
-    return recognizer.get_result(stream).strip()
+                    # Give Deepgram time to send all final Results.
+                    self.receiver_done.wait(timeout=60)
+
+                    socket.close()
+                    receiver.join(timeout=2)
+                    return
+
+                socket.send(
+                    audio,
+                    opcode=websocket.ABNF.OPCODE_BINARY,
+                )
+
+        except Exception as error:
+            self.error = error
+            self.ready.set()
+
+    def _receive(self, socket) -> None:
+        try:
+            while not self.closed.is_set():
+                raw_message = socket.recv()
+
+                # Normal WebSocket EOF.
+                if raw_message == "":
+                    return
+
+                try:
+                    message = json.loads(raw_message)
+                except json.JSONDecodeError as error:
+                    raise RuntimeError(
+                        f"Deepgram returned a non-JSON message: {raw_message!r}"
+                    ) from error
+
+                if message.get("type") != "Results":
+                    if message.get("type") == "Error":
+                        raise RuntimeError(
+                            message.get("description", "Deepgram error")
+                        )
+                    continue
+
+                alternatives = message.get("channel", {}).get(
+                    "alternatives", []
+                )
+                if not alternatives:
+                    continue
+
+                alternative = alternatives[0]
+                text = alternative.get("transcript", "").strip()
+
+                if not text:
+                    continue
+
+                formatted = self._format_speakers(
+                    alternative,
+                    text,
+                )
+
+                with self.lock:
+                    if message.get("is_final"):
+                        self.final_segments.append(formatted)
+                        self.interim_segment = ""
+                    else:
+                        self.interim_segment = formatted
+
+        except Exception as error:
+            if not self.closed.is_set():
+                self.error = error
+
+        finally:
+            self.receiver_done.set()
+
+    @staticmethod
+    def _format_speakers(alternative: dict, text: str) -> str:
+        words = alternative.get("words", [])
+        if not words or "speaker" not in words[0]:
+            return text
+        grouped = []
+        current_speaker = words[0].get("speaker")
+        current_words = []
+        for word in words:
+            speaker = word.get("speaker", current_speaker)
+            if speaker != current_speaker and current_words:
+                grouped.append(f"Speaker {current_speaker}: {' '.join(current_words)}")
+                current_speaker = speaker
+                current_words = []
+            current_words.append(word.get("punctuated_word", word.get("word", "")))
+        if current_words:
+            grouped.append(f"Speaker {current_speaker}: {' '.join(current_words)}")
+        return " ".join(grouped) or text

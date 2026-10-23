@@ -26,16 +26,6 @@ git clone --branch django-conversion https://github.com/aayowole1/Software-Eng.g
 cd Software-Eng
 ```
 
-Initialize the STT directory:
-```bash
-mkdir -p models/asr && cd models/asr
-curl -O -L https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
-tar xvf sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
-rm sherpa-onnx-streaming-zipformer-bn-vosk-2026-02-09.tar.bz2
-
-cd ..
-```
-
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
 Build and start the containers (takes approx. 157 seconds):
@@ -150,6 +140,40 @@ not automatically linked by email. New Google accounts start as applicants.
 ### AI meeting drafts
 
 `meetings/ai.py` is a **rule-based placeholder**: lines starting with `Action:`, `TODO:` or `- [ ]` become proposed action items, and the first few sentences become the summary. Replace `summarize_meeting()` with a real model call (keep the same return type) and evaluate it with DeepEval. Approved action items will become tasks once the task module (WBS 1.6) exists.
+
+Meeting recording uses Deepgram real-time transcription. The browser sends
+16 kHz mono PCM chunks to Django, and Django maintains a private Deepgram
+WebSocket for each recording. Deepgram returns interim and final text with
+speaker labels when available. Audio is not written to disk or retained by
+OrgFlow; only the resulting meeting notes are saved when the user submits the
+form.
+
+Set `DEEPGRAM_API_KEY` in `.env` before starting Docker:
+
+```bash
+DEEPGRAM_API_KEY=your-key-here
+docker compose up -d --build
+```
+
+The API key remains on the server and is never sent to the browser. Review
+Deepgram's current data-retention and processing terms before sending
+sensitive meeting audio.
+
+The opt-in Deepgram quality tests measure word error rate (WER) and character
+error rate (CER) against the meeting fixtures:
+
+```bash
+DEEPGRAM_API_KEY=your-key-here docker compose exec web \
+  python manage.py test meetings.tests.test_stt_deepgram -v 2
+```
+
+The tests cover [single_speaker.wav](meetings/testdata/single_speaker.wav)
+against its text reference and
+[multi_speakers.wav](meetings/testdata/multi_speakers.wav) against the
+structured reference in `multi_speakers.jsonl`. They are skipped when
+`DEEPGRAM_API_KEY` is absent. Speaker labels are removed before WER/CER
+calculation because these metrics evaluate transcription text, not diarization
+accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 
 ### Not yet implemented
 

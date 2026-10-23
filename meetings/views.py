@@ -9,7 +9,7 @@ from accounts.decorators import role_required
 from accounts.models import Role
 
 from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft
-from .stt import StreamingTranscriber
+from .stt import DeepgramTranscriber
 
 
 _active_recordings = {}
@@ -80,8 +80,8 @@ def transcribe_chunk(request):
     transcriber = _active_recordings.get(key)
     if transcriber is None:
         try:
-            transcriber = StreamingTranscriber()
-        except (FileNotFoundError, ImportError, RuntimeError) as error:
+            transcriber = DeepgramTranscriber()
+        except (FileNotFoundError, ImportError, OSError, RuntimeError) as error:
             return JsonResponse({"error": str(error)}, status=503)
         _active_recordings[key] = transcriber
 
@@ -94,7 +94,8 @@ def transcribe_chunk(request):
         if request.headers.get("X-Recording-Final") == "true":
             transcript = transcriber.finish()
             _active_recordings.pop(key, None)
-    except (ValueError, RuntimeError) as error:
+    except (OSError, ValueError, RuntimeError) as error:
+        transcriber.discard()
         _active_recordings.pop(key, None)
         return JsonResponse({"error": str(error)}, status=400)
 
