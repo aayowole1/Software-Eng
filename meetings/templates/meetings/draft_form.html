@@ -13,24 +13,9 @@
       {{ form.title }}
       {{ form.title.errors }}
     </p>
-    <div class="meeting-fields">
-      <p>
-        {{ form.notes.label_tag }}
-        {{ form.notes }}
-        {{ form.notes.errors }}
-      </p>
-
-      <p>
-        <label for="meeting-transcript">Transcript</label>
-        <textarea
-          id="meeting-transcript"
-          class="meeting-transcript"
-          rows="12"
-          readonly
-        >{{ form.notes.value|default:"" }}</textarea>
-      </p>
-    </div>
-    <p class="muted">The AI will draft a summary and proposed action items. Nothing is saved as a task until an officer approves it.</p>
+    {{ form.notes }}
+    {{ form.notes.errors }}
+    <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
         <button type="button" id="start-recording">Start Recording</button>
@@ -39,7 +24,7 @@
           Stop Recording
         </button>
       </div>
-      <button type="submit">Submit Meeting</button>
+      <button type="submit" id="submit-meeting">Submit Meeting</button>
     </div>
   </form>
   <p id="recording-status" class="muted" role="status">
@@ -50,9 +35,9 @@
       const form = document.getElementById("meeting-form");
       const title = document.getElementById("id_title");
       const notes = document.getElementById("id_notes");
-      const transcript = document.getElementById("meeting-transcript");
       const startButton = document.getElementById("start-recording");
       const stopButton = document.getElementById("stop-recording");
+      const submitButton = document.getElementById("submit-meeting");
       const status = document.getElementById("recording-status");
       const transcribeUrl = "{% url 'meetings:transcribe' %}";
       const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
@@ -67,14 +52,14 @@
       let isStopping = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
-      let committedTranscript = transcript.value.trim();
+      let committedTranscript = notes.value.trim();
       let currentSegment = "";
 
       function setTranscript(value) {
         currentSegment = value.trim();
         const parts = [committedTranscript, currentSegment].filter(Boolean);
         const fullTranscript = parts.join("\n");
-        transcript.value = fullTranscript;
+        notes.value = fullTranscript;
       }
 
       function downsample(buffer, inputRate, outputRate) {
@@ -135,6 +120,7 @@
         if (!isRecording || isStopping) return;
         isRecording = false;
         isStopping = true;
+        submitButton.disabled = true;
         processor.disconnect();
         muteGain.disconnect();
         source.disconnect();
@@ -149,8 +135,9 @@
         await audioContext.close();
         startButton.disabled = false;
         stopButton.disabled = true;
+        submitButton.disabled = false;
         isStopping = false;
-        status.textContent = "Recording stopped. You can edit the transcript before submitting.";
+        status.textContent = "Recording stopped. Transcript finalized in the background.";
       }
 
       startButton.addEventListener("click", async () => {

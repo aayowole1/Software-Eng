@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import messages
+from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -28,7 +29,7 @@ class MeetingNotesForm(forms.ModelForm):
         }
         widgets = {
             "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
-            "notes": forms.Textarea(attrs={"rows": 12}),
+            "notes": forms.HiddenInput(),
         }
 
 
@@ -61,8 +62,17 @@ def draft_create(request):
         if not draft.title:
             draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
 
-        draft.save()
-        draft.generate()
+        try:
+            with transaction.atomic():
+                draft.save()
+                draft.generate()
+        except (RuntimeError, ValueError) as error:
+            messages.error(request, f"Could not generate the meeting summary: {error}")
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": "New meeting notes"},
+            )
         messages.success(request, "Meeting submitted for review.")
         form = MeetingNotesForm(instance=draft)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
@@ -154,7 +164,16 @@ def draft_revise(request, pk):
     form = MeetingNotesForm(request.POST or None, instance=draft)
     if request.method == "POST" and form.is_valid():
         draft.title = form.cleaned_data["title"]
-        draft.revise(form.cleaned_data["notes"])
+        try:
+            with transaction.atomic():
+                draft.revise(form.cleaned_data["notes"])
+        except (RuntimeError, ValueError) as error:
+            messages.error(request, f"Could not generate the meeting summary: {error}")
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": f"Revise “{draft.title}”"},
+            )
         messages.success(request, "Notes revised and AI draft regenerated.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": f"Revise “{draft.title}”"})
