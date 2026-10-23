@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -8,6 +9,10 @@ from accounts.decorators import role_required
 from accounts.models import Role
 
 from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft
+from .stt import StreamingTranscriber
+
+
+_active_recordings = {}
 
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
@@ -49,55 +54,51 @@ def draft_list(request):
 @role_required(Role.OFFICER)
 def draft_create(request):
     form = MeetingNotesForm(request.POST or None)
-    action = request.POST.get("action")
-    meeting_status = "Not started"
-
-    if request.method == "POST" and action == "start":
-        updated_data = request.POST.copy()
-        if not updated_data.get("title", "").strip():
-            updated_data["title"] = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
-        notes = updated_data.get("notes", "").strip()
-        if "Meeting started" not in notes.rsplit("\n", 1)[-1]:
-            updated_data["notes"] = f"{notes}\nMeeting started.".strip()
-        form = MeetingNotesForm(data=updated_data)
-        meeting_status = "Started"
-        messages.info(request, "Meeting started.")
-        return render(
-            request,
-            "meetings/draft_form.html",
-            {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
-        )
-
-    if request.method == "POST" and action == "stop":
-        updated_data = request.POST.copy()
-        notes = updated_data.get("notes", "").strip()
-        if "Meeting stopped" not in notes.rsplit("\n", 1)[-1]:
-            updated_data["notes"] = f"{notes}\nMeeting stopped.".strip()
-        form = MeetingNotesForm(data=updated_data)
-        meeting_status = "Stopped"
-        messages.info(request, "Meeting stopped.")
-        return render(
-            request,
-            "meetings/draft_form.html",
-            {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
-        )
-
-    if request.method == "POST" and action == "submit" and form.is_valid():
+    if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
 
         if not draft.title:
-            draft.title = "Untitled Meeting"
+            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
 
         draft.save()
         draft.generate()
-        messages.success(request, "Meeting started.")
+        messages.success(request, "Meeting submitted for review.")
         form = MeetingNotesForm(instance=draft)
-    return render(
-        request,
-        "meetings/draft_form.html",
-        {"form": form, "heading": "New meeting notes", "meeting_status": meeting_status},
-    )
+    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def transcribe_chunk(request):
+    """Accept one browser PCM chunk and return the current transcript."""
+    recording_id = request.headers.get("X-Recording-ID", "").strip()
+    if not recording_id or len(recording_id) > 64:
+        return JsonResponse({"error": "A valid recording ID is required."}, status=400)
+
+    key = (request.user.pk, recording_id)
+    transcriber = _active_recordings.get(key)
+    if transcriber is None:
+        try:
+            transcriber = StreamingTranscriber()
+        except (FileNotFoundError, ImportError, RuntimeError) as error:
+            return JsonResponse({"error": str(error)}, status=503)
+        _active_recordings[key] = transcriber
+
+    try:
+        transcript = (
+            transcriber.add_pcm(request.body)
+            if request.body
+            else transcriber.current_result()
+        )
+        if request.headers.get("X-Recording-Final") == "true":
+            transcript = transcriber.finish()
+            _active_recordings.pop(key, None)
+    except (ValueError, RuntimeError) as error:
+        _active_recordings.pop(key, None)
+        return JsonResponse({"error": str(error)}, status=400)
+
+    return JsonResponse({"transcript": transcript})
 
 
 @role_required(Role.OFFICER)
