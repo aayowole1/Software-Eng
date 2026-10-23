@@ -91,6 +91,7 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `accounts` | Sign-up (with a membership application) by username/email or Google, sign-in with either, organization roles, admin role management | FR-01, NFR-02 |
 | `membership` | Membership applications, officer approve/reject, member roster | FR-02 |
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
+| `events` | Officers create, edit and cancel events; members RSVP; officers record attendance; upcoming events on the dashboard | FR-03, FR-08 (partial) |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
@@ -101,8 +102,8 @@ Each role includes everything the roles below it can do.
 | Role | Can |
 |------|-----|
 | `applicant` | Waiting on a membership application (default for new accounts) |
-| `member` | View the roster and committees |
-| `officer` | Review applications, create committees and manage their rosters, submit and review meeting drafts |
+| `member` | View the roster, committees and events; RSVP to events |
+| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
@@ -143,7 +144,7 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### Not yet implemented
 
-Events and attendance (1.5), tasks (1.6), announcements and resources (1.7), reports (1.8), and audit history (FR-09). Google sign-in still requires a configured Google client and a live end-to-end check.
+Tasks (1.6), announcements and resources (1.7), reports (1.8), and audit history (FR-09). Google sign-in still requires a configured Google client and a live end-to-end check.
 
 ## Running Tests
 
