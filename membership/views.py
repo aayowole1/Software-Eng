@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-
+from django.db.models import Q, Prefetch
+from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
 
@@ -105,11 +106,50 @@ def review_application(request, pk):
     return redirect("membership:application_list")
 
 
+
 @role_required(Role.MEMBER)
 def roster(request):
-    members = (
-        Profile.objects.filter(role__in=ROSTER_ROLES)
-        .select_related("user")
-        .order_by("user__username")
-    )
-    return render(request, "membership/roster.html", {"members": members})
+    """Display the member roster with search, role, and committee information."""
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_role = request.GET.get("role", "").strip().lower()
+
+    members = Profile.objects.filter(
+        role__in=ROSTER_ROLES
+    ).select_related("user")
+
+    # Search members by username or email.
+    if search_query:
+        members = members.filter(
+            Q(user__username__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    # Only allow valid roster roles as filters.
+    if selected_role in ROSTER_ROLES:
+        members = members.filter(role=selected_role)
+    else:
+        selected_role = ""
+
+    # Retrieve committee memberships efficiently.
+    committee_memberships = CommitteeMember.objects.select_related("committee")
+
+    members = members.prefetch_related(
+        Prefetch(
+            "user__committee_memberships",
+            queryset=committee_memberships,
+        )
+    ).order_by("user__username")
+
+    context = {
+        "members": members,
+        "search_query": search_query,
+        "selected_role": selected_role,
+        "role_choices": [
+            (Role.MEMBER, "Member"),
+            (Role.OFFICER, "Officer"),
+            (Role.ADMIN, "Admin"),
+        ],
+    }
+
+    return render(request, "membership/roster.html", context)

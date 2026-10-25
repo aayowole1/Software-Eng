@@ -117,3 +117,51 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
 }
+
+
+
+/* Membership roster filters */
+
+.roster-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.roster-filters > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.roster-filters input,
+.roster-filters select {
+    min-width: 180px;
+    padding: 0.55rem;
+}
+
+.roster-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+    .roster-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .roster-filters > div {
+        width: 100%;
+    }
+
+    .roster-filters input,
+    .roster-filters select {
+        width: 100%;
+        min-width: 0;
+    }
+}
