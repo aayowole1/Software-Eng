@@ -11,7 +11,11 @@
       <tbody>
         {% for m in roster %}
           <tr>
-            <td>{{ m.user.email|default:m.user.username }}</td>
+          <td>
+              <a href="{% url 'membership:member_detail' m.user.profile.pk %}">
+                {{ m.user.email|default:m.user.username }}
+              </a>
+          </td>
             <td>{{ m.get_role_display }}</td>
             <td>{{ m.joined_at|date:"M j, Y" }}</td>
             {% if is_officer %}

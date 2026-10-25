@@ -65,30 +65,56 @@ class MembershipApplication(models.Model):
     def is_pending(self):
         return self.status == ApplicationStatus.PENDING
 
-    def review(self, reviewer, approve, note=""):
-        """Approve or reject this application. Only pending applications can be reviewed.
 
-        Rejecting requires a reason, which the applicant sees when they sign in.
+    def review(self, reviewer, approve, note=""):
+        """Approve or reject a pending membership application.
+
+        Administratively suspended accounts cannot be reviewed.
+        Rejecting an application requires a reason.
         """
+
+        # Prevent reviewing an application more than once.
         if not self.is_pending:
-            raise ValueError("This application has already been reviewed.")
+            raise ValueError(
+                "This application has already been reviewed."
+            )
+
+        # R-02: Block reviews of administratively suspended accounts.
+        if self.user.profile.is_suspended:
+            raise ValueError(
+                "This account is administratively suspended and cannot be reviewed."
+            )
+
+        # Validate the rejection reason.
         note = (note or "").strip()
+
         if not approve and not note:
-            raise ValueError("Give a reason when rejecting an application.")
-        self.status = ApplicationStatus.APPROVED if approve else ApplicationStatus.REJECTED
+            raise ValueError(
+                "Give a reason when rejecting an application."
+            )
+
+        # Update the application decision.
+        self.status = (
+            ApplicationStatus.APPROVED
+            if approve
+            else ApplicationStatus.REJECTED
+        )
+
         self.reviewed_by = reviewer
         self.reviewed_at = timezone.now()
         self.review_note = note
         self.save()
-        # Either decision switches the account on: approved people become
-        # members; rejected people stay applicants so they can sign in, read
-        # the reason and apply again.
-        if not self.user.is_active:
+
+        # Activate the account only when it is not suspended.
+        if not self.user.profile.is_suspended and not self.user.is_active:
             self.user.is_active = True
             self.user.save(update_fields=["is_active"])
-        # Only promote applicants; never demote an officer/admin who applied.
+
+        # Promote approved applicants to the Member role.
+        # Existing Officers and Admins retain their roles.
         if approve and get_role(self.user) == Role.APPLICANT:
             set_role(self.user, Role.MEMBER)
+
 
 
 def inactive_account_message(user):

@@ -1,38 +1,166 @@
+
 {% extends "base.html" %}
-{% block title %}Applications{% endblock %}
+
+{% block title %}Membership Applications{% endblock %}
+
 {% block content %}
-  <h1>Membership applications</h1>
-  <h2>Pending ({{ pending|length }})</h2>
+
+<h1>Membership Applications</h1>
+
+<p class="muted">
+  Review membership requests and manage application decisions.
+</p>
+
+<div class="application-summary">
+  <div class="card">
+    <strong>{{ application_counts.all }}</strong>
+    <span>Total Applications</span>
+  </div>
+
+  <div class="card">
+    <strong>{{ application_counts.pending }}</strong>
+    <span>Pending</span>
+  </div>
+
+  <div class="card">
+    <strong>{{ application_counts.approved }}</strong>
+    <span>Approved</span>
+  </div>
+
+  <div class="card">
+    <strong>{{ application_counts.rejected }}</strong>
+    <span>Rejected</span>
+  </div>
+</div>
+
+<form method="get" action="{% url 'membership:application_list' %}">
+  <div class="roster-filters">
+
+    <div>
+      <label for="application-search">Search applicants</label>
+      <input
+        type="search"
+        name="q"
+        id="application-search"
+        placeholder="Username or email"
+        value="{{ search_query }}"
+      >
+    </div>
+
+    <div>
+      <label for="status-filter">Application status</label>
+      <select name="status" id="status-filter">
+        <option value="">All statuses</option>
+        <option value="pending"
+          {% if selected_status == "pending" %}selected{% endif %}>
+          Pending
+        </option>
+        <option value="approved"
+          {% if selected_status == "approved" %}selected{% endif %}>
+          Approved
+        </option>
+        <option value="rejected"
+          {% if selected_status == "rejected" %}selected{% endif %}>
+          Rejected
+        </option>
+      </select>
+    </div>
+
+    <div class="roster-actions">
+      <button type="submit">Search / Filter</button>
+      <a href="{% url 'membership:application_list' %}">Reset</a>
+    </div>
+
+  </div>
+</form>
+
+{% if not selected_status or selected_status == "pending" %}
+  <h2>Pending Applications ({{ pending|length }})</h2>
+
   {% for a in pending %}
     <div class="card">
-      <p><strong>{{ a.user.email }}</strong> <span class="muted">submitted {{ a.submitted_at|date:"M j, Y" }}</span></p>
+      <p>
+        <strong>{{ a.user.email|default:a.user.username }}</strong>
+        <span class="muted">
+          Submitted {{ a.submitted_at|date:"M j, Y" }}
+        </span>
+      </p>
+
       <p>{{ a.statement|linebreaksbr }}</p>
-      <form method="post" action="{% url 'membership:review_application' a.pk %}">
+
+      <form method="post"
+            action="{% url 'membership:review_application' a.pk %}">
         {% csrf_token %}
-        <label for="note-{{ a.pk }}">Reason (required when rejecting)</label>
-        <textarea name="note" id="note-{{ a.pk }}" rows="2"></textarea>
+
+        <label for="note-{{ a.pk }}">
+          Reason (required when rejecting)
+        </label>
+
+        <textarea
+          name="note"
+          id="note-{{ a.pk }}"
+          rows="2"
+        ></textarea>
+
         <p></p>
-        <button type="submit" name="decision" value="approve">Approve</button>
-        <button type="submit" name="decision" value="reject" class="secondary">Reject</button>
+
+        <button type="submit" name="decision" value="approve">
+          Approve
+        </button>
+
+        <button type="submit"
+                name="decision"
+                value="reject"
+                class="secondary">
+          Reject
+        </button>
       </form>
     </div>
   {% empty %}
-    <p class="muted">No pending applications.</p>
+    <p class="muted">No pending applications found.</p>
   {% endfor %}
+{% endif %}
 
-  <p class="muted">Rejected applicants can sign in to see your reason and apply again after 1 day. Rejected applications are deleted {{ retention_days }} days after the decision.</p>
+{% if not selected_status or selected_status == "approved" or selected_status == "rejected" %}
+  <h2>Reviewed Applications</h2>
 
-  <h2>Reviewed</h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Applicant</th><th scope="col">Status</th><th scope="col">Reviewed by</th><th scope="col">Date</th><th scope="col">Reason / note</th></tr></thead>
+      <thead>
+        <tr>
+          <th scope="col">Applicant</th>
+          <th scope="col">Status</th>
+          <th scope="col">Reviewed By</th>
+          <th scope="col">Reviewed Date</th>
+          <th scope="col">Reason / Note</th>
+        </tr>
+      </thead>
+
       <tbody>
         {% for a in reviewed %}
-          <tr><td>{{ a.user.email }}</td><td>{{ a.get_status_display }}</td><td>{{ a.reviewed_by.email|default:"—" }}</td><td>{{ a.reviewed_at|date:"M j, Y" }}</td><td>{{ a.review_note|default:"" }}</td></tr>
+          <tr>
+            <td>{{ a.user.email|default:a.user.username }}</td>
+            <td>{{ a.get_status_display }}</td>
+            <td>{{ a.reviewed_by.email|default:"—" }}</td>
+            <td>{{ a.reviewed_at|date:"M j, Y" }}</td>
+            <td>{{ a.review_note|default:"—" }}</td>
+          </tr>
         {% empty %}
-          <tr><td colspan="5" class="muted">None yet.</td></tr>
+          <tr>
+            <td colspan="5" class="muted">
+              No reviewed applications found.
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+{% endif %}
+
+<p class="muted">
+  Rejected applicants can sign in to see the rejection reason
+  and reapply after 1 day. Rejected application records are
+  deleted {{ retention_days }} days after the decision.
+</p>
+
 {% endblock %}

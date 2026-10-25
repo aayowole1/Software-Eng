@@ -5,11 +5,10 @@ from django.contrib.auth.views import LoginView
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-
+from .forms import RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
 
 from .decorators import role_required
-from .forms import EmailLoginForm, RegisterForm, RoleForm
 from .google_auth import apply_google_login_headers, google_login_context
 from .models import Profile, Role, get_role, set_role
 
@@ -79,13 +78,13 @@ def user_list(request):
         {"profiles": profiles, "role_choices": Role.choices},
     )
 
+        # Prevents an admin from accidentally locking themselves out.
 
 @require_POST
 @role_required(Role.ADMIN)
 def change_role(request, pk):
     target = get_object_or_404(User, pk=pk)
     if target == request.user:
-        # Prevents an admin from accidentally locking themselves out.
         messages.error(request, "You cannot change your own role.")
         return redirect("accounts:user_list")
     if target.is_superuser:
@@ -97,4 +96,54 @@ def change_role(request, pk):
         messages.success(request, f"{target.email} is now {form.cleaned_data['role']}.")
     else:
         messages.error(request, "Invalid role.")
+    return redirect("accounts:user_list")
+
+
+    """Suspend or reinstate an account without overriding membership review."""
+
+@require_POST
+@role_required(Role.ADMIN)
+def change_suspension(request, pk):
+
+    target = get_object_or_404(User, pk=pk)
+
+    if target == request.user or target.is_superuser:
+        messages.error(request, "This account cannot be suspended or reinstated here.")
+        return redirect("accounts:user_list")
+
+    form = SuspensionForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Invalid suspension action.")
+        return redirect("accounts:user_list")
+
+    profile, _ = Profile.objects.get_or_create(user=target)
+    action = form.cleaned_data["action"]
+
+    if action == "suspend":
+        profile.is_suspended = True
+        profile.save(update_fields=["is_suspended"])
+
+        target.is_active = False
+        target.save(update_fields=["is_active"])
+
+        messages.success(request, f"{target.email or target.username} suspended.")
+
+    else:
+        profile.is_suspended = False
+        profile.save(update_fields=["is_suspended"])
+
+        # Only reactivate users whose membership has already been reviewed.
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        has_completed_review = MembershipApplication.objects.filter(
+            user=target,
+            status__in=[ApplicationStatus.APPROVED, ApplicationStatus.REJECTED],
+        ).exists()
+
+        if has_completed_review:
+            target.is_active = True
+            target.save(update_fields=["is_active"])
+
+        messages.success(request, f"Suspension removed for {target.email or target.username}.")
+
     return redirect("accounts:user_list")

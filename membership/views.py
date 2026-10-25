@@ -3,7 +3,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-
+from django.db.models import Q, Prefetch
+from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
 
@@ -68,48 +69,198 @@ def apply(request):
     )
 
 
+
 @role_required(Role.OFFICER)
 def application_list(request):
-    applications = MembershipApplication.objects.select_related("user", "reviewed_by")
+    """Display membership applications with search and status filtering."""
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_status = request.GET.get("status", "").strip().lower()
+
+    applications = MembershipApplication.objects.select_related(
+        "user", "reviewed_by"
+    )
+
+    # Count all applications before applying filters.
+    application_counts = {
+        "all": applications.count(),
+        "pending": applications.filter(
+            status=ApplicationStatus.PENDING
+        ).count(),
+        "approved": applications.filter(
+            status=ApplicationStatus.APPROVED
+        ).count(),
+        "rejected": applications.filter(
+            status=ApplicationStatus.REJECTED
+        ).count(),
+    }
+
+    # Search by applicant username or email.
+    if search_query:
+        applications = applications.filter(
+            Q(user__username__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    valid_statuses = {
+        ApplicationStatus.PENDING,
+        ApplicationStatus.APPROVED,
+        ApplicationStatus.REJECTED,
+    }
+
+    # Only permit supported application status values.
+    if selected_status in valid_statuses:
+        applications = applications.filter(status=selected_status)
+    else:
+        selected_status = ""
+
+    pending = applications.filter(
+        status=ApplicationStatus.PENDING
+    )
+
+    reviewed = applications.exclude(
+        status=ApplicationStatus.PENDING
+    )
+
+    context = {
+        "pending": pending,
+        "reviewed": reviewed,
+        "search_query": search_query,
+        "selected_status": selected_status,
+        "application_counts": application_counts,
+        "review_form": ReviewForm(),
+        "retention_days": REJECTED_RETENTION.days,
+    }
+
     return render(
         request,
         "membership/application_list.html",
-        {
-            "pending": applications.filter(status=ApplicationStatus.PENDING),
-            "reviewed": applications.exclude(status=ApplicationStatus.PENDING),
-            "review_form": ReviewForm(),
-            "retention_days": REJECTED_RETENTION.days,
-        },
+        context,
     )
+
 
 
 @require_POST
 @role_required(Role.OFFICER)
 def review_application(request, pk):
-    application = get_object_or_404(MembershipApplication, pk=pk)
+    application = get_object_or_404(
+        MembershipApplication,
+        pk=pk,
+    )
+
     form = ReviewForm(request.POST)
+
     if not form.is_valid():
-        messages.error(request, " ".join(form.non_field_errors()) or "Choose approve or reject.")
+        messages.error(
+            request,
+            " ".join(form.non_field_errors())
+            or "Choose approve or reject.",
+        )
+
     elif not application.is_pending:
-        messages.error(request, "This application has already been reviewed.")
+        messages.error(
+            request,
+            "This application has already been reviewed.",
+        )
+
     else:
         approve = form.cleaned_data["decision"] == "approve"
-        application.review(request.user, approve, form.cleaned_data["note"])
+
+        try:
+            application.review(
+                request.user,
+                approve,
+                form.cleaned_data["note"],
+            )
+
+        except ValueError as error:
+            messages.error(request, str(error))
+            return redirect("membership:application_list")
+
         if approve:
-            messages.success(request, f"Application from {application.user.email} approved.")
+            messages.success(
+                request,
+                f"Application from {application.user.email} approved.",
+            )
         else:
             messages.success(
                 request,
-                f"Application from {application.user.email} rejected. They can sign in to see your reason and apply again.",
+                f"Application from {application.user.email} rejected. "
+                "They can sign in to see your reason and apply again.",
             )
+
     return redirect("membership:application_list")
+
 
 
 @role_required(Role.MEMBER)
 def roster(request):
-    members = (
-        Profile.objects.filter(role__in=ROSTER_ROLES)
-        .select_related("user")
-        .order_by("user__username")
+    """Display the member roster with search, role, and committee information."""
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_role = request.GET.get("role", "").strip().lower()
+
+    members = Profile.objects.filter(
+        role__in=ROSTER_ROLES
+    ).select_related("user")
+
+    # Search members by username or email.
+    if search_query:
+        members = members.filter(
+            Q(user__username__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    # Only allow valid roster roles as filters.
+    if selected_role in ROSTER_ROLES:
+        members = members.filter(role=selected_role)
+    else:
+        selected_role = ""
+
+    # Retrieve committee memberships efficiently.
+    committee_memberships = CommitteeMember.objects.select_related("committee")
+
+    members = members.prefetch_related(
+        Prefetch(
+            "user__committee_memberships",
+            queryset=committee_memberships,
+        )
+    ).order_by("user__username")
+
+    context = {
+        "members": members,
+        "search_query": search_query,
+        "selected_role": selected_role,
+        "role_choices": [
+            (Role.MEMBER, "Member"),
+            (Role.OFFICER, "Officer"),
+            (Role.ADMIN, "Admin"),
+        ],
+    }
+
+    return render(request, "membership/roster.html", context)
+
+
+
+@role_required(Role.MEMBER)
+def member_detail(request, pk):
+    """Display a roster member and their committee participation."""
+
+    member = get_object_or_404(
+        Profile.objects.select_related("user"),
+        pk=pk,
+        role__in=ROSTER_ROLES,
     )
-    return render(request, "membership/roster.html", {"members": members})
+
+    committee_memberships = (
+        CommitteeMember.objects.filter(user=member.user)
+        .select_related("committee")
+        .order_by("committee__name")
+    )
+
+    context = {
+        "member": member,
+        "committee_memberships": committee_memberships,
+    }
+
+    return render(request, "membership/member_detail.html", context)
