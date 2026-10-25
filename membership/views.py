@@ -208,3 +208,28 @@ def roster(request):
     }
 
     return render(request, "membership/roster.html", context)
+
+
+
+@role_required(Role.MEMBER)
+def member_detail(request, pk):
+    """Display a roster member and their committee participation."""
+
+    member = get_object_or_404(
+        Profile.objects.select_related("user"),
+        pk=pk,
+        role__in=ROSTER_ROLES,
+    )
+
+    committee_memberships = (
+        CommitteeMember.objects.filter(user=member.user)
+        .select_related("committee")
+        .order_by("committee__name")
+    )
+
+    context = {
+        "member": member,
+        "committee_memberships": committee_memberships,
+    }
+
+    return render(request, "membership/member_detail.html", context)

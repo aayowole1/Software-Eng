@@ -62,8 +62,11 @@
     <tbody>
       {% for p in members %}
         <tr>
-          <td>{{ p.user.username }}</td>
-
+          <td>
+               <a href="{% url 'membership:member_detail' p.pk %}">
+                 {{ p.user.username }}
+               </a>
+         </td>
           <td>{{ p.user.email|default:"—" }}</td>
 
           <td>{{ p.get_role_display }}</td>
