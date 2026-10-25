@@ -165,3 +165,42 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
         min-width: 0;
     }
 }
+
+
+
+/* Membership application summary */
+
+.application-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.application-summary .card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    text-align: center;
+}
+
+.application-summary .card strong {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.application-summary .card span {
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .application-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 400px) {
+    .application-summary {
+        grid-template-columns: 1fr;
+    }
+}

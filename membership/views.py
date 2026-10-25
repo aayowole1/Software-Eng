@@ -69,18 +69,73 @@ def apply(request):
     )
 
 
+
 @role_required(Role.OFFICER)
 def application_list(request):
-    applications = MembershipApplication.objects.select_related("user", "reviewed_by")
+    """Display membership applications with search and status filtering."""
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_status = request.GET.get("status", "").strip().lower()
+
+    applications = MembershipApplication.objects.select_related(
+        "user", "reviewed_by"
+    )
+
+    # Count all applications before applying filters.
+    application_counts = {
+        "all": applications.count(),
+        "pending": applications.filter(
+            status=ApplicationStatus.PENDING
+        ).count(),
+        "approved": applications.filter(
+            status=ApplicationStatus.APPROVED
+        ).count(),
+        "rejected": applications.filter(
+            status=ApplicationStatus.REJECTED
+        ).count(),
+    }
+
+    # Search by applicant username or email.
+    if search_query:
+        applications = applications.filter(
+            Q(user__username__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    valid_statuses = {
+        ApplicationStatus.PENDING,
+        ApplicationStatus.APPROVED,
+        ApplicationStatus.REJECTED,
+    }
+
+    # Only permit supported application status values.
+    if selected_status in valid_statuses:
+        applications = applications.filter(status=selected_status)
+    else:
+        selected_status = ""
+
+    pending = applications.filter(
+        status=ApplicationStatus.PENDING
+    )
+
+    reviewed = applications.exclude(
+        status=ApplicationStatus.PENDING
+    )
+
+    context = {
+        "pending": pending,
+        "reviewed": reviewed,
+        "search_query": search_query,
+        "selected_status": selected_status,
+        "application_counts": application_counts,
+        "review_form": ReviewForm(),
+        "retention_days": REJECTED_RETENTION.days,
+    }
+
     return render(
         request,
         "membership/application_list.html",
-        {
-            "pending": applications.filter(status=ApplicationStatus.PENDING),
-            "reviewed": applications.exclude(status=ApplicationStatus.PENDING),
-            "review_form": ReviewForm(),
-            "retention_days": REJECTED_RETENTION.days,
-        },
+        context,
     )
 
 
