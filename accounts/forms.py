@@ -111,3 +111,12 @@ class GoogleApplicationForm(forms.Form):
 
 class RoleForm(forms.Form):
     role = forms.ChoiceField(label="Role", choices=Role.choices)
+
+
+class SuspensionForm(forms.Form):
+    action = forms.ChoiceField(
+        choices=[
+            ("suspend", "Suspend"),
+            ("reinstate", "Reinstate"),
+        ]
+    )

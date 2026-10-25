@@ -139,25 +139,56 @@ def application_list(request):
     )
 
 
+
 @require_POST
 @role_required(Role.OFFICER)
 def review_application(request, pk):
-    application = get_object_or_404(MembershipApplication, pk=pk)
+    application = get_object_or_404(
+        MembershipApplication,
+        pk=pk,
+    )
+
     form = ReviewForm(request.POST)
+
     if not form.is_valid():
-        messages.error(request, " ".join(form.non_field_errors()) or "Choose approve or reject.")
+        messages.error(
+            request,
+            " ".join(form.non_field_errors())
+            or "Choose approve or reject.",
+        )
+
     elif not application.is_pending:
-        messages.error(request, "This application has already been reviewed.")
+        messages.error(
+            request,
+            "This application has already been reviewed.",
+        )
+
     else:
         approve = form.cleaned_data["decision"] == "approve"
-        application.review(request.user, approve, form.cleaned_data["note"])
+
+        try:
+            application.review(
+                request.user,
+                approve,
+                form.cleaned_data["note"],
+            )
+
+        except ValueError as error:
+            messages.error(request, str(error))
+            return redirect("membership:application_list")
+
         if approve:
-            messages.success(request, f"Application from {application.user.email} approved.")
+            messages.success(
+                request,
+                f"Application from {application.user.email} approved.",
+            )
         else:
             messages.success(
                 request,
-                f"Application from {application.user.email} rejected. They can sign in to see your reason and apply again.",
+                f"Application from {application.user.email} rejected. "
+                "They can sign in to see your reason and apply again.",
             )
+
     return redirect("membership:application_list")
 
 

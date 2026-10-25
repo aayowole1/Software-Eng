@@ -52,6 +52,11 @@ class Profile(models.Model):
         choices=Role.choices,
         default=Role.APPLICANT,
     )
+
+    is_suspended = models.BooleanField(
+        default=False,
+        help_text="Administrative suspension independent of membership approval.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
