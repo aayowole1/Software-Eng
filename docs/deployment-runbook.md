@@ -111,17 +111,25 @@ digest, source revision, database name, archive identifier and restore outcome.
 
 If rollback is necessary, stop web/cleanup, select the **matching previous
 image tag** in configuration without rebuilding it, and restore its matching
-backup. Restoration deliberately replaces matching namespaces; confirm the
-target and archive before this operator step:
+backup. Match the clean-database recovery rehearsed in CI: first verify the
+archive is readable and the exact configured database name is correct, with all
+writers stopped. The following operator step deletes that entire named database
+before restore, including collections introduced by newer migrations. It is
+destructive; retain the verified backup outside MongoDB and do not run it merely
+to demonstrate recovery on the team database. `mongorestore --drop` alone only
+drops collections represented in the archive, leaving newer collections behind
+([MongoDB restore reference](https://www.mongodb.com/docs/database-tools/mongorestore/)).
 
 ```sh
 docker compose --env-file .env.production -f compose.production.yml cp /private/backups/<previous-release>.archive.gz mongo:/tmp/orgflow-restore.archive.gz
-docker compose --env-file .env.production -f compose.production.yml exec -T mongo mongorestore --archive=/tmp/orgflow-restore.archive.gz --gzip --drop --nsInclude '<database>.*'
+docker compose --env-file .env.production -f compose.production.yml exec -T mongo mongosh --quiet --eval "db.getSiblingDB('<database>').dropDatabase()"
+docker compose --env-file .env.production -f compose.production.yml exec -T mongo mongorestore --archive=/tmp/orgflow-restore.archive.gz --gzip --nsInclude '<database>.*' --stopOnError
 docker compose --env-file .env.production -f compose.production.yml run --rm --no-deps release python manage.py collectstatic --noinput
 docker compose --env-file .env.production -f compose.production.yml up -d --wait web cleanup
 ```
 
-Regenerate static files from that previous image and check readiness plus the
+Do not start web or cleanup after any failed restore. Regenerate static files
+from that previous image and check readiness plus the
 same scoped HTTPS/account/task checks again. Rolling back code alone against a
 newer incompatible database is not the rollback procedure. Do not run
 `down --volumes` against the team's retained deployment data.
@@ -142,17 +150,19 @@ password recovery as operational. The owner must verify the real sender, secure
 SMTP service, delivered reset link, expiry and one-time use at the intended
 HTTPS origin before enabling that claim.
 
-Keep **one synchronous Gunicorn worker, one thread and one web replica**. Meeting
-recordings live in a process-local map; additional processes or threads do not
+Keep **one synchronous Gunicorn worker, one thread and one web replica**. In the
+combined integration preview, meeting recordings live in a process-local map; additional processes or threads do not
 share recording state safely. Worker restarts lose active recordings, abandoned
 sessions have no durable cleanup protocol, and `/tmp` is a 64 MiB tmpfs. This
 deployment path does not add multi-worker recording coordination, durable audio
 storage or a memory-budget guarantee for the recording map. Complete or stop
 recording before planned restarts; a shared/durable recording design remains
-the meeting owner's scaling task.
+the meeting owner's scaling task. The primary Chau branch has a rule-based
+meeting summarizer and no recording routes; these recording limits describe the
+combined preview, not an implemented primary-branch audio feature.
 
-The user left live Google/OpenAI/Deepgram checks pending for their respective
-owners. Use approved server-side credentials and synthetic notes/audio when
+Google/OpenAI/Deepgram checks remain with their respective owners; the user
+explicitly left credential-dependent live checks pending. Use approved server-side credentials and synthetic notes/audio when
 those owners run them; never infer a live-provider pass from mocked tests or CI's
 empty provider keys. Team VM access, public TLS, real SMTP delivery, host backup
 retention, monitored operations and human/team acceptance still need their own
