@@ -7,12 +7,23 @@ No password, password hash, session cookie or provider credential is journaled.
 The account is created inactive. A completed application still requires the
 ordinary officer review before the person gains membership access.
 
-The journal survives a process exit before the application is saved. Normal
-database failures still attempt bounded cleanup of the exact reserved User; a
-successful cleanup marks the attempt compensated. Failed cleanup leaves a pending
-attempt and logs its opaque attempt ID for operator investigation. No identity
-values or raw database exception details are included in that recovery alert.
-Successful signup marks the attempt completed only after its application exists.
+The journal survives a process exit before the application is saved. Before
+application insertion starts, a database failure can trigger bounded cleanup of
+the exact untouched inactive Applicant. Cleanup first confirms a Pending journal
+write; an uncertain intent write skips deletion. Successful cleanup marks the
+attempt compensated; failed cleanup leaves a pending attempt for recovery.
+
+Both signup paths set their runtime application phase **before** beginning the
+application insert. From that point, request cleanup preserves the User and all
+relations, even if the insert or completion acknowledgement fails. The application
+may already be visible to a reviewer. A pending-state recheck followed by deletion
+would still race legitimate approval, so this path never cascades deletion.
+Recovery creates or reuses the original reserved application and completes its
+journal, preserving any already completed signup/review. Uncertain responses say
+the application could not be confirmed; they do not claim a rollback or approval.
+The operator alert includes an opaque attempt ID, with no identity values or raw
+database exception details. Successful signup marks completion only after its
+application exists.
 
 ## Operator procedure
 
@@ -84,17 +95,25 @@ and secret-free output. Existing local/Google failure tests remain relevant to
 normal compensation. Real MongoDB username and email races exercise conflict
 feedback separately from transient database/profile/application retry failures.
 
-The final targeted set passed **45 tests in 14.865 seconds** against standalone
+The final Accounts regression passed **220 tests in 59.242 seconds** on source
+`8c58a07`, against standalone
 MongoDB at localhost:27029, in the distinct disposable
-`test_orgflow_signup_attempt_review` database. It included the 23 new journal/
-repair tests, nine local password recovery tests, the existing registration
-conflict view test, and 12 canonical identifier tests. System checks reported no
+`test_orgflow_signup_attempt_review` database. It included all 27 journal/repair
+tests plus the existing Accounts, role, suspension, Google, password and identifier
+checks. The new interleaving cases confirm that lost acknowledgement never
+invokes partial child cleanup after application insertion starts, and that
+concurrent officer approval survives. Early cleanup tests cover uncertain intent
+writes before and after persistence, and observed administrative access changes.
+System checks reported no
 issues and the migration drift check found no changes. The test-process-only
 MD5 override and empty provider keys did not change application settings or
-contact a live provider. See [the compact record](evidence/accounts-signup-recovery-tests.txt).
+contact a live provider. A second local agent independently replayed eight
+password/Google failure and approval scenarios; all preserved the expected User,
+review and single original application. See
+[the compact record](evidence/accounts-signup-recovery-tests.txt).
 
 An earlier broader Accounts run passed **212 tests in 53.235 seconds** before
 the final lost-acknowledgement, conflict-feedback and past-use refusal additions.
 It is intermediate regression evidence. A complete final shared suite/CI is
-recorded separately by the integration owner; this targeted result does not
+recorded separately by the integration owner; this Accounts result does not
 claim that wider acceptance.
