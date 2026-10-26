@@ -1,5 +1,14 @@
 # Tasks quality and authorization evidence
 
+> **Earlier snapshot retained as history.** The inspection limits, counts and
+> correction descriptions below belong to their named earlier checkpoints.
+> Current implementation, executed regression/coverage, rendered accessibility
+> checks, actual Claude reviews and CI receipts are reconciled in
+> [Chau contribution: Claude review and resolution](chau-claude-review.md).
+> Subsequent Accounts and meeting-generation safeguards supersede earlier
+> unchanged-code or pending-check statements. This record is not current final
+> acceptance evidence by itself.
+
 Prepared October 25, 2026, with Codex assistance for Chau Minh Viet Nguyen.
 Scope: Chau's Accounts/Tasks work and its shared integration. The team target is
 November 1; the reported submission deadline is November 10. This record does

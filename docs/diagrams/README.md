@@ -54,12 +54,31 @@ not gain transaction guarantees from this diagram. An invalid assignee or missin
 committee requires officer reassignment before further task changes; see
 [`tasks/README.md`](../../tasks/README.md).
 
-Observed offline evidence includes 340 combined tests at `5dff37b`: 338 passed
-and two live Deepgram tests were skipped. The later generation-publication run at
-`0699419` passed all 105 scoped meeting, Tasks and shared integration tests.
-These are distinct runs; the latter is not a new full-suite count. Live Google,
-OpenAI and Deepgram behavior remains outside this evidence. These diagrams do
-not mark the team's other planned modules complete.
+## Current validation
+
+The final combined run at application `812d9e6` collected **417 tests: 415 passed
+and two live Deepgram tests were skipped**, in **207.778 seconds**; see the
+[complete combined transcript](../evidence/final-combined-tests.txt). The primary
+contribution rerun at `bf6ad6d` passed **404 tests in 112.265 seconds**; see the
+[complete primary transcript](../evidence/final-primary-tests.txt). That primary
+revision corrects old meeting test fixtures without changing application behavior.
+
+The combined run measured **95.35% statement coverage** and **90.82% branch
+coverage** for the selected Accounts/Tasks Python scope: **1,377 statements and
+414 branches**, including custom admin and management-command sources. This is
+not whole-project coverage. The [coverage summary](../evidence/final-coverage-summary.txt)
+and [totals](../evidence/final-coverage-totals.json) retain the measurement;
+[source equivalence](../evidence/source-equivalence.txt) confirms all 19 measured
+sources match between primary `8c58a07` and combined `812d9e6` after normalizing
+checkout line endings. Current review disposition, CI receipts and remaining
+human/provider limits are in the [review and resolution record](../chau-claude-review.md).
+
+Intermediate history remains distinct: the combined run at `5dff37b` collected
+340 tests, with 338 passed and two live Deepgram skips. The generation-publication
+run at `0699419` passed all 105 scoped meeting, Tasks and shared integration tests;
+that was not a full-suite run. Live Google, OpenAI and Deepgram behavior remains
+outside the offline evidence. These diagrams do not mark the team's other
+planned modules complete.
 
 The PNG exports are generated from the adjacent Mermaid sources with Mermaid
 11.12.1 and an installed headless Edge renderer. Rendering blocks network requests

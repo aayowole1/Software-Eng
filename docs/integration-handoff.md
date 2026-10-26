@@ -1,5 +1,14 @@
 # OrgFlow integration handoff
 
+> **Earlier integration snapshot retained as history.** The ownership table,
+> test counts and pending checks below describe the original integration
+> checkpoints. See [Chau contribution: Claude review and resolution](chau-claude-review.md)
+> for the current source revisions, shared corrections, final test/coverage
+> evidence, actual Claude reviews and CI receipts. In particular, the earlier
+> statement that meeting views remain unchanged predates the bounded generation,
+> review and recovery corrections. Provider and transcription implementation
+> preservation does not imply those later shared view changes were absent.
+
 Prepared October 25, 2026, with Codex assistance for Chau Minh Viet Nguyen.
 The team target is **November 1, 2026**, ahead of the reported **November 10**
 submission deadline and the end of Ayomide's Jira trial. This document records
