@@ -196,7 +196,12 @@ class TaskViewTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(reverse("tasks:detail", args=[task.pk]))
         self.assertContains(response, "&lt;script&gt;")
-        self.assertNotContains(response, "<script>")
+        # The shared sidebar includes trusted JavaScript; task content and its
+        # audit copies must still never render the submitted markup verbatim.
+        self.assertContains(response, "alert(&quot;title&quot;)")
+        self.assertContains(response, "alert(&quot;body&quot;)")
+        self.assertNotContains(response, task.title)
+        self.assertNotContains(response, task.description)
 
     def draft(self, status=DraftStatus.APPROVED):
         draft = MeetingDraft.objects.create(title="Planning meeting", notes="Synthetic notes", status=status, created_by=self.officer)
