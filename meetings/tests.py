@@ -51,7 +51,10 @@ class MeetingDraftTests(TestCase):
         return MeetingDraft.objects.get(title="Week 2")
 
     def review(self, draft, decision, **extra):
-        data = {"decision": decision, "note": "", "new_items": ""}
+        data = {
+            "decision": decision, "note": "", "new_items": "",
+            "expected_generation": draft.generation_token,
+        }
         data.update(extra)
         return self.client.post(reverse("meetings:review", args=[draft.pk]), data)
 
@@ -127,13 +130,16 @@ class MeetingDraftTests(TestCase):
         self.review(draft, DraftStatus.REVISION_REQUESTED, note="Add the budget item")
         self.client.post(
             reverse("meetings:revise", args=[draft.pk]),
-            {"title": "Week 2 (revised)", "notes": NOTES + "Action: Follow up on budget\n"},
+            {
+                "title": "Week 2 (revised)", "notes": NOTES + "Action: Follow up on budget\n",
+                "expected_generation": draft.generation_token,
+            },
         )
         draft.refresh_from_db()
         self.assertEqual(draft.title, "Week 2 (revised)")
         self.assertEqual(draft.status, DraftStatus.PENDING_REVIEW)
         self.assertIsNone(draft.reviewed_by)
-        self.assertEqual(draft.action_items.count(), 4)
+        self.assertEqual(draft.current_action_items.count(), 4)
 
     def test_cannot_revise_unless_revision_requested(self):
         draft = self.create_draft()
