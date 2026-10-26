@@ -5,7 +5,7 @@ from django.contrib.auth.views import LoginView
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from .forms import RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
+from .forms import PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
 
 from .decorators import role_required
@@ -19,6 +19,7 @@ def register(request):
     if request.user.is_authenticated:
         return redirect("core:dashboard")
     form = RegisterForm(request.POST or None)
+    response_status = 200
     if request.method == "POST" and form.is_valid():
         try:
             user = form.save()
@@ -26,6 +27,9 @@ def register(request):
             # A username can be claimed after form validation but before save.
             # Email/case-folded uniqueness still needs a separate schema change.
             form.add_error(None, "Account creation could not be completed. Try a different username or sign in.")
+        except PasswordSignupRetryError as error:
+            form.add_error(None, str(error))
+            response_status = 503
         else:
             # The account stays switched off until an officer approves the
             # application, so don't sign in yet.
@@ -36,7 +40,7 @@ def register(request):
             )
             return redirect("core:home")
     context = {"form": form, **google_login_context(request)}
-    response = render(request, "accounts/register.html", context)
+    response = render(request, "accounts/register.html", context, status=response_status)
     if context.get("google_enabled"):
         apply_google_login_headers(request, response)
     return response
