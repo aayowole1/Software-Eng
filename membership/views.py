@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import DatabaseError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Prefetch
@@ -45,7 +46,8 @@ def apply(request):
     has_pending = applications.filter(status=ApplicationStatus.PENDING).exists()
     # After a rejection there's a short wait before applying again.
     wait_until = next_application_allowed_at(request.user)
-    can_apply = get_role(request.user) == Role.APPLICANT and not has_pending and wait_until is None
+    has_access_update = applications.filter(access_update_pending=True).exists()
+    can_apply = get_role(request.user) == Role.APPLICANT and not has_pending and not has_access_update and wait_until is None
 
     form = ApplicationForm(request.POST or None)
     if request.method == "POST":
@@ -177,6 +179,10 @@ def review_application(request, pk):
             messages.error(request, str(error))
             return redirect("membership:application_list")
 
+        except DatabaseError:
+            _access_update_failure(request, application)
+            return redirect("membership:application_list")
+
         if approve:
             messages.success(
                 request,
@@ -189,6 +195,34 @@ def review_application(request, pk):
                 "They can sign in to see your reason and apply again.",
             )
 
+    return redirect("membership:application_list")
+
+
+def _access_update_failure(request, application):
+    """Describe persisted state, never assume a decision save succeeded."""
+    try:
+        application.refresh_from_db()
+    except DatabaseError:
+        messages.error(request, "Could not confirm the review update. Check the application list before trying again.")
+        return
+    if application.status != ApplicationStatus.PENDING and application.access_update_pending:
+        messages.error(request, "The decision was recorded, but account access is still pending. Use Finish account access under Reviewed Applications to retry.")
+    else:
+        messages.error(request, "Could not complete the review update. Check the application list and account access before trying again.")
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def finish_review_access(request, pk):
+    application = get_object_or_404(MembershipApplication, pk=pk)
+    try:
+        application.complete_access_update()
+    except ValueError as error:
+        messages.error(request, str(error))
+    except DatabaseError:
+        _access_update_failure(request, application)
+    else:
+        messages.success(request, "Account access update completed. The original review decision is unchanged.")
     return redirect("membership:application_list")
 
 

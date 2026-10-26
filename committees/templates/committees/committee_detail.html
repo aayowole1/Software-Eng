@@ -4,6 +4,14 @@
   <h1>{{ committee.name }}</h1>
   {% if committee.description %}<p>{{ committee.description }}</p>{% endif %}
 
+  {% if can_see_tasks %}
+    <h2>Committee tasks</h2>
+    <p>{{ task_counts.total }} total · {{ task_counts.completed }} completed · {{ task_counts.overdue }} overdue</p>
+    <p><a href="{% url 'tasks:list' %}?committee={{ committee.pk }}">View committee tasks</a>
+      {% if is_officer %} · <a href="{% url 'tasks:create' %}?committee={{ committee.pk }}">Create a task</a>{% endif %}
+    </p>
+  {% endif %}
+
   <h2>Roster</h2>
   <div class="table-wrap">
     <table>

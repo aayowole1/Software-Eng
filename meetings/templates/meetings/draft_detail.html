@@ -49,6 +49,10 @@
     <p><a class="button" href="{% url 'meetings:revise' draft.pk %}">Revise notes and regenerate</a></p>
   {% endif %}
 
+  {% if draft.status == "approved" and is_officer %}
+    <p><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
+  {% endif %}
+
   <h2>Original notes</h2>
   <div class="card"><p>{{ draft.notes|linebreaksbr }}</p></div>
 

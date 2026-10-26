@@ -2,11 +2,14 @@
 
 OrgFlow is a Django web application using MongoDB and Docker for a consistent development environment.
 
-This local `chau/accounts-progress` checkout includes an Accounts 1.3 checkpoint.
-See [the review guide](docs/accounts-checkpoint.md) and
-[verification results](docs/verification-results.txt). The changes have not been
-pushed; the clone command below retrieves the team's baseline branch. Use the
-prepared checkpoint folder/archive to review the new work.
+This branch adds Chau's task-management work (SCRUM-16 / WBS 1.6) on top of
+the team's merged membership and account safeguards at `26b5177`.
+See the [task review and user guide](docs/tasks-checkpoint.md),
+[acceptance checklist](docs/tasks-acceptance.md), and
+[AI assistance record](docs/tasks-ai-use.md).
+The [Accounts 1.3 checkpoint](docs/accounts-checkpoint.md) and its
+[verification results](docs/verification-results.txt) preserve earlier history;
+the account changes were subsequently merged through PR #7.
 
 ## Tech Stack
 
@@ -22,7 +25,7 @@ prepared checkpoint folder/archive to review the new work.
 Clone the repository:
 
 ```bash
-git clone --branch django-conversion https://github.com/aayowole1/Software-Eng.git
+git clone https://github.com/aayowole1/Software-Eng.git
 cd Software-Eng
 ```
 
@@ -91,6 +94,7 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `accounts` | Sign-up (with a membership application) by username/email or Google, sign-in with either, organization roles, admin role management | FR-01, NFR-02 |
 | `membership` | Membership applications, officer approve/reject, member roster | FR-02 |
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
+| `tasks` | Officer task creation and delegation; committee work, member claiming and progress, due dates, priorities, scoped counts and audit history | FR-04, FR-09; WBS 1.6 |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
@@ -112,6 +116,21 @@ Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
 Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting requires a reason. The rejected person can then sign in with applicant-only access, see "Not approved" with the officer's reason, and apply again from the same account **1 day** after the decision. Applications are kept with who reviewed them, when, and why (see **Applications → Reviewed**); **rejected applications are deleted 7 days after the decision** by the `cleanup` service (the person's account stays). Without Docker, run `python manage.py purge_rejected_applications` on a schedule instead. Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
 
 The dashboard is public, so anyone can see how to join and the list of committees without signing in.
+
+### Interrupted account updates
+
+An officer's membership decision is recorded with a pending-access marker before
+activation and role changes. If a database write fails, **Reviewed Applications**
+shows **Finish account access** so an officer can retry the recorded decision
+without changing its reviewer, note or date. Unfinished reviews are retained, and
+sign-in, existing sessions and task eligibility stay blocked until completion.
+The administrative suspension flag also blocks sign-in if the separate account
+activation write has not completed.
+
+Google application provisioning compensates for failed writes by removing only
+the attempted account. Transient database failures show a retry form and preserve
+the verified signup and statement. If the database also prevents cleanup, an
+operator-recovery alert is logged; this does not claim a multi-document rollback.
 
 ### Forgot password
 
@@ -139,11 +158,34 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
 
-`meetings/ai.py` is a **rule-based placeholder**: lines starting with `Action:`, `TODO:` or `- [ ]` become proposed action items, and the first few sentences become the summary. Replace `summarize_meeting()` with a real model call (keep the same return type) and evaluate it with DeepEval. Approved action items will become tasks once the task module (WBS 1.6) exists.
+`meetings/ai.py` is a **rule-based placeholder**: lines starting with `Action:`, `TODO:` or `- [ ]` become proposed action items, and the first few sentences become the summary. Replace `summarize_meeting()` with a real model call (keep the same return type) and evaluate it with DeepEval. After approving a draft, an officer can choose **Create tasks from accepted action items**, review the assignment defaults, and confirm. Only accepted items are copied. Repeating the conversion preserves existing tasks and creates no duplicates. Original meeting notes remain officer-only.
+
+### Tasks and committee work
+
+Officers and admins can create, edit and assign tasks with a due date and priority.
+The assignee can update progress. Active, unsuspended committee members can see
+their committee's work and claim its unassigned, unfinished tasks. Organization
+tasks without a committee are visible to their assignee and officers. A member
+removed from a committee loses access to that committee's tasks.
+
+The task list supports search, committee, status, priority, assignee and overdue
+filters. Completed and overdue counts respect the signed-in user's access.
+The dashboard shows personal assignments, and committee pages link to their work.
+Task state and its change history are written together in one MongoDB document;
+an outdated form cannot silently overwrite a newer assignment or status.
+
+Dates use the configured `TIME_ZONE`, defaulting to `America/Chicago`. A task is
+overdue when its due date is before today and it is not Done. A committee with
+tasks cannot be deleted until those tasks are moved or their committee is cleared;
+its roster and task history remain intact if deletion is blocked.
 
 ### Not yet implemented
 
-Events and attendance (1.5), tasks (1.6), announcements and resources (1.7), reports (1.8), and audit history (FR-09). Google sign-in still requires a configured Google client and a live end-to-end check.
+On this main-based branch, events and attendance (1.5), announcements and resources
+(1.7), and reports (1.8) remain separate team work. Task change history is included;
+an organization-wide audit system remains separate. The meeting summarizer remains
+rule based. Existing local Google checks are recorded in the Accounts checkpoint;
+a fresh deployment needs its own Google client configuration and live check.
 
 ## Running Tests
 

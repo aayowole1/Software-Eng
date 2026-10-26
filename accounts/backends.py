@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 
+from .models import Profile
+
 
 def find_user(identifier):
     """Return the account matching a username or email, or None.
@@ -22,6 +24,19 @@ def find_user(identifier):
 
 class EmailOrUsernameBackend(ModelBackend):
     """Sign in with either a username or an email address (see `find_user`)."""
+
+    def user_can_authenticate(self, user):
+        from membership.models import MembershipApplication
+
+        # Suspension and activation are separate documents on MongoDB. Check
+        # both so a partial suspension write also invalidates existing sessions.
+        return (
+            super().user_can_authenticate(user)
+            and not Profile.objects.filter(user_id=user.pk, is_suspended=True).exists()
+            and not MembershipApplication.objects.filter(
+                user_id=user.pk, access_update_pending=True
+            ).exists()
+        )
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         if username is None or password is None:

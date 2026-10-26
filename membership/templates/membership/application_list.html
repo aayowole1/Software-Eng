@@ -133,6 +133,7 @@
           <th scope="col">Reviewed By</th>
           <th scope="col">Reviewed Date</th>
           <th scope="col">Reason / Note</th>
+          <th scope="col">Account access</th>
         </tr>
       </thead>
 
@@ -144,10 +145,16 @@
             <td>{{ a.reviewed_by.email|default:"—" }}</td>
             <td>{{ a.reviewed_at|date:"M j, Y" }}</td>
             <td>{{ a.review_note|default:"—" }}</td>
+            <td>{% if a.access_update_pending %}
+              <p>Decision recorded; access update pending.</p>
+              <form method="post" action="{% url 'membership:finish_review_access' a.pk %}">
+                {% csrf_token %}<button type="submit">Finish account access</button>
+              </form>
+            {% else %}No pending update{% endif %}</td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="5" class="muted">
+            <td colspan="6" class="muted">
               No reviewed applications found.
             </td>
           </tr>
@@ -160,7 +167,7 @@
 <p class="muted">
   Rejected applicants can sign in to see the rejection reason
   and reapply after 1 day. Rejected application records are
-  deleted {{ retention_days }} days after the decision.
+  deleted {{ retention_days }} days after the decision once the account access update is complete.
 </p>
 
 {% endblock %}

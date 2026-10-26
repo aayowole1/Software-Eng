@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+  <h1>{{ heading }}</h1>
+  <form method="post" class="card" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}{{ form.as_p }}
+    {% include "tasks/assignment_feedback.html" %}
+    <button type="submit">Save task</button>
+    {% if task %}<a href="{% url 'tasks:detail' task.pk %}">Cancel</a>{% else %}<a href="{% url 'tasks:list' %}">Cancel</a>{% endif %}
+  </form>
+  <script src="{% static 'tasks/assignment.js' %}" defer></script>
+{% endblock %}

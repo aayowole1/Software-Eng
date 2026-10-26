@@ -53,6 +53,22 @@
 
   {% if is_member %}
     <div class="card">
+      <h2>My tasks</h2>
+      <p>{{ my_task_counts.total }} assigned · {{ my_task_counts.completed }} completed · {{ my_task_counts.overdue }} overdue</p>
+      <ul>
+        {% for task in my_tasks %}
+          <li><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a>
+            <span class="badge">{{ task.get_status_display }}</span>
+            {% if task.due_date %}<span class="muted">Due {{ task.due_date|date:"M j, Y" }}</span>{% endif %}
+            {% if task.is_overdue %}<strong>Overdue</strong>{% endif %}
+          </li>
+        {% empty %}
+          <li class="muted">No unfinished tasks assigned to you.</li>
+        {% endfor %}
+      </ul>
+      <p><a href="{% url 'tasks:list' %}">View tasks and committee work</a></p>
+    </div>
+    <div class="card">
       <h2>My committees</h2>
       {% for m in committees %}
         <p><a href="{% url 'committees:detail' m.committee.pk %}">{{ m.committee.name }}</a> <span class="badge">{{ m.get_role_display }}</span></p>

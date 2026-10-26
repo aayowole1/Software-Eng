@@ -1,10 +1,12 @@
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 
 from accounts.models import Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
 from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
+from tasks.models import Task, TaskStatus
 
 
 def dashboard(request):
@@ -23,6 +25,14 @@ def dashboard(request):
                 status=ApplicationStatus.PENDING
             ).count()
             context["pending_drafts"] = MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
+        if has_minimum_role(role, Role.MEMBER):
+            assigned = Task.objects.visible_to(request.user).filter(assignee=request.user)
+            context["my_tasks"] = assigned.exclude(status=TaskStatus.DONE).order_by("due_date", "-created_at")[:5]
+            context["my_task_counts"] = {
+                "total": assigned.count(),
+                "completed": assigned.filter(status=TaskStatus.DONE).count(),
+                "overdue": assigned.exclude(status=TaskStatus.DONE).filter(due_date__lt=timezone.localdate()).count(),
+            }
     return render(request, "core/dashboard.html", context)
 
 

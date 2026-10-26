@@ -1,11 +1,15 @@
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Role
+from tasks.models import Task, TaskStatus
+from tasks.services import can_manage_tasks
 
 from .models import Committee, CommitteeMember, CommitteeRole
 
@@ -62,6 +66,7 @@ def committee_create(request):
 @role_required(Role.MEMBER)
 def committee_detail(request, pk):
     committee = get_object_or_404(Committee, pk=pk)
+    visible_tasks = Task.objects.visible_to(request.user).filter(committee=committee)
     return render(
         request,
         "committees/committee_detail.html",
@@ -69,6 +74,12 @@ def committee_detail(request, pk):
             "committee": committee,
             "roster": committee.members.select_related("user"),
             "add_form": AddMemberForm(committee),
+            "can_see_tasks": can_manage_tasks(request.user) or committee.members.filter(user=request.user).exists(),
+            "task_counts": {
+                "total": visible_tasks.count(),
+                "completed": visible_tasks.filter(status=TaskStatus.DONE).count(),
+                "overdue": visible_tasks.exclude(status=TaskStatus.DONE).filter(due_date__lt=timezone.localdate()).count(),
+            },
         },
     )
 
@@ -77,8 +88,13 @@ def committee_detail(request, pk):
 @role_required(Role.ADMIN)
 def committee_delete(request, pk):
     committee = get_object_or_404(Committee, pk=pk)
-    committee.members.all().delete()
-    committee.delete()
+    # Let Django collect the cascade before changing the roster. A protected
+    # task must leave both the committee and its memberships intact.
+    try:
+        committee.delete()
+    except ProtectedError:
+        messages.error(request, "Move this committee's tasks or clear their committee assignment before deleting the committee.")
+        return redirect("committees:detail", pk=committee.pk)
     messages.success(request, f"Committee “{committee.name}” deleted.")
     return redirect("committees:list")
 
