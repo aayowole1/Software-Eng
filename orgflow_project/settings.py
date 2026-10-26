@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "committees.apps.CommitteesConfig",
     "meetings.apps.MeetingsConfig",
     "tasks.apps.TasksConfig",
+    "events.apps.EventsConfig",
 ]
 
 MIDDLEWARE = [

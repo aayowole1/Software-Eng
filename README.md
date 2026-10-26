@@ -95,6 +95,7 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `membership` | Membership applications, officer approve/reject, member roster | FR-02 |
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
 | `tasks` | Officer task creation and delegation; committee work, member claiming and progress, due dates, priorities, scoped counts and audit history | FR-04, FR-09; WBS 1.6 |
+| `events` | Officers create, edit and cancel events; members RSVP; officers record attendance; upcoming events on the dashboard | FR-03, FR-08 (partial) |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
@@ -105,8 +106,8 @@ Each role includes everything the roles below it can do.
 | Role | Can |
 |------|-----|
 | `applicant` | Waiting on a membership application (default for new accounts) |
-| `member` | View the roster and committees |
-| `officer` | Review applications, create committees and manage their rosters, submit and review meeting drafts |
+| `member` | View the roster, committees and events; RSVP to events |
+| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
@@ -181,8 +182,8 @@ its roster and task history remain intact if deletion is blocked.
 
 ### Not yet implemented
 
-On this main-based branch, events and attendance (1.5), announcements and resources
-(1.7), and reports (1.8) remain separate team work. Task change history is included;
+On this integration preview, announcements and resources (1.7) and reports (1.8)
+remain separate team work. Task change history is included;
 an organization-wide audit system remains separate. The meeting summarizer remains
 rule based. Existing local Google checks are recorded in the Accounts checkpoint;
 a fresh deployment needs its own Google client configuration and live check.
