@@ -20,7 +20,7 @@
       <thead><tr><th scope="col">Task</th><th scope="col">Committee</th><th scope="col">Assignee</th><th scope="col">Due</th><th scope="col">Priority</th><th scope="col">Status</th></tr></thead>
       <tbody>{% for task in page_obj %}<tr>
         <td><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a></td>
-        <td>{{ task.committee|default:"Organization" }}</td><td>{{ task.assignee|default:"Unassigned" }}</td>
+        <td>{% if task.committee_id %}{{ task.committee|default:"Missing committee" }}{% else %}Organization{% endif %}</td><td>{{ task.assignee|default:"Unassigned" }}</td>
         <td>{{ task.due_date|date:"M j, Y"|default:"No due date" }}{% if task.is_overdue %} <strong class="badge">Overdue</strong>{% endif %}</td>
         <td>{{ task.get_priority_display }}</td><td>{{ task.get_status_display }}</td>
       </tr>{% empty %}<tr><td colspan="6">No tasks match these filters.</td></tr>{% endfor %}</tbody>

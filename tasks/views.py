@@ -16,12 +16,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import never_cache
 
-from accounts.models import Profile, ROSTER_ROLES
 from committees.models import Committee, CommitteeMember
 from meetings.models import DraftStatus, MeetingDraft
 
 from .forms import TaskForm, TaskImportForm, TaskStatusForm
-from .models import Task, TaskPriority, TaskStatus, eligible_assignees
+from .models import Task, TaskPriority, TaskStatus, active_role, eligible_assignees
 from .services import (
     TaskConflict, can_claim_task, can_manage_tasks, can_update_task,
     claim_task, create_task, import_action_items, update_task,
@@ -32,12 +31,7 @@ def task_access(view):
     @login_required
     @wraps(view)
     def wrapped(request, *args, **kwargs):
-        profile = Profile.objects.filter(user=request.user).first()
-        if (
-            not request.user.is_active
-            or (profile and profile.is_suspended)
-            or not (request.user.is_superuser or (profile and profile.role in ROSTER_ROLES))
-        ):
+        if active_role(request.user) is None:
             raise PermissionDenied("Tasks are available to active organization members.")
         return view(request, *args, **kwargs)
     return wrapped
@@ -143,6 +137,11 @@ def _display_history(task):
     committees = {str(committee.pk): committee.name for committee in Committee.objects.filter(pk__in=references["committee"])}
 
     def display(field, value):
+        if field == "description" and isinstance(value, dict) and value.get("abbreviated") is True:
+            return (
+                f"{value.get('preview', '')}… "
+                f"[Abbreviated: {value.get('length')} characters; SHA-256 {value.get('sha256')}]"
+            )
         if field == "assignee":
             return users.get(str(value), "Former member") if value else "Unassigned"
         if field == "committee":

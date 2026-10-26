@@ -7,8 +7,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required
-from accounts.models import ROSTER_ROLES, Role
-from tasks.models import Task, TaskStatus
+from accounts.models import Role
+from tasks.models import Task, TaskStatus, eligible_assignees
 from tasks.services import can_manage_tasks
 
 from .models import Committee, CommitteeMember, CommitteeRole
@@ -35,9 +35,9 @@ class AddMemberForm(forms.Form):
     def __init__(self, committee, *args, **kwargs):
         super().__init__(*args, **kwargs)
         existing = list(committee.members.values_list("user_id", flat=True))
-        # Only people on the organization roster can join a committee.
+        # Committee membership uses the same effective-access eligibility as delegation.
         self.fields["user"].queryset = (
-            User.objects.filter(profile__role__in=ROSTER_ROLES)
+            eligible_assignees(None)
             .exclude(pk__in=existing)
             .order_by("username")
         )

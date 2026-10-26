@@ -1,5 +1,8 @@
 """Authorized task mutations with a single-document compare-and-set audit."""
 
+from hashlib import sha256
+
+from bson import BSON
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
@@ -16,6 +19,11 @@ class TaskConflict(Exception):
 
 
 EDITABLE_FIELDS = {"title", "description", "committee", "assignee", "due_date", "priority", "status"}
+# Leave substantial room below MongoDB's 16 MiB document limit for task fields
+# and BSON overhead. Existing history is retained; a full history blocks writes.
+MAX_HISTORY_BSON_BYTES = 8 * 1024 * 1024
+DESCRIPTION_AUDIT_THRESHOLD = 240
+DESCRIPTION_AUDIT_PREVIEW = 160
 
 
 def _snapshot(task):
@@ -30,6 +38,24 @@ def _snapshot(task):
     }
 
 
+def _audit_value(field, value):
+    if field == "description" and isinstance(value, str) and len(value) > DESCRIPTION_AUDIT_THRESHOLD:
+        return {
+            "abbreviated": True,
+            "preview": value[:DESCRIPTION_AUDIT_PREVIEW],
+            "length": len(value),
+            "sha256": sha256(value.encode("utf-8")).hexdigest(),
+        }
+    return value
+
+
+def _validate_history_capacity(history):
+    if len(BSON.encode({"history": history})) > MAX_HISTORY_BSON_BYTES:
+        raise ValidationError(
+            "Task history has reached its storage limit. This change was not saved. Contact an administrator."
+        )
+
+
 def _entry(actor, action, before, after):
     return {
         "at": timezone.now().isoformat(),
@@ -37,7 +63,7 @@ def _entry(actor, action, before, after):
         "actor": actor.get_username(),
         "action": action,
         "changes": {
-            key: {"from": before.get(key), "to": value}
+            key: {"from": _audit_value(key, before.get(key)), "to": _audit_value(key, value)}
             for key, value in after.items() if before.get(key) != value
         },
     }
@@ -62,6 +88,7 @@ def _create(actor, fields, *, origin_key=None, source_action_item=None, action="
         task.origin_key = origin_key
     task.full_clean(validate_unique=False, validate_constraints=False)
     task.history = [_entry(actor, action, {}, _snapshot(task))]
+    _validate_history_capacity(task.history)
     task.save(force_insert=True)
     return task
 
@@ -91,6 +118,8 @@ def _persist(actor, task, changes, expected_version, action):
     if before == after:
         return task
     entry = _entry(actor, action, before, after)
+    history = [*task.history, entry]
+    _validate_history_capacity(history)
     changed = {name for name in after if before[name] != after[name]}
     values = {
         name: getattr(task, name + "_id") if name in {"committee", "assignee"} else getattr(task, name)
@@ -101,7 +130,7 @@ def _persist(actor, task, changes, expected_version, action):
     values.update(
         version=expected_version + 1,
         updated_at=timezone.now(),
-        history=[*task.history, entry],
+        history=history,
     )
     updated = Task.objects.filter(pk=task.pk, version=expected_version).update(**values)
     if updated != 1:
