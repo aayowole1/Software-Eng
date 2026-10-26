@@ -4,6 +4,12 @@ Prepared October 25, 2026, with Codex assistance. Owner: Chau Minh Viet Nguyen.
 This implements Chau's SCRUM-16 / WBS 1.6 task work and the shared connections
 needed to use it with existing Accounts, Membership, Committees and Meetings.
 
+This is the original implementation checkpoint, verified at `638123e` and
+reviewed through PR #12. Later October 25 Claude-review fixes, final local
+regression/coverage and remaining external gates are tracked in
+[the current review resolution](chau-claude-review.md).
+The branch/base and integration contract below describe this original snapshot.
+
 The working branch is `chau/tasks-integration`, based on merged team main
 `26b5177`. That base includes TJ's membership integration, roster/profile and
 suspension changes (PRs #10 and #11). Those teammate features are inherited work,
@@ -25,7 +31,9 @@ task. Only officers/admins edit task details or delegate to someone else.
 
 For committee tasks, the assignee must be a current member of that committee.
 For tasks without a committee, the assignee must be an organization roster member.
-In both cases the account must be active and its profile unsuspended. An
+In both cases the account must be active and its profile unsuspended. Current
+integration also withholds access during an unfinished suspension update; see
+[lifecycle recovery](accounts-suspension-recovery.md). An
 unfinished, unassigned committee task can be claimed by a current committee
 member. Organization role determines management authority: a committee chair does
 not gain officer rights merely by being a chair.
@@ -85,7 +93,7 @@ nulls its optional foreign key; existing history and copied task text remain.
 
 ## Contract for Jack's meeting integration
 
-The current shared interface remains `MeetingDraft`, `DraftStatus.APPROVED` and
+At this original checkpoint, the shared interface was `MeetingDraft`, `DraftStatus.APPROVED` and
 `ActionItem(draft, description, accepted, position)`. The summarizer may change
 provider or transcription implementation without changing task conversion.
 This checkpoint does not invoke a live AI provider or claim provider evaluation.
@@ -141,8 +149,10 @@ input and `TaskConflict` for stale writes. Helpers are `can_manage_tasks(user)`,
 `Task.objects.visible_to(user)`; `task.is_overdue` exposes calendar-date overdue
 behavior. Forms return model instances and date values in `cleaned_data`.
 
-The task app depends on existing committee/meeting models and the Accounts
-suspension migration. It does not require meeting model changes. Future merges
+The original task app depended on existing committee/meeting models and the Accounts
+suspension migration, without requiring meeting model changes. Subsequent review
+added durable meeting approval/recovery safeguards; see the
+[current resolution and source revisions](chau-claude-review.md). Future merges
 should preserve the Tasks navigation link, app registration, URL include,
 dashboard/committee links and approved-draft conversion link. Jack and Ayomide
 also edit some of these shared files, so these integration points require review
@@ -167,15 +177,19 @@ Recorded execution results for this checkpoint:
 The baseline/targeted raw logs are retained in the local review cache
 `../tmp/orgflow_tasks_runtime/baseline-tests.txt` and
 `../tmp/orgflow_tasks_runtime/task-acceptance-tests.txt` relative to the working
-checkout. These are local paths, not promised files in a fresh clone. The final full suite passed **254 tests in 267.225 seconds**; the final targeted
-integration run passed **84 tests in 13.081 seconds**. The retained summary,
-tested code revision and browser evidence are in `docs/tasks-verification.txt`.
+checkout. These are local paths, not promised files in a fresh clone. For original
+implementation revision `638123e0fa60178e3d57c0f32f3d18bae92c5e50`, the full suite
+passed **254 tests in 267.225 seconds** and targeted integration passed **84 tests
+in 13.081 seconds**. The retained summary, tested revision and browser evidence
+are in [tasks-verification.txt](tasks-verification.txt).
 
-Additional account/membership integration safeguards were implemented after the
-54-test run, including task access and assignment exclusion during incomplete
-membership access updates and a test of normal access after finalization. Their
-new run totals belong in the final verification summary; the earlier 54-test
-result is not a claim that these subsequent changes have already been tested.
+Account/membership safeguards added after the 54-test run were included in those
+254/84 results at `638123e`: task access/assignment exclusion during incomplete
+membership access updates and restored access after finalization were tested.
+The 54-test result remains the earlier targeted checkpoint. Later Claude-review
+fixes have separate revisions and evidence in [the current review](chau-claude-review.md);
+neither the historical 254/84 nor combined 267 figures are reused as their final
+validation.
 
 The compare-and-set guarantee covers one task document. Account, committee and
 meeting records are separate documents: their current eligibility is checked,
