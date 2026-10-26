@@ -75,13 +75,18 @@ class MeetingDraft(models.Model):
     def review(self, reviewer, decision, note=""):
         if decision not in REVIEW_DECISIONS:
             raise ValueError(f"Invalid review decision: {decision}")
-        if self.status != DraftStatus.PENDING_REVIEW:
+        # Two requests can load the same pending draft. Keep the decision and
+        # reviewer metadata in one conditional document update so a stale
+        # request cannot replace an already recorded approval or rejection.
+        changed = type(self).objects.filter(
+            pk=self.pk, status=DraftStatus.PENDING_REVIEW
+        ).update(
+            status=decision, reviewed_by=reviewer.pk,
+            reviewed_at=timezone.now(), review_note=note,
+        )
+        if changed != 1:
             raise ValueError("Only drafts pending review can be reviewed.")
-        self.status = decision
-        self.reviewed_by = reviewer
-        self.reviewed_at = timezone.now()
-        self.review_note = note
-        self.save()
+        self.refresh_from_db()
 
     def revise(self, notes):
         """Resubmit after a revision request: new notes, fresh AI output, back to review."""

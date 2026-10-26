@@ -150,7 +150,15 @@ def draft_review(request, pk):
     for offset, line in enumerate(l.strip() for l in form.cleaned_data["new_items"].splitlines() if l.strip()):
         ActionItem.objects.create(draft=draft, description=line, position=next_position + offset)
 
-    draft.review(request.user, form.cleaned_data["decision"], form.cleaned_data["note"])
+    try:
+        draft.review(request.user, form.cleaned_data["decision"], form.cleaned_data["note"])
+    except ValueError:
+        messages.error(
+            request,
+            "The meeting status changed during review. Reload the draft before trying again. "
+            "Action-item edits may already have been saved.",
+        )
+        return redirect("meetings:detail", pk=draft.pk)
     messages.success(request, f"Draft marked {draft.get_status_display().lower()}.")
     return redirect("meetings:detail", pk=draft.pk)
 
