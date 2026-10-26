@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 
-from accounts.models import Profile, Role
+from accounts.models import Profile, Role, set_role
 
 
 # How long a rejected applicant waits before applying again.
@@ -141,13 +141,21 @@ class MembershipApplication(models.Model):
             raise ValueError("This account needs a valid profile before access can be updated.")
         if profile.is_suspended:
             raise ValueError("This account is administratively suspended and cannot be activated.")
+        if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
+            raise ValueError(
+                "The rejection is recorded, but this account has an elevated role. "
+                "An administrator must restore Applicant before account access can finish."
+            )
 
         # Promote before activation. Conditional promotion preserves a newer
         # officer/admin assignment and makes a partially completed retry harmless.
         if current.status == ApplicationStatus.APPROVED and not user.is_superuser:
-            Profile.objects.filter(
-                pk=profile.pk, role=Role.APPLICANT, is_suspended=False
-            ).update(role=Role.MEMBER)
+            set_role(
+                user, Role.MEMBER, actor=current.reviewed_by,
+                source=f"membership_review:{current.pk}",
+                expected_role=Role.APPLICANT, require_unsuspended=True,
+                membership_review=current,
+            )
 
         # Suspension may have changed while promotion was being applied.
         profile.refresh_from_db()
@@ -161,6 +169,8 @@ class MembershipApplication(models.Model):
         profile.refresh_from_db()
         if profile.is_suspended:
             raise ValueError("This account is administratively suspended; access remains pending.")
+        if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
+            raise ValueError("The account's role changed; rejected membership access remains pending.")
         # Only this flag changes on completion. Review metadata is immutable.
         type(self).objects.filter(
             pk=current.pk, status=current.status, access_update_pending=True

@@ -139,6 +139,7 @@ class GoogleApplicationForm(forms.Form):
 
 class RoleForm(forms.Form):
     role = forms.ChoiceField(label="Role", choices=Role.choices)
+    version = forms.IntegerField(min_value=0, required=False, widget=forms.HiddenInput)
 
 
 class SuspensionForm(forms.Form):

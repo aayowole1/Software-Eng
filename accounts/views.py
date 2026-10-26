@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .forms import PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
@@ -96,8 +96,18 @@ def change_role(request, pk):
         return redirect("accounts:user_list")
     form = RoleForm(request.POST)
     if form.is_valid():
-        set_role(target, form.cleaned_data["role"])
-        messages.success(request, f"{target.email} is now {form.cleaned_data['role']}.")
+        try:
+            set_role(
+                target, form.cleaned_data["role"], actor=request.user,
+                source="account_role_management", expected_version=form.cleaned_data["version"],
+                reconcile_rejected=True,
+            )
+        except ValueError as error:
+            messages.error(request, str(error))
+        except DatabaseError:
+            messages.error(request, "The role change could not be confirmed. Reload the users page before trying again.")
+        else:
+            messages.success(request, f"{target.email} is now {form.cleaned_data['role']}.")
     else:
         messages.error(request, "Invalid role.")
     return redirect("accounts:user_list")
