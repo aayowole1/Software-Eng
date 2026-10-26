@@ -1,0 +1,25 @@
+Signup attempt 6adec5fd5ab29e05c1f1a62f preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fd5ab29e05c1f1a62f requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a633 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a633 requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a637 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a637 requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a63b preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a63b requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a63f preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a63f requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a644 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a644 requires operator recovery.
+Signup attempt 6adec5fe5ab29e05c1f1a649 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5fe5ab29e05c1f1a649 requires operator recovery.
+Signup attempt 6adec5ff5ab29e05c1f1a64e preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec5ff5ab29e05c1f1a64e requires operator recovery.
+PASS password partial-cleanup prevention
+PASS password reviewed preservation
+PASS password unknown-insert outcome False repaired once, inactive
+PASS password unknown-insert outcome True repaired once, inactive
+PASS google partial-cleanup prevention
+PASS google reviewed preservation
+PASS google unknown-insert outcome False repaired once, inactive
+PASS google unknown-insert outcome True repaired once, inactive
+ALL 8 INDEPENDENT SCENARIOS PASSED; no repository source edits or live providers

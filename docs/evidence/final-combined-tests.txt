@@ -1,0 +1,108 @@
+Application checkpoint: 812d9e6cc22cdbbd1c4005d735c84ab4aa44bc4e
+Project: combined
+Separate local MongoDB; external keys empty; in-memory MD5 override only for these tests.
+Creating test database for alias 'default'...
+
+.................Signup attempt 6adec6858266f3387dbd2a27 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6858266f3387dbd2a27 requires operator recovery.
+..Signup attempt 6adec6868266f3387dbd2ae6 cleanup skipped: recoverable intent could not be confirmed.
+.................................Signup attempt 6adec69e8266f3387dbd36f4 cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec69e8266f3387dbd3755 cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec69f8266f3387dbd37b6 cleanup skipped: recoverable intent could not be confirmed.
+.......Signup attempt 6adec6a28266f3387dbd3a3a preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6a28266f3387dbd3a3a requires operator recovery.
+.Signup attempt 6adec6a38266f3387dbd3a9b preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6a38266f3387dbd3a9b requires operator recovery.
+.Signup attempt 6adec6a38266f3387dbd3afa preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6a38266f3387dbd3afa requires operator recovery.
+.Incomplete signup attempt 6adec6a48266f3387dbd3b59 requires operator recovery.
+....Signup attempt 6adec6a78266f3387dbd3cda cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec6a78266f3387dbd3d3e cleanup skipped: recoverable intent could not be confirmed.
+......Signup attempt 6adec6aa8266f3387dbd3f7c preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6aa8266f3387dbd3f7c requires operator recovery.
+.Incomplete signup attempt 6adec6ab8266f3387dbd3fdc requires operator recovery.
+.....Signup attempt 6adec6af8266f3387dbd41c2 cleanup skipped: recoverable intent could not be confirmed.
+...............................Signup attempt 6adec6c08266f3387dbd4d87 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6c08266f3387dbd4d87 requires operator recovery.
+Signup attempt 6adec6c08266f3387dbd4d8b preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6c08266f3387dbd4d8b requires operator recovery.
+.Signup attempt 6adec6c18266f3387dbd4dea preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6c18266f3387dbd4dea requires operator recovery.
+Signup attempt 6adec6c18266f3387dbd4dee preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6c18266f3387dbd4dee requires operator recovery.
+..Signup attempt 6adec6c28266f3387dbd4eab cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6c28266f3387dbd4eab requires operator recovery.
+Signup attempt 6adec6c28266f3387dbd4eaf cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6c28266f3387dbd4eaf requires operator recovery.
+..An incomplete password signup could not be cleaned up; operator recovery is required.
+.......Signup attempt 6adec6c88266f3387dbd5204 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec6c88266f3387dbd5204 requires operator recovery.
+........Signup attempt 6adec6cc8266f3387dbd54fc cleanup skipped: recoverable intent could not be confirmed.
+Signup attempt 6adec6cc8266f3387dbd5502 cleanup skipped: recoverable intent could not be confirmed.
+....Signup attempt 6adec6ce8266f3387dbd567f cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6ce8266f3387dbd567f requires operator recovery.
+Signup attempt 6adec6cf8266f3387dbd5683 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6cf8266f3387dbd5683 requires operator recovery.
+Signup attempt 6adec6cf8266f3387dbd5687 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6cf8266f3387dbd5687 requires operator recovery.
+Signup attempt 6adec6cf8266f3387dbd568c cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec6cf8266f3387dbd568c requires operator recovery.
+.................................................................................................................................Unpublished meeting actions could not be cleaned up; operator recovery is required.
+Unpublished meeting actions could not be cleaned up; operator recovery is required.
+......Meeting creation cleanup could not be confirmed; operator recovery is required.
+................................................................................................................................................ss
+----------------------------------------------------------------------
+Ran 417 tests in 207.778s
+
+OK (skipped=2)
+Destroying test database for alias 'default'...
+
+System check identified no issues (0 silenced).
+No changes detected
+Found 417 test(s).
+System check identified no issues (0 silenced).
+{
+  "revision": "812d9e6cc22cdbbd1c4005d735c84ab4aa44bc4e",
+  "coverage_version": "7.17.0",
+  "omits": [
+    "*/test*.py",
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/apps.py",
+    "*/testing.py"
+  ],
+  "all_accounts_and_tasks": {
+    "num_statements": 1377,
+    "covered_lines": 1313,
+    "missing_lines": 64,
+    "num_branches": 414,
+    "covered_branches": 376,
+    "missing_branches": 38,
+    "num_partial_branches": 34,
+    "statement_percent": 95.35,
+    "branch_percent": 90.82
+  },
+  "accounts": {
+    "num_statements": 855,
+    "covered_lines": 813,
+    "missing_lines": 42,
+    "num_branches": 260,
+    "covered_branches": 230,
+    "missing_branches": 30,
+    "num_partial_branches": 28,
+    "statement_percent": 95.09,
+    "branch_percent": 88.46
+  },
+  "tasks": {
+    "num_statements": 522,
+    "covered_lines": 500,
+    "missing_lines": 22,
+    "num_branches": 154,
+    "covered_branches": 146,
+    "missing_branches": 8,
+    "num_partial_branches": 6,
+    "statement_percent": 95.79,
+    "branch_percent": 94.81
+  }
+}

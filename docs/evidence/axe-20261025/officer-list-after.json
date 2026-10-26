@@ -1,0 +1,24 @@
+{
+  "audit": "Local rendered task-page audit; harness panel excluded",
+  "timestamp": "2026-10-26T02:50:55.243Z",
+  "url": "http://127.0.0.1:8018/tasks/",
+  "title": "Tasks · OrgFlow",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "axeVersion": "4.14.0",
+  "violationsByImpact": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0,
+    "unspecified": 0
+  },
+  "violationCount": 0,
+  "incompleteCount": 0,
+  "passingRuleCount": 44,
+  "inapplicableRuleCount": 46,
+  "violations": [],
+  "incomplete": []
+}

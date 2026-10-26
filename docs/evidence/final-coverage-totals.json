@@ -1,0 +1,45 @@
+{
+  "revision": "812d9e6cc22cdbbd1c4005d735c84ab4aa44bc4e",
+  "coverage_version": "7.17.0",
+  "omits": [
+    "*/test*.py",
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/apps.py",
+    "*/testing.py"
+  ],
+  "all_accounts_and_tasks": {
+    "num_statements": 1377,
+    "covered_lines": 1313,
+    "missing_lines": 64,
+    "num_branches": 414,
+    "covered_branches": 376,
+    "missing_branches": 38,
+    "num_partial_branches": 34,
+    "statement_percent": 95.35,
+    "branch_percent": 90.82
+  },
+  "accounts": {
+    "num_statements": 855,
+    "covered_lines": 813,
+    "missing_lines": 42,
+    "num_branches": 260,
+    "covered_branches": 230,
+    "missing_branches": 30,
+    "num_partial_branches": 28,
+    "statement_percent": 95.09,
+    "branch_percent": 88.46
+  },
+  "tasks": {
+    "num_statements": 522,
+    "covered_lines": 500,
+    "missing_lines": 22,
+    "num_branches": 154,
+    "covered_branches": 146,
+    "missing_branches": 8,
+    "num_partial_branches": 6,
+    "statement_percent": 95.79,
+    "branch_percent": 94.81
+  }
+}
