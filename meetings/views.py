@@ -1,6 +1,9 @@
+import logging
+
+from bson import ObjectId
 from django import forms
 from django.contrib import messages
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -14,6 +17,7 @@ from .stt import DeepgramTranscriber
 
 
 _active_recordings = {}
+logger = logging.getLogger(__name__)
 
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
@@ -58,24 +62,51 @@ def draft_create(request):
     if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
+        # Reserve this attempt's ID before any write. Provider generation runs
+        # before the insert, and force_insert cannot update an existing draft.
+        draft.pk = ObjectId()
 
         if not draft.title:
             draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
 
         try:
-            with transaction.atomic():
-                draft.save()
-                draft.generate()
-        except (RuntimeError, ValueError) as error:
-            messages.error(request, f"Could not generate the meeting summary: {error}")
+            draft.generate(force_insert=True)
+        except (RuntimeError, ValueError, DatabaseError):
+            if _cleanup_created_draft(draft):
+                message = "The meeting could not be created. No new draft was retained. Please try submitting again."
+            else:
+                message = (
+                    "The meeting could not be created completely. A partial draft may remain. "
+                    "Review Meeting drafts before retrying, or ask an officer for help."
+                )
+            messages.error(request, message)
             return render(
                 request,
                 "meetings/draft_form.html",
                 {"form": form, "heading": "New meeting notes"},
+                status=503,
             )
         messages.success(request, "Meeting submitted for review.")
-        form = MeetingNotesForm(instance=draft)
+        return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+
+
+def _cleanup_created_draft(draft):
+    """Compensate only this new attempt; standalone MongoDB has no rollback."""
+    if draft.created_at is None:
+        # The provider failed before generate() reached its first save.
+        return True
+    try:
+        attempted = MeetingDraft.objects.filter(
+            pk=draft.pk, created_by_id=draft.created_by_id, created_at=draft.created_at,
+        )
+        # Django cascades the attempt's partially created ActionItems as well.
+        attempted.delete()
+        return not attempted.exists()
+    except Exception:
+        # Exception text can contain provider or connection credentials.
+        logger.error("An incomplete meeting creation could not be cleaned up; operator recovery is required.")
+        return False
 
 
 @require_POST
