@@ -107,3 +107,7 @@ quality and handoff records rather than being inferred from generated prose.
 
 The team target is November 1 2026. The course project deadline is November 10
 2026. The earlier November 15 forecast is superseded for this contribution.
+
+## Deployment follow-up, October 25
+
+Codex prepared the separate production configuration, internal SMTP/HTTPS/recovery smoke, and release runbook. Independent Codex agents reviewed release settings, SMTP handling and service prerequisites. Both initial deployment CI workflows passed; 419 primary tests and 430 combined tests passed with two explicit live skips. No new Claude review of these later files is claimed. The user selected the existing team Docker/VM and left live provider settings/checks pending for their owners. See [the executed results and limits](deployment-readiness.md). No real provider call, mail delivery or VM deployment is inferred from synthetic CI.

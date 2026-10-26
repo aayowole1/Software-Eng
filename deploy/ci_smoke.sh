@@ -2,7 +2,9 @@
 # Disposable project, isolated volume/database; never targets an existing stack.
 set -eu
 cd "$(dirname "$0")/.."
-export COMPOSE_PROJECT_NAME=orgflow_deployment_ci
+export COMPOSE_PROJECT_NAME=orgflow_smoke_${GITHUB_RUN_ID:-$$}
+export ORGFLOW_IMAGE_TAG=smoke-${GITHUB_RUN_ID:-$$}
+export ORGFLOW_ENV_FILE=/dev/null
 export ORGFLOW_WEB_PORT=18080
 mkdir -p deploy/ci
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout deploy/ci/key.pem -out deploy/ci/cert.pem -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' 2>/dev/null
@@ -25,10 +27,14 @@ EOF
 export DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(64))')"
 export DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 export MONGODB_NAME=orgflow_deployment_smoke
+export MONGODB_URI=mongodb://mongo:27017
 export DJANGO_EMAIL_POLICY=smtp
 export EMAIL_HOST=smtp
 export EMAIL_PORT=8026
 export EMAIL_USE_TLS=false
+export EMAIL_USE_SSL=false
+export EMAIL_HOST_USER=''
+export EMAIL_HOST_PASSWORD=''
 export DJANGO_ALLOW_INSECURE_SMTP=true
 export DEFAULT_FROM_EMAIL='OrgFlow <smoke@example.invalid>'
 export DJANGO_TRUST_PROXY_HEADERS=true
@@ -37,7 +43,7 @@ export DJANGO_HSTS_PRELOAD=true
 export GOOGLE_CLIENT_ID=''
 export OPENAI_API_KEY=''
 export DEEPGRAM_API_KEY=''
-dc() { docker compose -f compose.production.yml -f deploy/ci-compose.yml "$@"; }
+dc() { docker compose --env-file /dev/null -f compose.production.yml -f deploy/ci-compose.yml "$@"; }
 trap 'dc logs --no-color 2>&1 | python -c '\''import re,sys; print(re.sub(r"/accounts/reset/[^\s\"<>]+", "/accounts/reset/[redacted]", sys.stdin.read()))'\'' > deploy/ci/container-logs.txt; dc down --volumes --remove-orphans' EXIT
 dc build
 dc up -d --wait mongo smtp

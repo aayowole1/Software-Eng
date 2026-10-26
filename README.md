@@ -1,5 +1,8 @@
 # OrgFlow
 
+See the [current deployment checks](docs/deployment-readiness.md) and
+[production release/recovery runbook](docs/deployment-runbook.md) for the November 1 target.
+
 OrgFlow is a Django web application using MongoDB and Docker for a consistent development environment.
 
 This integration preview combines Chau's task-management work (SCRUM-16 / WBS 1.6),
@@ -76,9 +79,9 @@ http://192.168.x.x:8000
 
 ## Docker Services
 
-* `web` — Django application
-* `mongo` — MongoDB database
-* `cleanup` — once an hour, deletes rejected membership applications 7 days after the decision
+* `web` â€” Django application
+* `mongo` â€” MongoDB database
+* `cleanup` â€” once an hour, deletes rejected membership applications 7 days after the decision
 
 Django connects to MongoDB internally using:
 
@@ -117,7 +120,7 @@ Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
 
 ### Joining
 
-Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting requires a reason. The rejected person can then sign in with applicant-only access, see "Not approved" with the officer's reason, and apply again from the same account **1 day** after the decision. Applications are kept with who reviewed them, when, and why (see **Applications → Reviewed**); **rejected applications are deleted 7 days after the decision** by the `cleanup` service (the person's account stays). Without Docker, run `python manage.py purge_rejected_applications` on a schedule instead. Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
+Creating an account is also the membership application: the sign-up form asks "Why do you want to join?". The new account stays switched off until an officer approves the application under **Applications**; approving switches it on and makes the person a member. Until then, signing in shows "Your membership application is still pending". Rejecting requires a reason. The rejected person can then sign in with applicant-only access, see "Not approved" with the officer's reason, and apply again from the same account **1 day** after the decision. Applications are kept with who reviewed them, when, and why (see **Applications â†’ Reviewed**); **rejected applications are deleted 7 days after the decision** by the `cleanup` service (the person's account stays). Without Docker, run `python manage.py purge_rejected_applications` on a schedule instead. Signing up with Google works the same way: Google confirms the email, then the person answers the same question.
 
 The dashboard is public, so anyone can see how to join and the list of committees without signing in.
 
