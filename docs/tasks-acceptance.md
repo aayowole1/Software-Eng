@@ -1,11 +1,13 @@
 # Tasks 1.6 acceptance and local demo guide
 
+Current preparation: see the [contribution report](chau-contribution-report.md), [personal demo script](chau-demo-script.md), [completion checklist](chau-completion-checklist.md) and [deployment record](deployment-readiness.md). The test counts and walkthrough below are the original checkpoint; later named-source results supersede them.
+
 Owner: Chau Minh Viet Nguyen. Prepared October 25, 2026.
 Base: merged main `26b5177`; branch: `chau/tasks-integration`.
 Team target: November 1, 2026. Reported submission deadline: November 10, 2026.
 No actual-hours claim is made by this guide.
 
-## Current evidence
+## Original checkpoint evidence
 
 The main baseline passed **170 tests in 268.454 seconds**. After adding Tasks,
 the targeted command passed **54 tests in 9.100 seconds**: 27 service/form checks,
