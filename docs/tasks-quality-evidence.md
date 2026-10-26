@@ -80,8 +80,32 @@ The seven tests execute the real sidebar script with a small dependency-free DOM
 fixture. They verify closed hidden/inert state, open/focus behavior, Escape,
 close-button focus return, desktop availability and both responsive focus
 transitions. They test state transitions, not browser rendering or assistive
-technology behavior. The root agent should verify the combined preview in its
-own browser session before recording live keyboard results.
+technology behavior. The root agent subsequently performed the separate live
+browser checks recorded below.
+
+## Root-performed live navigation checks
+
+The root agent reported these observations on October 25 against the combined
+preview at `http://127.0.0.1:8017`, using synthetic database
+`orgflow_combined_demo_20261025`. The preview server was restarted so the updated
+template was served. These are the root agent's browser observations, not this
+audit agent's independent browser run or Chau's personal demonstration.
+
+- At a 390 × 844 viewport, the closed drawer's navigation links were absent from
+  the accessibility-tree observation.
+- Enter on Open navigation opened the drawer, moved focus to Close navigation
+  and exposed `aria-expanded="true"`.
+- Escape closed the drawer and returned focus to Open navigation.
+- Tab from the closed Open navigation control reached Skip to content, skipping
+  the hidden navigation links.
+- Returning to the normal 1265-pixel viewport restored desktop navigation after
+  the responsive change settled.
+
+Screenshots retained by the root agent:
+[mobile tasks](evidence/integration-tasks-mobile.jpg) and
+[desktop tasks](evidence/integration-tasks-desktop.jpg). These observations verify
+the stated navigation behavior only; they are not an axe scan, screen-reader
+session or a complete task-form keyboard audit.
 
 ## Authorization and integration traceability
 
@@ -120,13 +144,15 @@ combination or a complete authorization proof.
 - No axe or other accessibility scanner was run. Zero serious/critical findings,
   WCAG conformance, screen-reader behavior and the five-user usability target are
   unverified by this audit.
-- Before recording live keyboard completion, verify Tab/Shift+Tab order and
-  visible focus; Enter/Space on the navigation buttons; Escape/focus return;
-  resize with focus inside the menu; task form/select operation; field errors;
-  assignment loading/retry and status/claim submission. Use synthetic records.
+- The root's navigation checks above do not complete all keyboard acceptance.
+  Remaining checks include Shift+Tab order and visible focus across task forms;
+  Space on the navigation controls; resizing with focus inside the menu; form
+  select/date operation; field errors; assignment loading/retry; and status/claim
+  submission. Use synthetic records.
 - The separate meeting-provider evaluation, deployment, Docker, performance,
   backup/restore and Chau's personal explanation remain outside these results.
 
 No new authorization defect was established by this audit. The consequential
-shared-navigation issue was corrected in the preview and needs the root agent's
-live browser confirmation. No claim of complete project acceptance is made.
+shared-navigation issue was corrected in the preview and received the limited
+root-performed live confirmation above. No claim of complete project acceptance
+is made.
