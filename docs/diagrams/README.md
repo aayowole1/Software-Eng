@@ -14,9 +14,10 @@ The architecture distinguishes Chau's Accounts and Tasks work from shared team
 integration and external provider boundaries. Password, Google, existing-session
 and task eligibility checks block suspension and unfinished membership or
 suspension access updates. Account provisioning has durable attempt records and
-bounded operator repair; it is not a multi-document rollback. Profile role and
-suspension changes have their own versioned histories. This fulfills those local
-Accounts audit paths; it does not establish an organization-wide audit service.
+bounded operator repair; it is not a multi-document rollback. Profiles have role
+history and versioned suspension recovery state. Suspension recovery saves its
+snapshot and restore intent; it does not append a suspension audit history.
+These local Accounts paths do not establish an organization-wide audit service.
 
 Meeting generation stages actions under a fresh token, then publishes the draft
 or conditionally switches its current generation after staging completes.
