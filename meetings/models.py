@@ -70,11 +70,11 @@ class MeetingDraft(models.Model):
     def __str__(self):
         return self.title
 
-    def generate(self):
+    def generate(self, *, force_insert=False):
         """Run the AI over the notes, replacing any earlier summary and items."""
         result = summarize_meeting(self.notes)
         self.summary = result.summary
-        self.save()
+        self.save(force_insert=force_insert)
         self.action_items.all().delete()
         for position, text in enumerate(result.action_items):
             ActionItem.objects.create(draft=self, description=text, position=position)
