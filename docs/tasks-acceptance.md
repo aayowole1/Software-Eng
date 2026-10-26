@@ -14,9 +14,9 @@ checks also passed. These are automated observations, not a claim that Chau has
 personally completed the browser walkthrough below.
 
 The root execution retained baseline/targeted output outside the repository in
-the local `../tmp/orgflow_tasks_runtime/` review cache. The final expanded suite,
-current source revision and any additional evidence should be recorded in
-`docs/tasks-verification.txt` after the remaining UI/integration changes finish.
+the local `../tmp/orgflow_tasks_runtime/` review cache. The final expanded suite passed **254 tests in 267.225 seconds**; the final
+targeted integration run passed **84 tests in 13.081 seconds**. The tested code
+revision and browser observations are in `docs/tasks-verification.txt`.
 Additional account/membership safeguards and a task recovery-state test were
 added after the 54-test run; use the final verification summary for their results
 rather than attributing them to that earlier run.
@@ -72,7 +72,7 @@ The later recovery-state acceptance case constructs an active Member with a
 reviewed application whose `access_update_pending` flag is still true. It checks
 that task visibility, update/claim authority and new assignments are withheld,
 then verifies that finalizing the recorded account update restores normal access,
-claiming and assignment. Its execution result is pending the final integration run.
+claiming and assignment. It passed in both the final targeted and full regression runs.
 
 ## Browser walkthrough to record
 
