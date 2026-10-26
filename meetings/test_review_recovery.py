@@ -172,6 +172,29 @@ class MeetingReviewRecoveryTests(TestCase):
         self.assertFalse(self.draft.review_update_pending)
         self.assertEqual(self.draft.action_items.count(), 2)
 
+    def test_error_after_completion_commits_reports_unknown_outcome_and_does_not_duplicate(self):
+        self.interrupt_review_after_new_item_insert(self.intent())
+        original_update = QuerySet.update
+
+        def complete_then_interrupt(queryset, **fields):
+            result = original_update(queryset, **fields)
+            if queryset.model is MeetingDraft and fields == {"review_update_pending": False}:
+                raise OperationalError("private response details")
+            return result
+
+        self.client.force_login(self.other)
+        with patch.object(QuerySet, "update", complete_then_interrupt):
+            response = self.client.post(reverse("meetings:finish_review", args=[self.draft.pk]))
+        messages = " ".join(str(message) for message in response.wsgi_request._messages)
+        self.assertIn("could not be confirmed complete", messages)
+        self.assertNotIn("private", messages)
+        self.draft.refresh_from_db()
+        self.assertFalse(self.draft.review_update_pending)
+        self.assertEqual(self.draft.action_items.count(), 3)
+        self.assertEqual(self.client.post(reverse("meetings:finish_review", args=[self.draft.pk])).status_code, 302)
+        self.assertEqual(self.draft.action_items.count(), 3)
+        self.assertEqual(len(import_action_items(self.officer, self.draft)["created"]), 2)
+
     def test_unfinished_revision_request_cannot_regenerate_until_action_updates_finish(self):
         with patch.object(ActionItem, "save", side_effect=OperationalError("Synthetic action failure")):
             with self.assertRaises(OperationalError):
