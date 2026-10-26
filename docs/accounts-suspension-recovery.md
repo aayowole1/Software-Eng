@@ -41,8 +41,8 @@ the middle of lifecycle work. New membership reviews wait until that work ends.
 The review's activation intent is persisted before its own flag clears, so a
 later lifecycle retry does not undo a successful approval or rejection completion.
 
-Without such a recorded unfinished review, reinstatement restores saved prior
-activation. A previously active account works even if its application was purged
+Without such a recorded unfinished review or a current Pending application,
+reinstatement restores saved prior activation. A previously active account works even if its application was purged
 or never existed; a deliberately inactive account stays inactive. Pending
 applications are not activated. Unknown legacy snapshots preserve the currently
 saved activation rather than guessing from old reviews or missing records.
@@ -67,6 +67,12 @@ the winner's snapshot/state, marks access pending, and requires a fresh completi
 Conflicting duplicate membership states are not silently discarded. Legacy
 unknown inactive accounts need an authorized data owner to establish intended
 activation; they are not automatically enabled.
+
+Current policy also keeps a reapplicant inactive while a new application is
+Pending, even if that Applicant was active after a previous rejection before
+suspension. Officer review resolves access. Claude's final static review treated
+this as a low, nonblocking fail-closed policy observation. The team must confirm
+the rule or explicitly assign a change; this document does not change code.
 
 ## Orphan signup recovery boundary
 
@@ -107,11 +113,30 @@ writes, retry intent, stale forms, unknown legacy migration, and independent
 role-history updates. A second agent reviewed the changed lifecycle and
 membership source read-only; both reported race cases were corrected and tested.
 
-System checks and diff whitespace checks passed. Global migration-drift and
-full-suite/coverage results should be recorded after the separate signup-attempt
-model/import and migration are integrated. Earlier 287-test functional validation
-(89.754s) preceded the final review/lifecycle token coordination and is not a
-final full-suite claim for this commit. Logs are retained outside the repository
+System, migration and diff checks passed. Final primary regression at `bf6ad6d`
+(application source `8c58a07`) passed **404 tests in 112.265s**, with no skips:
+[complete primary log](evidence/final-primary-tests.txt). Final combined source
+`812d9e6` collected **417 tests: 415 passed and two live Deepgram checks were
+skipped, in 207.778s**: [complete combined log](evidence/final-combined-tests.txt).
+Measured Accounts/Tasks coverage was **1313/1377 statements = 95.35%** and
+**376/414 branches = 90.82%**, including custom admin/management commands and
+excluding tests, migrations, initializers, app configuration and testing helpers;
+see [exact totals](evidence/final-coverage-totals.json) and
+[source equivalence](evidence/source-equivalence.txt). This is a combined
+measurement of shared implementation, not whole-project or separately measured
+primary coverage.
+
+Source-equivalent primary [CI run 40264373871](https://github.com/aayowole1/Software-Eng/actions/runs/40264373871)
+at `166c805` and combined [CI run 40264374535](https://github.com/aayowole1/Software-Eng/actions/runs/40264374535)
+at `3e53ed9` passed. The [final Claude receipt](evidence/claude-final-review.txt)
+is static source review, with no tests executed by Claude. The
+[current resolution](chau-claude-review.md) records its precise scope, low
+observations and remaining human/team/provider gates. Later documentation-only
+CI is tracked on the PRs rather than predicted here.
+
+Earlier 287-test functional validation (89.754s) preceded the final
+review/lifecycle token coordination and remains intermediate evidence. Original
+focused logs are retained outside the repository
 in `../tmp/orgflow_claude_review_20261025/`, including
 `suspension-before-tests.txt`, `suspension-final-tests.txt`, and
 `suspension-integrated-tests.txt`.

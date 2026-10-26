@@ -6,7 +6,8 @@ needed to use it with existing Accounts, Membership, Committees and Meetings.
 
 This is the original implementation checkpoint, verified at `638123e` and
 reviewed through PR #12. Later October 25 Claude-review fixes, final local
-regression/coverage and remaining external gates are tracked in
+regression/coverage, named CI and static-review receipts, and remaining
+human/team/provider gates are tracked in
 [the current review resolution](chau-claude-review.md).
 The branch/base and integration contract below describe this original snapshot.
 
