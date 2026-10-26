@@ -229,3 +229,7 @@ class GoogleIdentity(models.Model):
 
     def __str__(self):
         return f"Google identity for {self.user}"
+
+
+# Register the pre-User provisioning journal alongside the account models.
+from .signup_attempts import SignupAttempt  # noqa: E402,F401

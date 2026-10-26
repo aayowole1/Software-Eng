@@ -5,7 +5,7 @@ from django.contrib.auth.views import LoginView
 from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from .forms import PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
+from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
 
 from .decorators import role_required
@@ -24,10 +24,9 @@ def register(request):
     if request.method == "POST" and form.is_valid():
         try:
             user = form.save()
-        except IntegrityError:
-            # A username can be claimed after form validation but before save.
-            # Email/case-folded uniqueness still needs a separate schema change.
-            form.add_error(None, "Account creation could not be completed. Try a different username or sign in.")
+        except (IntegrityError, PasswordSignupConflictError):
+            # Database identity indexes can reject a race after form validation.
+            form.add_error(None, "Account creation could not be completed. Try a different username or email, or sign in.")
         except PasswordSignupRetryError as error:
             form.add_error(None, str(error))
             response_status = 503

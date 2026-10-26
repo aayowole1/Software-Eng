@@ -1,0 +1,43 @@
+Signup attempt crash recovery — October 25, 2026 (America/Chicago)
+Source: implementation in the same commit as this evidence record.
+Parent source before this change: 9a38735; new accounts migration0008 depends on
+0007_suspension_activation_snapshot. No team/production/demo database migrated.
+
+Environment:
+  Existing OrgFlow-Chau virtualenv; application dependencies/settings unchanged.
+  Standalone MongoDB localhost:27029; disposable test_orgflow_signup_attempt_review.
+  MD5 password hasher override in test process only.
+  GOOGLE_CLIENT_ID, OPENAI_API_KEY and DEEPGRAM_API_KEY explicitly empty.
+
+Final targeted labels:
+  accounts.test_signup_attempt_recovery                       23
+  accounts.test_password_signup_recovery                      9
+  accounts.test_account_safety.RegistrationConflictTests      1
+  accounts.test_identifier_uniqueness                        12
+
+Observed final output:
+  Ran 45 tests in 14.865s
+  OK
+  System check identified no issues (0 silenced).
+  makemigrations --check --dry-run: No changes detected.
+  git diff --check: no errors.
+
+Meaningful cases include abrupt process exits before local application insert,
+Google profile signal and after GoogleIdentity insert; journal-before-User
+failure; failed cleanup with an opaque operator reference; repeat/parallel repair;
+profile/link/application/completion-stamp failures; original application timestamp
+preservation; original Google subject preservation; never-used inactive Applicant
+boundary; active/staff/superuser/role/history/suspension/past-login refusal;
+group/permissions/domain records; conflicting or reviewed applications; no
+email auto-link; unmarked/missing/compensated records; dry-run immutability and
+maintenance confirmation; no password/token journal fields; real username/email
+index races retain neutral conflict feedback and do not remove the winner.
+
+Raw final output retained outside the repository at:
+C:/Users/chaun/Desktop/UTA/CSE6324-Advanced_Topic_SWE/tmp/orgflow_tasks_runtime/signup-final-targeted.txt
+
+Earlier Accounts regression (before the final three refinements):
+  Ran 212 tests in 53.235s; OK.
+  Raw: tmp/orgflow_tasks_runtime/signup-recovery-accounts.txt in workspace.
+This is intermediate evidence, not a claim that final whole-system regression,
+CI, live providers, deployment, peer approval or performance gates were executed.
