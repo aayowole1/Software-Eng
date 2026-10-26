@@ -244,10 +244,12 @@ class TaskServiceTests(TestCase):
             self.committee.delete()
         self.assertTrue(Task.objects.filter(pk=task.pk).exists())
 
-    def approved_draft(self):
+    def approved_draft(self, *, description="Prepare the exhibition", extra_actions=()):
         draft = MeetingDraft.objects.create(title="Weekly meeting", notes="Reviewed notes", created_by=self.officer)
-        accepted = ActionItem.objects.create(draft=draft, description="Prepare the exhibition", accepted=True)
+        accepted = ActionItem.objects.create(draft=draft, description=description, accepted=True)
         ActionItem.objects.create(draft=draft, description="Not accepted", accepted=False, position=1)
+        for position, text in enumerate(extra_actions, start=2):
+            ActionItem.objects.create(draft=draft, description=text, accepted=True, position=position)
         draft.review(self.officer, DraftStatus.APPROVED)
         return draft, accepted
 
@@ -283,16 +285,14 @@ class TaskServiceTests(TestCase):
         self.assertEqual(Task.objects.count(), 1)
 
     def test_import_preserves_full_description_while_limiting_title(self):
-        draft, item = self.approved_draft()
-        item.description = "A" * 450
-        item.save()
+        draft, item = self.approved_draft(description="A" * 450)
         task = import_action_items(self.officer, draft)["created"][0]
         self.assertEqual(len(task.title), 200)
         self.assertEqual(task.description, "A" * 450)
 
     def test_import_resumes_after_partial_batch_and_source_deletion_preserves_task(self):
-        draft, first_item = self.approved_draft()
-        second_item = ActionItem.objects.create(draft=draft, description="Second accepted item", position=2)
+        draft, first_item = self.approved_draft(extra_actions=("Second accepted item",))
+        second_item = draft.action_items.get(description="Second accepted item")
         import tasks.services as services
         original_create = services._create
 

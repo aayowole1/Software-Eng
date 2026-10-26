@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import role_required
 from accounts.models import Role
 
-from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft
+from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft, MeetingReviewConflict
 from .stt import DeepgramTranscriber
 
 
@@ -153,8 +153,9 @@ def draft_detail(request, pk):
             "draft": draft,
             "items": draft.action_items.all(),
             "review_form": ReviewForm(),
-            "can_review": draft.status == DraftStatus.PENDING_REVIEW,
-            "can_revise": draft.status == DraftStatus.REVISION_REQUESTED,
+            "can_review": draft.status == DraftStatus.PENDING_REVIEW and not draft.review_update_pending,
+            "can_revise": draft.status == DraftStatus.REVISION_REQUESTED and not draft.review_update_pending,
+            "can_finish_review": draft.review_update_pending,
         },
     )
 
@@ -172,25 +173,54 @@ def draft_review(request, pk):
         messages.error(request, "Choose a valid decision.")
         return redirect("meetings:detail", pk=draft.pk)
 
+    item_intent = []
     for item in draft.action_items.all():
         text = request.POST.get(f"item-{item.pk}-description", item.description).strip()
-        item.accepted = bool(text) and request.POST.get(f"item-{item.pk}-accepted") == "on"
-        item.description = text or item.description
-        item.save()
-    next_position = draft.action_items.count()
-    for offset, line in enumerate(l.strip() for l in form.cleaned_data["new_items"].splitlines() if l.strip()):
-        ActionItem.objects.create(draft=draft, description=line, position=next_position + offset)
+        item_intent.append({
+            "id": str(item.pk), "description": text or item.description,
+            "accepted": bool(text) and request.POST.get(f"item-{item.pk}-accepted") == "on",
+        })
+    for line in (line.strip() for line in form.cleaned_data["new_items"].splitlines() if line.strip()):
+        item_intent.append({"id": str(ObjectId()), "description": line, "accepted": True})
 
     try:
-        draft.review(request.user, form.cleaned_data["decision"], form.cleaned_data["note"])
-    except ValueError:
+        draft.review(
+            request.user, form.cleaned_data["decision"], form.cleaned_data["note"],
+            item_intent=item_intent,
+        )
+    except MeetingReviewConflict:
         messages.error(
             request,
             "The meeting status changed during review. Reload the draft before trying again. "
-            "Action-item edits may already have been saved.",
+            "No action-item changes from this review were saved.",
+        )
+        return redirect("meetings:detail", pk=draft.pk)
+    except ValueError as error:
+        messages.error(request, str(error))
+        return redirect("meetings:detail", pk=draft.pk)
+    except DatabaseError:
+        messages.error(
+            request,
+            "The review could not be completed. Reload the draft and use Finish review "
+            "if action updates are unfinished. Task conversion stays unavailable until they finish.",
         )
         return redirect("meetings:detail", pk=draft.pk)
     messages.success(request, f"Draft marked {draft.get_status_display().lower()}.")
+    return redirect("meetings:detail", pk=draft.pk)
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def draft_finish_review(request, pk):
+    draft = get_object_or_404(MeetingDraft, pk=pk)
+    try:
+        draft.complete_review_update()
+    except ValueError as error:
+        messages.error(request, str(error))
+    except DatabaseError:
+        messages.error(request, "The saved review still has unfinished action updates. Please retry Finish review later.")
+    else:
+        messages.success(request, "The saved review's action updates are complete.")
     return redirect("meetings:detail", pk=draft.pk)
 
 
@@ -199,6 +229,9 @@ def draft_revise(request, pk):
     draft = get_object_or_404(MeetingDraft, pk=pk)
     if draft.status != DraftStatus.REVISION_REQUESTED:
         messages.error(request, "Only drafts with a revision request can be revised.")
+        return redirect("meetings:detail", pk=draft.pk)
+    if draft.review_update_pending:
+        messages.error(request, "Finish the recorded action-item review before revising notes.")
         return redirect("meetings:detail", pk=draft.pk)
     form = MeetingNotesForm(request.POST or None, instance=draft)
     if request.method == "POST" and form.is_valid():
