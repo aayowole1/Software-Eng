@@ -2,8 +2,9 @@
 
 OrgFlow is a Django web application using MongoDB and Docker for a consistent development environment.
 
-This branch adds Chau's task-management work (SCRUM-16 / WBS 1.6) on top of
-the team's merged membership and account safeguards at `26b5177`.
+This integration preview combines Chau's task-management work (SCRUM-16 / WBS 1.6),
+Ayomide's events and attendance branch, and Jack's meeting recording branch on top
+of the team's merged membership and account safeguards at `26b5177`.
 See the [task review and user guide](docs/tasks-checkpoint.md),
 [acceptance checklist](docs/tasks-acceptance.md), and
 [AI assistance record](docs/tasks-ai-use.md).
@@ -31,7 +32,7 @@ cd Software-Eng
 
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
-Build and start the containers:
+Build and start the containers (takes approx. 157 seconds):
 
 ```bash
 docker compose up -d --build
@@ -159,7 +160,13 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
 
-`meetings/ai.py` is a **rule-based placeholder**: lines starting with `Action:`, `TODO:` or `- [ ]` become proposed action items, and the first few sentences become the summary. Replace `summarize_meeting()` with a real model call (keep the same return type) and evaluate it with DeepEval. After approving a draft, an officer can choose **Create tasks from accepted action items**, review the assignment defaults, and confirm. Only accepted items are copied. Repeating the conversion preserves existing tasks and creates no duplicates. Original meeting notes remain officer-only.
+Jack's `meetings/ai.py` calls OpenAI for a summary and proposed action items when
+`OPENAI_API_KEY` is configured. This preview preserves that provider implementation;
+live provider behavior has not been verified by the local integration checks.
+After approving a draft, an officer can choose **Create tasks from accepted action
+items**, review the assignment defaults, and confirm. Only accepted items are copied.
+Repeating the conversion preserves existing tasks and creates no duplicates.
+Original meeting notes remain officer-only.
 
 ### Tasks and committee work
 
@@ -180,13 +187,48 @@ overdue when its due date is before today and it is not Done. A committee with
 tasks cannot be deleted until those tasks are moved or their committee is cleared;
 its roster and task history remain intact if deletion is blocked.
 
+Meeting recording sends 16 kHz mono PCM chunks from the browser to Django.
+Jack's implementation buffers them in a temporary server-side PCM file, sends
+the file to Deepgram when recording is finalized, and removes the file after
+transcription or an explicit discard. The returned text can include speaker
+labels. This preview does not verify live transcription or abandoned-recording
+cleanup.
+
+Set `DEEPGRAM_API_KEY` in `.env` before starting Docker:
+
+```bash
+DEEPGRAM_API_KEY=your-key-here
+docker compose up -d --build
+```
+
+The API key remains on the server and is never sent to the browser. Review
+Deepgram's current data-retention and processing terms before sending
+sensitive meeting audio.
+
+The opt-in Deepgram quality tests measure word error rate (WER) and character
+error rate (CER) against the meeting fixtures:
+
+```bash
+DEEPGRAM_API_KEY=your-key-here docker compose exec web \
+  python manage.py test meetings.tests.test_stt_deepgram -v 2
+```
+
+The tests cover [single_speaker.wav](meetings/testdata/single_speaker.wav)
+against its text reference and
+[multi_speakers.wav](meetings/testdata/multi_speakers.wav) against the
+structured reference in `multi_speakers.jsonl`. They are skipped when
+`DEEPGRAM_API_KEY` is absent. Speaker labels are removed before WER/CER
+calculation because these metrics evaluate transcription text, not diarization
+accuracy. The current acceptance thresholds are 35% WER and 25% CER.
+
 ### Not yet implemented
 
 On this integration preview, announcements and resources (1.7) and reports (1.8)
 remain separate team work. Task change history is included;
-an organization-wide audit system remains separate. The meeting summarizer remains
-rule based. Existing local Google checks are recorded in the Accounts checkpoint;
-a fresh deployment needs its own Google client configuration and live check.
+an organization-wide audit system remains separate. Live OpenAI summarization and
+Deepgram transcription still need configured credentials and provider checks.
+Existing local Google checks are recorded in the Accounts checkpoint; a fresh
+deployment needs its own Google client configuration and live check.
 
 ## Running Tests
 

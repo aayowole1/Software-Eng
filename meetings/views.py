@@ -1,12 +1,19 @@
 from django import forms
 from django.contrib import messages
+from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required
 from accounts.models import Role
 
 from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft
+from .stt import DeepgramTranscriber
+
+
+_active_recordings = {}
 
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
@@ -20,7 +27,10 @@ class MeetingNotesForm(forms.ModelForm):
         help_texts = {
             "notes": 'Put action items on their own line starting with "Action:", "TODO:" or "- [ ]".',
         }
-        widgets = {"notes": forms.Textarea(attrs={"rows": 12})}
+        widgets = {
+            "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
+            "notes": forms.HiddenInput(),
+        }
 
 
 class ReviewForm(forms.Form):
@@ -48,11 +58,58 @@ def draft_create(request):
     if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
-        draft.save()
-        draft.generate()
-        messages.success(request, "AI draft generated. Review it before anything is saved as a task.")
-        return redirect("meetings:detail", pk=draft.pk)
+
+        if not draft.title:
+            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
+
+        try:
+            with transaction.atomic():
+                draft.save()
+                draft.generate()
+        except (RuntimeError, ValueError) as error:
+            messages.error(request, f"Could not generate the meeting summary: {error}")
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": "New meeting notes"},
+            )
+        messages.success(request, "Meeting submitted for review.")
+        form = MeetingNotesForm(instance=draft)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def transcribe_chunk(request):
+    """Accept one browser PCM chunk and return the current transcript."""
+    recording_id = request.headers.get("X-Recording-ID", "").strip()
+    if not recording_id or len(recording_id) > 64:
+        return JsonResponse({"error": "A valid recording ID is required."}, status=400)
+
+    key = (request.user.pk, recording_id)
+    transcriber = _active_recordings.get(key)
+    if transcriber is None:
+        try:
+            transcriber = DeepgramTranscriber()
+        except (FileNotFoundError, ImportError, OSError, RuntimeError) as error:
+            return JsonResponse({"error": str(error)}, status=503)
+        _active_recordings[key] = transcriber
+
+    try:
+        transcript = (
+            transcriber.add_pcm(request.body)
+            if request.body
+            else transcriber.current_result()
+        )
+        if request.headers.get("X-Recording-Final") == "true":
+            transcript = transcriber.finish()
+            _active_recordings.pop(key, None)
+    except (OSError, ValueError, RuntimeError) as error:
+        transcriber.discard()
+        _active_recordings.pop(key, None)
+        return JsonResponse({"error": str(error)}, status=400)
+
+    return JsonResponse({"transcript": transcript})
 
 
 @role_required(Role.OFFICER)
@@ -107,7 +164,16 @@ def draft_revise(request, pk):
     form = MeetingNotesForm(request.POST or None, instance=draft)
     if request.method == "POST" and form.is_valid():
         draft.title = form.cleaned_data["title"]
-        draft.revise(form.cleaned_data["notes"])
+        try:
+            with transaction.atomic():
+                draft.revise(form.cleaned_data["notes"])
+        except (RuntimeError, ValueError) as error:
+            messages.error(request, f"Could not generate the meeting summary: {error}")
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": f"Revise “{draft.title}”"},
+            )
         messages.success(request, "Notes revised and AI draft regenerated.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": f"Revise “{draft.title}”"})

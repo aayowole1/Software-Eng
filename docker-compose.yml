@@ -30,12 +30,14 @@ services:
 
     volumes:
       - .:/app
+      - ./models:/app/models:ro
 
     ports:
       - "8000:8000"
 
     environment:
       MONGODB_URI: mongodb://mongo:27017
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
 
     depends_on:
       mongo:
@@ -60,7 +62,5 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-
-
 volumes:
   orgflow_mongo_data:

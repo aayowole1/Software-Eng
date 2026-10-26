@@ -1,0 +1,47 @@
+.meeting-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.meeting-fields > p {
+    margin: 0;
+}
+
+.meeting-transcript {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #dddddd !important;
+    color: #000000;
+    cursor: not-allowed;
+    border: 1px solid #ccc;
+    box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    resize: none;
+    white-space: pre-wrap;
+}
+
+.meeting-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.meeting-recording-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.stop-meeting {
+    background-color: #b42318;
+    border-color: #b42318;
+    color: #fff;
+}
+
+.stop-meeting:hover {
+    background-color: #8f1d14;
+    border-color: #8f1d14;
+}
