@@ -1,0 +1,36 @@
+{
+  "base_url": "http://127.0.0.1:8017",
+  "database": "orgflow_combined_demo_20261025",
+  "all_data_synthetic": true,
+  "live_provider_calls": 0,
+  "human_rehearsal_completed": false,
+  "claim_task": {
+    "id": "6aded76349a73f0c0c6701f8",
+    "title": "Rehearsal claim task",
+    "url": "http://127.0.0.1:8017/tasks/6aded76349a73f0c0c6701f8/"
+  },
+  "pending_meeting": {
+    "id": "6aded76349a73f0c0c6701f9",
+    "title": "Offline rehearsal meeting fixture",
+    "url": "http://127.0.0.1:8017/meetings/6aded76349a73f0c0c6701f9/",
+    "keep": "Prepare the rehearsal checklist",
+    "untick": "Order unrequested equipment"
+  },
+  "forbidden_example": "http://127.0.0.1:8017/tasks/6adea2d3fae3ac638d68e595/",
+  "accounts": [
+    {
+      "username": "task_demo_officer",
+      "role": "officer"
+    },
+    {
+      "username": "task_demo_member",
+      "role": "member",
+      "committee": "Outreach"
+    },
+    {
+      "username": "task_demo_finance",
+      "role": "member",
+      "committee": "Finance"
+    }
+  ]
+}

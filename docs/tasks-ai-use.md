@@ -111,3 +111,7 @@ The team target is November 1 2026. The course project deadline is November 10
 ## Deployment follow-up, October 25
 
 Codex prepared the separate production configuration, internal SMTP/HTTPS/recovery smoke, and release runbook. Independent Codex agents reviewed release settings, SMTP handling and service prerequisites. Both initial deployment CI workflows passed; 419 primary tests and 430 combined tests passed with two explicit live skips. No new Claude review of these later files is claimed. The user selected the existing team Docker/VM and left live provider settings/checks pending for their owners. See [the executed results and limits](deployment-readiness.md). No real provider call, mail delivery or VM deployment is inferred from synthetic CI.
+
+## Contribution report and rehearsal preparation
+
+Codex prepared an editable individual contribution report and an 8 to 10 minute personal demo script. Independent agents fact-checked ownership, test/coverage scope, actual UI labels, role-switching and conflict recovery. Corrections use the real Assign to me button and Cancel after a stale POST rather than refreshing it. Ten document pages were rendered for visual review. Fresh synthetic claim/pending-meeting fixtures and seven rendered HTTP prerequisite checks support the rehearsal without external provider calls. Personal rehearsal, actual effort, human acceptance and owner live-service checks remain uncompleted unless separately recorded.

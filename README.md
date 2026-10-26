@@ -1,5 +1,7 @@
 # OrgFlow
 
+Chau preparation: [contribution report](docs/chau-contribution-report.md), [demo script](docs/chau-demo-script.md) and [completion checklist](docs/chau-completion-checklist.md).
+
 See the [current deployment checks](docs/deployment-readiness.md) and
 [production release/recovery runbook](docs/deployment-runbook.md) for the November 1 target.
 
