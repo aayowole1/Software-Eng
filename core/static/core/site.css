@@ -30,7 +30,7 @@ select:focus-visible, textarea:focus-visible {
 }
 
 .skip-link { position: absolute; left: -999px; }
-.skip-link:focus { left: 16px; top: 8px; background: var(--surface); padding: 8px; }
+.skip-link:focus { left: 16px; top: 8px; z-index: 1000; background: var(--surface); padding: 8px; }
 
 .site-header {
   display: flex;

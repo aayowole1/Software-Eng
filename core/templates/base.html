@@ -42,7 +42,7 @@
       font-size: 0.875rem;
       font-weight: 600;
       text-transform: uppercase;
-      color: #6c757d;
+      color: var(--muted);
       margin-bottom: 0.5rem;
     }
     .sidebar-group ul {
@@ -84,6 +84,10 @@
   </style>
 </head>
 <body>
+  <header aria-label="Page controls">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <button type="button" class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
+  </header>
   <nav class="sidebar" id="sidebar" aria-label="Main">
     <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Close navigation" aria-controls="sidebar" aria-expanded="false">×</button>
     <div class="sidebar-content">
@@ -159,10 +163,7 @@
   </nav>
 
   <div class="main-content">
-    <button type="button" class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
-    <a class="skip-link" href="#main">Skip to content</a>
-
-    <main id="main">
+    <main id="main" tabindex="-1">
       {% if messages %}
         <ul class="messages" role="status">
           {% for message in messages %}
