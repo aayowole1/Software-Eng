@@ -33,3 +33,28 @@ jobs:
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py test --verbosity 2 --noinput
+
+  deployment-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Disposable production container, HTTPS, email and recovery checks
+        run: sh deploy/ci_smoke.sh
+      - name: Preserve sanitized deployment receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-smoke-evidence
+          path: |
+            deploy/ci/https-*.json
+            deploy/ci/smtp-result.json
+            deploy/ci/readiness.txt
+            deploy/ci/image-safety.txt
+            deploy/ci/backup.txt
+            deploy/ci/restore-data.txt
+            deploy/ci/container-logs.txt
+          if-no-files-found: warn

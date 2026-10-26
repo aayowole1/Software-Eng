@@ -10,6 +10,10 @@ venv/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+!.env.production.example
+deploy/ci/
 
 # Django
 *.log
@@ -34,3 +38,7 @@ Thumbs.db
 
 # Docker
 *.pid
+.aider*
+
+# ML Models
+models/

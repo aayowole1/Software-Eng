@@ -1,0 +1,27 @@
+# Disposable CI overrides. Never use the capture server for real email.
+services:
+  web:
+    environment:
+      EMAIL_HOST: smtp
+      EMAIL_PORT: '8026'
+      EMAIL_USE_TLS: 'false'
+      DJANGO_ALLOW_INSECURE_SMTP: 'true'
+      DJANGO_TRUST_PROXY_HEADERS: 'true'
+  proxy:
+    image: nginx:1.28-alpine
+    ports:
+      - '127.0.0.1:18443:443'
+    volumes:
+      - ./deploy/ci/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/ci/cert.pem:/etc/nginx/test-cert.pem:ro
+      - ./deploy/ci/key.pem:/etc/nginx/test-key.pem:ro
+    depends_on:
+      web:
+        condition: service_healthy
+  smtp:
+    image: python:3.12-slim
+    command: ['python', '/smtp_capture.py']
+    volumes:
+      - ./deploy/smtp_capture.py:/smtp_capture.py:ro
+    ports:
+      - '127.0.0.1:18025:8025'
