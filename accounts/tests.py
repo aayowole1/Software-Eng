@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -202,10 +203,11 @@ class LoginTests(TestCase):
         User.objects.create_superuser("aayowole1", "mide@example.com", PASSWORD)
         self.assertFalse(self.login("aayowole1", "wrong-password"))
 
-    def test_email_shared_by_two_accounts_is_ambiguous(self):
+    def test_database_rejects_a_second_account_with_the_same_email(self):
         User.objects.create_user("first", "shared@example.com", PASSWORD)
-        User.objects.create_user("second", "shared@example.com", PASSWORD)
-        self.assertFalse(self.login("shared@example.com"))
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user("second", "shared@example.com", PASSWORD)
+        self.assertTrue(self.login("shared@example.com"))
         self.assertTrue(self.login("first"))
 
     def test_inactive_user_rejected(self):
