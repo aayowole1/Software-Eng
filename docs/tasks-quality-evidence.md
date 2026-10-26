@@ -100,11 +100,20 @@ audit agent's independent browser run or Chau's personal demonstration.
   the hidden navigation links.
 - Returning to the normal 1265-pixel viewport restored desktop navigation after
   the responsive change settled.
+- In an additional mobile check, Space opened and closed navigation with the
+  expected focus. With the drawer open, Tab reached the brand link; resizing to
+  1024 pixels retained focus on that link. Resizing back to 390 pixels closed the
+  drawer and returned focus to Open navigation.
+- On an existing assigned task, ArrowDown changed the Status selection from
+  To do to In progress. Tab reached Save status; Shift+Tab returned to Status.
+  Enter on Save status produced success feedback and a persisted Updated history
+  entry attributed to synthetic member `task_demo_member`.
 
 Screenshots retained by the root agent:
 [mobile tasks](evidence/integration-tasks-mobile.jpg) and
-[desktop tasks](evidence/integration-tasks-desktop.jpg). These observations verify
-the stated navigation behavior only; they are not an axe scan, screen-reader
+[desktop tasks](evidence/integration-tasks-desktop.jpg), plus
+[updated task history](evidence/integration-task-history.jpg). These observations verify
+the stated navigation and status behavior only; they are not an axe scan, screen-reader
 session or a complete task-form keyboard audit.
 
 ## Authorization and integration traceability
@@ -135,20 +144,74 @@ The table demonstrates positive officer/member workflows and meaningful forbidde
 paths. It does not establish every possible role × endpoint × object-state
 combination or a complete authorization proof.
 
+## Measured statement and branch coverage
+
+Coverage.py **7.17.0** was installed into the separate workspace tool directory
+`tmp/orgflow_tasks_runtime/coverage-deps`. The shared virtual environment,
+repository dependency files and application settings were unchanged. Measurement
+started before Django setup and covered the application Python modules in
+`accounts` and `tasks`. Tests, migrations, package initializers, app/admin
+registration and the test helper were excluded. HTML, CSS and JavaScript are not
+included in these Python percentages.
+
+The initial focused run passed all **84 tests in 22.161 seconds**. Its combined
+Accounts/Tasks branch result was 169/260, or 65.00%. That run intentionally omitted
+the ordinary Accounts/Google test modules, so it was not used as a full-suite
+coverage gate. The existing full combined suite was then measured once, without
+adding tests to pursue a percentage.
+
+The full measurement at revision **`8e2f7348bf4cfb4665b77093d70f5be3da371dcc`**
+collected **267 tests: 265 passed and two live Deepgram checks were skipped**,
+in **59.940 seconds**. It used standalone MongoDB at localhost:27029 and distinct
+disposable database `test_orgflow_chau_full_branch_coverage`. Provider keys were
+explicitly empty; the fast MD5 password hasher was overridden only in the test
+process. This run also covered the preview's updated template through HTTP tests.
+
+| Instrumented scope | Executed statements / total | Statement coverage | Executed branch destinations / total | Branch coverage |
+| --- | ---: | ---: | ---: | ---: |
+| Accounts | 457 / 478 | 95.61% | 109 / 124 | 87.90% |
+| Tasks | 453 / 484 | 93.60% | 117 / 136 | 86.03% |
+| Combined Accounts and Tasks | 910 / 962 | 94.59% | 226 / 260 | 86.92% |
+
+Coverage.py's combined statement-plus-branch percentage was **92.96%**; its
+default rounded `Cover` column shows 93%. That is distinct from the explicitly
+calculated **86.92% branch coverage** above. Thirty-four branch destinations and
+52 statements in this scope remained unexecuted.
+
+Remaining paths include certain account input/administrative fallbacks,
+post-validation task error feedback, unsupported service-field rejection and the
+concurrent import uniqueness-collision handler. The JSON retains exact missing
+line and branch pairs. The successful sequential import retry tests do not prove
+that every concurrent collision path was exercised.
+
+Both measured packages exceed 80% branch coverage in this run. This substantiates
+that threshold for the stated Accounts/Tasks scope, **not** the earlier proposal's
+whole-system criterion spanning membership, RSVP and AI-approval logic. Those
+other packages were exercised by tests but were not instrumented for this report.
+Passing tests and coverage percentages do not prove absence of defects.
+
+Local raw artifacts, outside the repository and therefore absent from a fresh
+clone, are retained under `tmp/orgflow_tasks_runtime/`:
+
+- `coverage-full267-raw.txt`: raw full-suite result and aggregate totals.
+- `coverage-full267-summary.txt`: per-module summary and missing line ranges.
+- `coverage-full267.json`: detailed statement and branch data.
+- `coverage-full267-totals.json` and `.coverage-full267`: aggregate/data files.
+- Corresponding `coverage-focused84*` files preserve the intermediate run.
+- `run_focused_branch_coverage.py --full` reproduces the full measurement using
+  the isolated coverage and existing preview dependency targets.
+
 ## Limits and remaining acceptance evidence
 
-- `pip show coverage` reported that the package is absent from the shared virtual
-  environment. No dependency was installed and no fresh branch-coverage percentage
-  is claimed. Test counts cannot substantiate the earlier XP draft's 80% branch
-  coverage target if the team retains that criterion.
+- Python coverage is now measured as above. Browser-side coverage and the
+  whole-system branch-coverage criterion remain outside this source scope.
 - No axe or other accessibility scanner was run. Zero serious/critical findings,
   WCAG conformance, screen-reader behavior and the five-user usability target are
   unverified by this audit.
-- The root's navigation checks above do not complete all keyboard acceptance.
-  Remaining checks include Shift+Tab order and visible focus across task forms;
-  Space on the navigation controls; resizing with focus inside the menu; form
-  select/date operation; field errors; assignment loading/retry; and status/claim
-  submission. Use synthetic records.
+- The root's navigation and status checks above do not complete all keyboard
+  acceptance. Remaining checks include full creation/edit/import form order and
+  operation, date input, field errors, assignment loading/retry and keyboard
+  claim submission. Use synthetic records.
 - The separate meeting-provider evaluation, deployment, Docker, performance,
   backup/restore and Chau's personal explanation remain outside these results.
 
