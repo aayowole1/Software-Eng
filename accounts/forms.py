@@ -143,6 +143,7 @@ class RoleForm(forms.Form):
 
 
 class SuspensionForm(forms.Form):
+    version = forms.IntegerField(min_value=0, required=False, widget=forms.HiddenInput)
     action = forms.ChoiceField(
         choices=[
             ("suspend", "Suspend"),

@@ -27,6 +27,17 @@ REAPPLY_WAIT = timedelta(days=1)
 REJECTED_RETENTION = timedelta(days=7)
 
 
+def _check_suspension_completion(profile, suspension_version):
+    """Only the current reinstatement may finish review access in its phase."""
+    if suspension_version is not None and (type(suspension_version) is not int or suspension_version < 0):
+        raise ValueError("Invalid suspension completion version.")
+    if profile.suspension_update_pending:
+        if suspension_version is None or suspension_version != profile.suspension_version:
+            raise ValueError("This account has an unfinished suspension update. An administrator must finish it first.")
+    elif suspension_version is not None:
+        raise ValueError("The account's suspension update changed; review access remains pending.")
+
+
 class ApplicationStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     APPROVED = "approved", "Approved"
@@ -96,6 +107,8 @@ class MembershipApplication(models.Model):
             raise ValueError(
                 "This account is administratively suspended and cannot be reviewed."
             )
+        if profile.suspension_update_pending:
+            raise ValueError("This account has an unfinished suspension update and cannot be reviewed yet.")
 
         # Validate the rejection reason.
         note = (note or "").strip()
@@ -125,7 +138,7 @@ class MembershipApplication(models.Model):
         self.refresh_from_db()
         self.complete_access_update()
 
-    def complete_access_update(self):
+    def complete_access_update(self, *, suspension_version=None):
         """Finish only a recorded, explicitly unfinished review's access work.
 
         This retry preserves the original decision, reviewer, note and date.
@@ -141,6 +154,7 @@ class MembershipApplication(models.Model):
             raise ValueError("This account needs a valid profile before access can be updated.")
         if profile.is_suspended:
             raise ValueError("This account is administratively suspended and cannot be activated.")
+        _check_suspension_completion(profile, suspension_version)
         if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
             raise ValueError(
                 "The rejection is recorded, but this account has an elevated role. "
@@ -161,6 +175,7 @@ class MembershipApplication(models.Model):
         profile.refresh_from_db()
         if profile.is_suspended:
             raise ValueError("This account is administratively suspended and cannot be activated.")
+        _check_suspension_completion(profile, suspension_version)
         user.refresh_from_db()
         if not user.is_active:
             user.is_active = True
@@ -169,6 +184,7 @@ class MembershipApplication(models.Model):
         profile.refresh_from_db()
         if profile.is_suspended:
             raise ValueError("This account is administratively suspended; access remains pending.")
+        _check_suspension_completion(profile, suspension_version)
         if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
             raise ValueError("The account's role changed; rejected membership access remains pending.")
         # Only this flag changes on completion. Review metadata is immutable.

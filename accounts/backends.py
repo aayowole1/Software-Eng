@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
+from django.db.models import Q
 
 from .models import Profile
 
@@ -32,7 +33,9 @@ class EmailOrUsernameBackend(ModelBackend):
         # both so a partial suspension write also invalidates existing sessions.
         return (
             super().user_can_authenticate(user)
-            and not Profile.objects.filter(user_id=user.pk, is_suspended=True).exists()
+            and not Profile.objects.filter(user_id=user.pk).filter(
+                Q(is_suspended=True) | Q(suspension_update_pending=True)
+            ).exists()
             and not MembershipApplication.objects.filter(
                 user_id=user.pk, access_update_pending=True
             ).exists()

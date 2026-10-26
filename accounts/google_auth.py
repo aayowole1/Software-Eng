@@ -149,6 +149,8 @@ def _existing_identity_user(subject):
         return None
     if Profile.objects.filter(user_id=identity.user_id, is_suspended=True).exists():
         raise GoogleSignInError("This account is administratively suspended.")
+    if Profile.objects.filter(user_id=identity.user_id, suspension_update_pending=True).exists():
+        raise GoogleSignInError("Your account access is still being updated. Please try again shortly.")
     if not identity.user.is_active:
         # Pending or refused membership applications land here too.
         raise GoogleSignInError(inactive_account_message(identity.user))

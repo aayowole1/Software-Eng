@@ -7,7 +7,10 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "role", "is_suspended", "created_at")
     list_filter = ("role", "is_suspended")
     # Role writes use Users and Roles so Django admin cannot bypass the audit.
-    readonly_fields = ("user", "role", "is_suspended", "created_at", "role_version", "role_history")
+    readonly_fields = (
+        "user", "role", "is_suspended", "created_at", "role_version", "role_history",
+        "suspension_was_active", "suspension_restore_active", "suspension_version", "suspension_update_pending",
+    )
 
     def has_add_permission(self, request):
         return False

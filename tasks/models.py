@@ -52,7 +52,7 @@ def active_role(user):
     ).exists():
         return None
     profile = Profile.objects.filter(user_id=user.pk).first()
-    if profile is not None and profile.is_suspended:
+    if profile is not None and (profile.is_suspended or profile.suspension_update_pending):
         return None
     if current.is_superuser:
         return Role.ADMIN
@@ -95,7 +95,7 @@ def eligible_assignees(committee=None):
     """An assignment never restores suspended or departed members' authority."""
     from membership.models import MembershipApplication
 
-    profiles = Profile.objects.filter(is_suspended=False).filter(
+    profiles = Profile.objects.filter(is_suspended=False).exclude(suspension_update_pending=True).filter(
         Q(role__in=ROSTER_ROLES) | Q(user__is_superuser=True)
     )
     user_ids = list(profiles.values_list("user_id", flat=True))

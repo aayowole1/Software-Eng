@@ -10,6 +10,7 @@ from committees.models import CommitteeMember
 
 from .decorators import role_required
 from .google_auth import apply_google_login_headers, google_login_context
+from .lifecycle import apply_suspension
 from .models import Profile, Role, get_role, set_role
 
 User = get_user_model()
@@ -113,12 +114,10 @@ def change_role(request, pk):
     return redirect("accounts:user_list")
 
 
-    """Suspend or reinstate an account without overriding membership review."""
-
 @require_POST
 @role_required(Role.ADMIN)
 def change_suspension(request, pk):
-
+    """Preserve prior activation and complete recorded review access safely."""
     target = get_object_or_404(User, pk=pk)
 
     if target == request.user or target.is_superuser:
@@ -130,34 +129,17 @@ def change_suspension(request, pk):
         messages.error(request, "Invalid suspension action.")
         return redirect("accounts:user_list")
 
-    profile, _ = Profile.objects.get_or_create(user=target)
     action = form.cleaned_data["action"]
-
-    if action == "suspend":
-        profile.is_suspended = True
-        profile.save(update_fields=["is_suspended"])
-
-        target.is_active = False
-        target.save(update_fields=["is_active"])
-
-        messages.success(request, f"{target.email or target.username} suspended.")
-
+    try:
+        apply_suspension(target, action == "suspend", expected_version=form.cleaned_data["version"])
+    except ValueError as error:
+        messages.error(request, str(error))
+    except DatabaseError:
+        messages.error(request, "The account access update could not be confirmed. Reload the users page and retry the pending action.")
     else:
-        profile.is_suspended = False
-        profile.save(update_fields=["is_suspended"])
-
-        # Only reactivate users whose membership has already been reviewed.
-        from membership.models import ApplicationStatus, MembershipApplication
-
-        has_completed_review = MembershipApplication.objects.filter(
-            user=target,
-            status__in=[ApplicationStatus.APPROVED, ApplicationStatus.REJECTED],
-        ).exists()
-
-        if has_completed_review:
-            target.is_active = True
-            target.save(update_fields=["is_active"])
-
-        messages.success(request, f"Suspension removed for {target.email or target.username}.")
+        if action == "suspend":
+            messages.success(request, f"{target.email or target.username} suspended.")
+        else:
+            messages.success(request, f"Suspension removed for {target.email or target.username}.")
 
     return redirect("accounts:user_list")
