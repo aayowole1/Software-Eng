@@ -167,9 +167,9 @@ Recorded execution results for this checkpoint:
 The baseline/targeted raw logs are retained in the local review cache
 `../tmp/orgflow_tasks_runtime/baseline-tests.txt` and
 `../tmp/orgflow_tasks_runtime/task-acceptance-tests.txt` relative to the working
-checkout. These are local paths, not promised files in a fresh clone. The final
-full-suite result and retained verification summary are to be recorded in
-`docs/tasks-verification.txt` after the integration/UI changes finish.
+checkout. These are local paths, not promised files in a fresh clone. The final full suite passed **254 tests in 267.225 seconds**; the final targeted
+integration run passed **84 tests in 13.081 seconds**. The retained summary,
+tested code revision and browser evidence are in `docs/tasks-verification.txt`.
 
 Additional account/membership integration safeguards were implemented after the
 54-test run, including task access and assignment exclusion during incomplete
@@ -188,8 +188,10 @@ membership, account and task documents, and task services do not repair those
 documents themselves. A persistent interruption still requires the membership
 recovery workflow before task access can resume.
 
-The automated results do not establish manual browser demonstration, accessibility
-tool results, performance targets, Docker startup, production deployment or live
-AI-provider quality. Chau's personal code explanation, retained demo screenshots,
-team review and the final shared deliverables still need their actual evidence.
+Codex also verified officer delegation, committee assignee refresh, member
+visibility, claiming and progress in a browser using synthetic data. The screenshot
+and observed counts are in the verification summary. These observations do not
+establish Chau's personal demonstration, accessibility-tool results, performance
+targets, Docker startup, production deployment or live AI quality. Chau's code
+explanation, team review and shared final deliverables remain separate.
 Use [the acceptance guide](tasks-acceptance.md) to record those observations.
