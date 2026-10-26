@@ -1,5 +1,6 @@
 %% Logical Django references stored in MongoDB, not database-enforced SQL FKs.
 %% Task.history is embedded JSON; it is not a separate audit collection.
+%% Selected domain fields from application source at 812d9e6.
 %%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"17px","primaryColor":"#e8f1ff","primaryTextColor":"#17324d","primaryBorderColor":"#3d6b9e","lineColor":"#64748b"},"er":{"diagramPadding":12,"entityPadding":10,"minEntityWidth":130,"minEntityHeight":55,"fontSize":17}}}%%
 erDiagram
     direction TB
@@ -20,11 +21,12 @@ erDiagram
     TASK {
         ObjectId id PK
         string title
+        string description "at most 5000 characters"
         string status "todo / in_progress / done"
         string priority "low / medium / high"
         date due_date "optional"
         int version "compare-and-set"
-        JSON history "embedded actor, time, changes"
+        JSON history "bounded; compact long descriptions"
         string origin_key UK "manual UUID or meeting item ID"
         ObjectId assignee_id FK "nullable; SET_NULL"
         ObjectId created_by_id FK "nullable; SET_NULL"
@@ -33,11 +35,15 @@ erDiagram
     }
     MEETING_DRAFT {
         ObjectId id PK
+        string generation_token "published action generation"
         string status "approved before conversion"
+        bool review_update_pending "blocks unfinished conversion"
+        JSON review_item_intent "recorded review action intent"
     }
     ACTION_ITEM {
         ObjectId id PK
         ObjectId draft_id FK
+        string generation_token "must match published draft"
         string description
         bool accepted
     }
