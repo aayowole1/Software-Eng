@@ -1,5 +1,7 @@
 # Chau contribution: Claude review and resolution
 
+Deployment follow-up: [current executed container checks and remaining VM/provider gates](deployment-readiness.md).
+
 Prepared October 25, 2026 (America/Chicago). **Frozen-source local regression and
 Accounts/Tasks coverage and named CI runs passed; Claude's final static review
 reported no blocking defect in the reviewed contribution. Human/team acceptance

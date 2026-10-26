@@ -1,5 +1,8 @@
 # OrgFlow
 
+See the [current deployment checks](docs/deployment-readiness.md) and
+[production release/recovery runbook](docs/deployment-runbook.md) for the November 1 target.
+
 OrgFlow is a Django web application using MongoDB and Docker for a consistent development environment.
 
 This branch adds Chau's task-management work (SCRUM-16 / WBS 1.6) on top of

@@ -1,5 +1,7 @@
 # Chau's Tasks 1.6 and shared integration checkpoint
 
+Deployment follow-up: [current executed container checks and remaining VM/provider gates](deployment-readiness.md).
+
 Prepared October 25, 2026, with Codex assistance. Owner: Chau Minh Viet Nguyen.
 This implements Chau's SCRUM-16 / WBS 1.6 task work and the shared connections
 needed to use it with existing Accounts, Membership, Committees and Meetings.
