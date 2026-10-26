@@ -63,16 +63,17 @@ class MeetingCreationRecoveryTests(TestCase):
         self.assertEqual(MeetingDraft.objects.count(), 2)
         self.assert_existing_unchanged()
 
-    def test_failed_initial_database_write_does_not_change_existing_drafts(self):
+    def test_unknown_initial_database_write_does_not_change_existing_drafts(self):
         with (
             patch("meetings.models.summarize_meeting", return_value=self.summary),
             patch.object(MeetingDraft, "save", side_effect=OperationalError("private database details")),
         ):
             response = self.submit()
-        self.assertContains(response, "No new draft was retained", status_code=503)
-        self.assert_no_new_attempt()
+        self.assertContains(response, "creation could not be confirmed", status_code=503)
+        self.assertEqual(MeetingDraft.objects.count(), 1)
+        self.assert_existing_unchanged()
 
-    def test_failure_after_insert_is_cleaned_using_reserved_attempt_id(self):
+    def test_lost_acknowledgement_after_complete_publication_keeps_created_draft(self):
         original_save = MeetingDraft.save
 
         def save_then_fail(draft, *args, **kwargs):
@@ -84,8 +85,10 @@ class MeetingCreationRecoveryTests(TestCase):
             patch.object(MeetingDraft, "save", save_then_fail),
         ):
             response = self.submit()
-        self.assertContains(response, "No new draft was retained", status_code=503)
-        self.assert_no_new_attempt()
+        created = MeetingDraft.objects.get(title=self.payload["title"])
+        self.assertRedirects(response, reverse("meetings:detail", args=[created.pk]))
+        self.assertEqual(created.current_action_items.count(), 2)
+        self.assert_existing_unchanged()
 
     def test_reserved_id_collision_cannot_update_or_remove_an_existing_draft(self):
         with (
@@ -120,7 +123,7 @@ class MeetingCreationRecoveryTests(TestCase):
         self.assertEqual(MeetingDraft.objects.count(), 2)
         self.assert_existing_unchanged()
 
-    def test_cleanup_failure_reports_possible_partial_draft_without_private_details(self):
+    def test_cleanup_failure_reports_unpublished_actions_without_private_details(self):
         original_create = ActionItem.objects.create
         original_delete = QuerySet.delete
 
@@ -129,7 +132,7 @@ class MeetingCreationRecoveryTests(TestCase):
             raise OperationalError("private action details")
 
         def fail_draft_cleanup(queryset):
-            if queryset.model is MeetingDraft:
+            if queryset.model is ActionItem:
                 raise OperationalError("private connection credentials")
             return original_delete(queryset)
 
@@ -140,11 +143,11 @@ class MeetingCreationRecoveryTests(TestCase):
             self.assertLogs("meetings.views", level="ERROR") as logs,
         ):
             response = self.submit()
-        self.assertContains(response, "A partial draft may remain", status_code=503)
+        self.assertContains(response, "unpublished action data may remain", status_code=503)
         self.assertNotContains(response, "No new draft was retained", status_code=503)
         self.assertNotContains(response, "private", status_code=503)
         self.assertIn("operator recovery is required", logs.output[0])
         self.assertNotIn("private", " ".join(logs.output))
-        self.assertEqual(MeetingDraft.objects.count(), 2)
+        self.assertEqual(MeetingDraft.objects.count(), 1)
         self.assertEqual(ActionItem.objects.count(), 2)
         self.assert_existing_unchanged()

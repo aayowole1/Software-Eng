@@ -23,7 +23,7 @@ from .forms import TaskForm, TaskImportForm, TaskStatusForm
 from .models import Task, TaskPriority, TaskStatus, active_role, eligible_assignees
 from .services import (
     TaskConflict, can_claim_task, can_manage_tasks, can_update_task,
-    claim_task, create_task, import_action_items, update_task,
+    accepted_actions_for_import, claim_task, create_task, import_action_items, update_task,
 )
 
 
@@ -273,7 +273,7 @@ def import_draft(request, pk):
     _require_manager(request.user)
     draft = get_object_or_404(MeetingDraft, pk=pk)
     form = TaskImportForm(request.user, request.POST if request.method == "POST" else None)
-    items = draft.action_items.filter(accepted=True)
+    items = accepted_actions_for_import(draft)
     response_status = 200
     draft_error = None
     if draft.status != DraftStatus.APPROVED:

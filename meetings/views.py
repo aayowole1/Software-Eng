@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class MeetingNotesForm(forms.ModelForm):
+    expected_generation = forms.CharField(required=False, max_length=32, widget=forms.HiddenInput)
+
     class Meta:
         model = MeetingDraft
         fields = ["title", "notes"]
@@ -29,8 +31,13 @@ class MeetingNotesForm(forms.ModelForm):
         }
         widgets = {"notes": forms.Textarea(attrs={"rows": 12})}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.initial["expected_generation"] = self.instance.generation_token or ""
+
 
 class ReviewForm(forms.Form):
+    expected_generation = forms.CharField(required=False, max_length=32, widget=forms.HiddenInput)
     decision = forms.ChoiceField(
         label="Decision",
         # No default: the reviewer must pick a decision deliberately.
@@ -69,8 +76,8 @@ def draft_create(request):
                 message = "The meeting could not be created. No new draft was retained. Please try submitting again."
             else:
                 message = (
-                    "The meeting could not be created completely. A partial draft may remain. "
-                    "Review Meeting drafts before retrying, or ask an officer for help."
+                    "The meeting's creation could not be confirmed. Review Meeting drafts before retrying. "
+                    "A completed draft or unpublished action data may remain; ask an officer for help if needed."
                 )
             messages.error(request, message)
             return render(
@@ -79,27 +86,17 @@ def draft_create(request):
                 {"form": form, "heading": "New meeting notes"},
                 status=503,
             )
-        messages.success(request, "Meeting submitted for review.")
+        messages.success(request, "Meeting created.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
 
 
 def _cleanup_created_draft(draft):
-    """Compensate only this new attempt; standalone MongoDB has no rollback."""
-    if draft.created_at is None:
-        # The provider failed before generate() reached its first save.
-        return True
-    try:
-        attempted = MeetingDraft.objects.filter(
-            pk=draft.pk, created_by_id=draft.created_by_id, created_at=draft.created_at,
-        )
-        # Django cascades the attempt's partially created ActionItems as well.
-        attempted.delete()
-        return not attempted.exists()
-    except Exception:
-        # Exception text can contain provider or connection credentials.
-        logger.error("An incomplete meeting creation could not be cleaned up; operator recovery is required.")
-        return False
+    """Clean exact unpublished action staging; never delete a visible draft."""
+    cleaned = draft.cleanup_unpublished_generation()
+    if not cleaned:
+        logger.error("Meeting creation cleanup could not be confirmed; operator recovery is required.")
+    return cleaned
 
 
 @role_required(Role.OFFICER)
@@ -110,8 +107,8 @@ def draft_detail(request, pk):
         "meetings/draft_detail.html",
         {
             "draft": draft,
-            "items": draft.action_items.all(),
-            "review_form": ReviewForm(),
+            "items": draft.current_action_items,
+            "review_form": ReviewForm(initial={"expected_generation": draft.generation_token or ""}),
             "can_review": draft.status == DraftStatus.PENDING_REVIEW and not draft.review_update_pending,
             "can_revise": draft.status == DraftStatus.REVISION_REQUESTED and not draft.review_update_pending,
             "can_finish_review": draft.review_update_pending,
@@ -133,7 +130,7 @@ def draft_review(request, pk):
         return redirect("meetings:detail", pk=draft.pk)
 
     item_intent = []
-    for item in draft.action_items.all():
+    for item in draft.current_action_items:
         text = request.POST.get(f"item-{item.pk}-description", item.description).strip()
         item_intent.append({
             "id": str(item.pk), "description": text or item.description,
@@ -145,7 +142,7 @@ def draft_review(request, pk):
     try:
         draft.review(
             request.user, form.cleaned_data["decision"], form.cleaned_data["note"],
-            item_intent=item_intent,
+            item_intent=item_intent, expected_generation=form.cleaned_data["expected_generation"],
         )
     except MeetingReviewConflict:
         messages.error(
@@ -198,8 +195,26 @@ def draft_revise(request, pk):
         return redirect("meetings:detail", pk=draft.pk)
     form = MeetingNotesForm(request.POST or None, instance=draft)
     if request.method == "POST" and form.is_valid():
-        draft.title = form.cleaned_data["title"]
-        draft.revise(form.cleaned_data["notes"])
+        try:
+            draft.revise(
+                form.cleaned_data["notes"], title=form.cleaned_data["title"],
+                expected_generation=form.cleaned_data["expected_generation"],
+            )
+        except MeetingReviewConflict:
+            messages.error(request, "This meeting changed during revision. Reload it before trying again.")
+            return redirect("meetings:detail", pk=draft.pk)
+        except (RuntimeError, ValueError, DatabaseError):
+            messages.error(
+                request,
+                "The revised generation could not be confirmed. Reload the meeting before retrying. "
+                "The published action set has not been removed.",
+            )
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": f"Revise “{draft.title}”"},
+                status=503,
+            )
         messages.success(request, "Notes revised and AI draft regenerated.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": f"Revise “{draft.title}”"})
