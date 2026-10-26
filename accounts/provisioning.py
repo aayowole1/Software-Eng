@@ -57,6 +57,31 @@ def complete_signup(attempt):
             raise SignupRecoveryRefused("The signup attempt state changed; inspect it before retrying.")
 
 
+def prepare_signup_compensation(attempt, *, application_attempted=False):
+    """Confirm recoverable intent before removing any provisioned relation.
+
+    Once application insertion starts, its visibility/review cannot be rolled
+    back safely. Preserve it even if the insertion acknowledgement failed.
+    """
+    if application_attempted:
+        logger.error("Signup attempt %s preserved after application insertion was attempted; inspect its recorded outcome.", attempt.pk)
+        return False
+    try:
+        user, _ = _untouched_signup_account(attempt)
+        if MembershipApplication.objects.filter(user_id=user.pk).exists():
+            raise SignupRecoveryRefused("An application already exists; cleanup must preserve it.")
+        changed = SignupAttempt.objects.filter(
+            pk=attempt.pk, state__in=[SignupAttempt.State.PENDING, SignupAttempt.State.COMPLETED],
+        ).update(state=SignupAttempt.State.PENDING, completed_at=None)
+        if changed == 1:
+            _untouched_signup_account(attempt)
+            return True
+    except (DatabaseError, SignupRecoveryRefused):
+        pass
+    logger.error("Signup attempt %s cleanup skipped: recoverable intent could not be confirmed.", attempt.pk)
+    return False
+
+
 def record_signup_compensation(attempt):
     """Retain the journal even when request-local compensation succeeds."""
     try:
@@ -87,14 +112,9 @@ def _unexpected_references(user):
     return False
 
 
-def inspect_signup(attempt):
-    """Validate the complete repair boundary without making any writes."""
+def _untouched_signup_account(attempt):
+    """Require observed, never-used signup state before early compensation."""
     User = get_user_model()
-    attempt = SignupAttempt.objects.get(pk=attempt.pk)
-    if attempt.state == SignupAttempt.State.COMPLETED:
-        return {"state": "completed", "actions": []}
-    if attempt.state != SignupAttempt.State.PENDING:
-        raise SignupRecoveryRefused("This attempt was compensated; submit a new signup instead.")
     user = User.objects.filter(pk=attempt.reserved_user_id).first()
     if user is None:
         raise SignupRecoveryRefused("The reserved account does not exist; a new signup can be submitted. No account will be created by repair.")
@@ -113,6 +133,25 @@ def inspect_signup(attempt):
         raise SignupRecoveryRefused("The reserved account has role, suspension or audit state that requires separate investigation.")
     if _unexpected_references(user):
         raise SignupRecoveryRefused("The reserved account has permissions or other application records; automatic repair is refused.")
+    identity = GoogleIdentity.objects.filter(user_id=user.pk).first()
+    if (
+        (attempt.channel == SignupAttempt.Channel.PASSWORD and (identity or not user.has_usable_password()))
+        or (attempt.channel == SignupAttempt.Channel.GOOGLE and (
+            user.has_usable_password() or (identity and identity.subject != attempt.google_subject)
+        ))
+    ):
+        raise SignupRecoveryRefused("The reserved account no longer has its original signup credentials.")
+    return user, profile
+
+
+def inspect_signup(attempt):
+    """Validate the complete repair boundary without making any writes."""
+    attempt = SignupAttempt.objects.get(pk=attempt.pk)
+    if attempt.state == SignupAttempt.State.COMPLETED:
+        return {"state": "completed", "actions": []}
+    if attempt.state != SignupAttempt.State.PENDING:
+        raise SignupRecoveryRefused("This attempt was compensated; submit a new signup instead.")
+    user, profile = _untouched_signup_account(attempt)
 
     applications = list(MembershipApplication.objects.filter(user_id=user.pk))
     application = MembershipApplication.objects.filter(pk=attempt.application_id).first()

@@ -10,6 +10,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import OperationalError, connections
+from django.db.models.query import QuerySet
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -340,7 +341,7 @@ class SignupAttemptRecoveryTests(TestCase):
         repair_signup(attempt)
         self.assert_pending_inactive(attempt, user)
 
-    def test_lost_completion_acknowledgement_then_successful_cleanup_is_compensated(self):
+    def test_lost_completion_acknowledgement_preserves_original_complete_inactive_signup(self):
         form = self.password_form()
 
         def stamped_then_failed(attempt):
@@ -350,11 +351,11 @@ class SignupAttemptRecoveryTests(TestCase):
         with patch("accounts.forms.complete_signup", side_effect=stamped_then_failed):
             with self.assertRaises(PasswordSignupRetryError):
                 form.save()
-        self.assertFalse(User.objects.exists())
-        self.assertFalse(MembershipApplication.objects.exists())
-        self.assertEqual(SignupAttempt.objects.get().state, "compensated")
-        form = self.password_form()
-        self.assertIsNotNone(form.save())
+        attempt = SignupAttempt.objects.get()
+        user = User.objects.get()
+        self.assertEqual(attempt.state, "completed")
+        self.assert_pending_inactive(attempt, user)
+        self.assertEqual(repair_signup(attempt)["actions"], [])
 
     def test_google_exit_after_identity_insert_keeps_exact_link_during_repair(self):
         with patch("accounts.google_auth.MembershipApplication.objects.create", side_effect=ProcessExited):
@@ -395,3 +396,134 @@ class SignupAttemptRecoveryTests(TestCase):
                 self.assertFalse(MembershipApplication.objects.exists())
                 self.assertEqual(SignupAttempt.objects.order_by("-created_at").first().state, "compensated")
                 winner[0].delete()
+
+    def test_completion_lost_ack_never_runs_partial_child_cleanup_for_either_channel(self):
+        original_delete = QuerySet.delete
+        deleted_users = []
+
+        def stamped_then_failed(attempt):
+            complete_signup(attempt)
+            raise OperationalError("private lost completion acknowledgement")
+
+        def children_deleted_then_failed(queryset, *args, **kwargs):
+            if queryset.model is User:
+                user = queryset.get()
+                deleted_users.append(user.pk)
+                original_delete(MembershipApplication.objects.filter(user=user))
+                raise OperationalError("private failure before User deletion")
+            return original_delete(queryset, *args, **kwargs)
+
+        for channel in ("password", "google"):
+            with self.subTest(channel=channel):
+                target = "accounts.forms.complete_signup" if channel == "password" else "accounts.google_auth.complete_signup"
+                with (
+                    patch(target, side_effect=stamped_then_failed),
+                    patch.object(QuerySet, "delete", new=children_deleted_then_failed),
+                ):
+                    error = PasswordSignupRetryError if channel == "password" else GoogleSignupRetryError
+                    with self.assertRaises(error):
+                        if channel == "password":
+                            self.password_form().save()
+                        else:
+                            create_google_applicant("lost-ack-subject", "lost-ack@example.com", "Original Google statement.")
+                attempt = SignupAttempt.objects.get(channel=channel)
+                user = User.objects.get(pk=attempt.reserved_user_id)
+                self.assertEqual(attempt.state, "completed")
+                self.assertEqual(deleted_users, [])
+                self.assertTrue(MembershipApplication.objects.filter(user=user).exists())
+                repair_signup(attempt)
+                self.assert_pending_inactive(attempt, user)
+
+    def test_uncertain_early_compensation_intent_never_deletes_reserved_user_for_either_channel(self):
+        original_update = QuerySet.update
+
+        for channel in ("password", "google"):
+            for intent_committed in (False, True):
+                with self.subTest(channel=channel, intent_committed=intent_committed):
+                    def uncertain_intent(queryset, **values):
+                        if queryset.model is SignupAttempt and values.get("state") == "pending":
+                            if intent_committed:
+                                original_update(queryset, **values)
+                            raise OperationalError("private uncertain compensation intent")
+                        return original_update(queryset, **values)
+
+                    with (
+                        patch("accounts.signals.Profile.objects.get_or_create", side_effect=OperationalError("private profile failure")),
+                        patch.object(QuerySet, "update", new=uncertain_intent),
+                        patch.object(QuerySet, "delete", side_effect=AssertionError("cleanup must not run")) as deletion,
+                    ):
+                        error = PasswordSignupRetryError if channel == "password" else GoogleSignupRetryError
+                        with self.assertRaises(error):
+                            if channel == "password":
+                                self.password_form().save()
+                            else:
+                                create_google_applicant("uncertain-subject", "uncertain@example.com", "Original Google statement.")
+                        deletion.assert_not_called()
+                    user = User.objects.get()
+                    attempt = SignupAttempt.objects.get(reserved_user_id=user.pk)
+                    self.assertEqual(attempt.state, "pending")
+                    self.assertFalse(user.is_active)
+                    self.assertFalse(MembershipApplication.objects.filter(user=user).exists())
+                    repair_signup(attempt)
+                    self.assert_pending_inactive(attempt, user)
+                    user.delete()
+
+    def test_completed_review_before_lost_ack_is_preserved_for_both_signup_channels(self):
+        officer = User.objects.create_user("reviewing_officer", "reviewer@example.com", PASSWORD)
+        Profile.objects.filter(user=officer).update(role=Role.OFFICER)
+
+        def stamped_reviewed_then_failed(attempt):
+            complete_signup(attempt)
+            application = MembershipApplication.objects.get(pk=attempt.application_id)
+            application.review(officer, approve=True, note="Original approved decision")
+            raise OperationalError("private lost completion acknowledgement")
+
+        for channel in ("password", "google"):
+            with self.subTest(channel=channel):
+                target = "accounts.forms.complete_signup" if channel == "password" else "accounts.google_auth.complete_signup"
+                with (
+                    patch(target, side_effect=stamped_reviewed_then_failed),
+                    patch.object(QuerySet, "delete", side_effect=AssertionError("reviewed account must be preserved")) as deletion,
+                ):
+                    error = PasswordSignupRetryError if channel == "password" else GoogleSignupRetryError
+                    with self.assertRaises(error):
+                        if channel == "password":
+                            self.password_form().save()
+                        else:
+                            create_google_applicant("reviewed-subject", "reviewed@example.com", "Original Google statement.")
+                    deletion.assert_not_called()
+                attempt = SignupAttempt.objects.get(channel=channel)
+                user = User.objects.get(pk=attempt.reserved_user_id)
+                application = MembershipApplication.objects.get(pk=attempt.application_id)
+                self.assertTrue(user.is_active)
+                self.assertEqual(Profile.objects.get(user=user).role, Role.MEMBER)
+                self.assertEqual(application.status, ApplicationStatus.APPROVED)
+                self.assertEqual(application.reviewed_by_id, officer.pk)
+                self.assertEqual(application.review_note, "Original approved decision")
+                self.assertIsNotNone(application.reviewed_at)
+                self.assertEqual(attempt.state, "completed")
+                self.assertEqual(repair_signup(attempt)["actions"], [])
+
+    def test_early_compensation_preserves_observed_admin_activation_or_role_change(self):
+        original_profile = Profile.objects.get_or_create
+        for changed_field in ("is_active", "role"):
+            with self.subTest(changed_field=changed_field):
+                def changed_then_failed(**kwargs):
+                    profile, created = original_profile(**kwargs)
+                    if changed_field == "is_active":
+                        User.objects.filter(pk=profile.user_id).update(is_active=True)
+                    else:
+                        Profile.objects.filter(pk=profile.pk).update(role=Role.MEMBER)
+                    raise OperationalError("private error after observed administrative change")
+
+                with (
+                    patch("accounts.signals.Profile.objects.get_or_create", side_effect=changed_then_failed),
+                    patch.object(QuerySet, "delete", side_effect=AssertionError("changed account must be preserved")) as deletion,
+                ):
+                    with self.assertRaises(PasswordSignupRetryError):
+                        self.password_form().save()
+                    deletion.assert_not_called()
+                user = User.objects.get()
+                self.assertEqual(user.is_active, changed_field == "is_active")
+                self.assertEqual(Profile.objects.get(user=user).role, Role.MEMBER if changed_field == "role" else Role.APPLICANT)
+                user.delete()

@@ -13,6 +13,8 @@ from membership.models import ApplicationStatus, MembershipApplication
 from .backends import EmailOrUsernameBackend
 from .google_auth import PENDING_SIGNUP_SESSION_KEY
 from .models import GoogleIdentity, Profile, Role
+from .provisioning import repair_signup
+from .signup_attempts import SignupAttempt
 from .testing import PASSWORD, make_user
 
 User = get_user_model()
@@ -61,14 +63,17 @@ class GoogleSignupRecoveryTests(TestCase):
         self.assert_successful_retry()
         self.assertTrue(User.objects.get(pk=existing.pk).check_password(PASSWORD))
 
-    def test_application_database_failure_preserves_statement_and_can_retry(self):
+    def test_application_database_failure_preserves_statement_and_exact_google_identity_for_repair(self):
         with patch("accounts.google_auth.MembershipApplication.objects.create", side_effect=OperationalError("private details")):
             response = self.apply()
         self.assert_retry_form(response)
-        self.assertFalse(User.objects.exists())
-        self.assertFalse(Profile.objects.exists())
-        self.assertFalse(GoogleIdentity.objects.exists())
-        self.assert_successful_retry()
+        user = User.objects.get()
+        identity = GoogleIdentity.objects.get(user=user)
+        self.assertEqual(Profile.objects.get(user=user).role, Role.APPLICANT)
+        repair_signup(SignupAttempt.objects.get(reserved_user_id=user.pk))
+        self.assertEqual(GoogleIdentity.objects.get().pk, identity.pk)
+        self.assertEqual(MembershipApplication.objects.get(user=user).statement, self.statement)
+        self.assertFalse(User.objects.get(pk=user.pk).is_active)
 
     def test_user_creation_database_failure_preserves_signup_and_can_retry(self):
         with patch.object(User.objects, "create_user", side_effect=OperationalError("private details")):

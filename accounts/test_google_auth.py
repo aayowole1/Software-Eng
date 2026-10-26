@@ -414,13 +414,14 @@ class GoogleSignInTests(TestCase):
         self.assertFalse(GoogleIdentity.objects.exists())
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_failed_application_creation_cleans_up_new_user(self):
+    def test_failed_application_creation_preserves_exact_account_after_insertion_was_attempted(self):
         self.signin()
         with patch("accounts.google_auth.MembershipApplication.objects.create", side_effect=IntegrityError("x")):
             response = self.apply()
         self.assertContains(response, "Please try submitting it again.", status_code=503)
-        self.assertFalse(User.objects.exists())
-        self.assertFalse(GoogleIdentity.objects.exists())
+        self.assertFalse(User.objects.get().is_active)
+        self.assertEqual(GoogleIdentity.objects.get().user_id, User.objects.get().pk)
+        self.assertFalse(MembershipApplication.objects.exists())
         self.assertIn(PENDING_SIGNUP_SESSION_KEY, self.client.session)
 
     def test_failed_user_creation_is_a_safe_login_error(self):

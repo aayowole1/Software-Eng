@@ -30,7 +30,7 @@ from membership.models import MembershipApplication, inactive_account_message
 
 from .forms import EmailLoginForm, GoogleApplicationForm
 from .models import GoogleIdentity, Profile
-from .provisioning import complete_signup, record_signup_compensation, reserve_signup
+from .provisioning import complete_signup, prepare_signup_compensation, record_signup_compensation, reserve_signup
 
 logger = logging.getLogger(__name__)
 
@@ -174,10 +174,12 @@ def _ensure_email_unused(email):
         )
 
 
-def _cleanup_google_signup(user_id, username):
+def _cleanup_google_signup(attempt, *, application_attempted=False):
     """Best-effort compensation limited to the account reserved by this attempt."""
+    if not prepare_signup_compensation(attempt, application_attempted=application_attempted):
+        return
     try:
-        get_user_model().objects.filter(pk=user_id, username=username).delete()
+        get_user_model().objects.filter(pk=attempt.reserved_user_id, username=attempt.username).delete()
     except Exception:
         # Database exceptions can include connection strings or account data.
         # Keep the recovery alert free of exception details and credentials.
@@ -216,7 +218,7 @@ def create_google_applicant(subject, email, statement):
         complete_signup(attempt)
     except IntegrityError as error:
         if attempted_create:
-            _cleanup_google_signup(attempt.reserved_user_id, username)
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
             record_signup_compensation(attempt)
         if stage == "identity":
             # A simultaneous sign-up with this subject may have won the race.
@@ -226,18 +228,18 @@ def create_google_applicant(subject, email, statement):
         if stage == "user":
             raise GoogleSignInError("This account could not be created. Please try again.") from error
         raise GoogleSignupRetryError(
-            "Your application could not be saved right now. Please try submitting it again."
+            "Your application could not be confirmed right now. Please try submitting it again."
         ) from error
     except DatabaseError as error:
         if attempted_create:
-            _cleanup_google_signup(attempt.reserved_user_id, username)
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
             record_signup_compensation(attempt)
         raise GoogleSignupRetryError(
-            "Your application could not be saved right now. Please try submitting it again."
+            "Your application could not be confirmed right now. Please try submitting it again."
         ) from error
     except Exception:
         if attempted_create:
-            _cleanup_google_signup(attempt.reserved_user_id, username)
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
             record_signup_compensation(attempt)
         raise
     return user

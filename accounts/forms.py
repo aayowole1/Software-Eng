@@ -9,7 +9,10 @@ from membership.models import MembershipApplication, inactive_account_message
 
 from .backends import find_user
 from .models import Role
-from .provisioning import complete_signup, is_identifier_conflict, record_signup_compensation, reserve_signup
+from .provisioning import (
+    complete_signup, is_identifier_conflict, prepare_signup_compensation,
+    record_signup_compensation, reserve_signup,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -23,10 +26,12 @@ class PasswordSignupConflictError(PasswordSignupRetryError):
     """The database identity constraint rejected a concurrent signup."""
 
 
-def _cleanup_password_signup(user_id, username):
+def _cleanup_password_signup(attempt, *, application_attempted=False):
     """Compensate only this reserved attempt, including its related records."""
+    if not prepare_signup_compensation(attempt, application_attempted=application_attempted):
+        return
     try:
-        User.objects.filter(pk=user_id, username=username).delete()
+        User.objects.filter(pk=attempt.reserved_user_id, username=attempt.username).delete()
     except Exception:
         logger.error("An incomplete password signup could not be cleaned up; operator recovery is required.")
 
@@ -115,17 +120,17 @@ class RegisterForm(forms.Form):
         except DatabaseError as error:
             conflict = stage == "user" and is_identifier_conflict(error)
             if attempt is not None:
-                _cleanup_password_signup(attempt.reserved_user_id, username)
+                _cleanup_password_signup(attempt, application_attempted=stage == "application")
                 record_signup_compensation(attempt)
             if conflict:
                 raise PasswordSignupConflictError("The username or email was claimed by another signup.") from error
             raise PasswordSignupRetryError(
-                "Your application could not be saved right now. Please try submitting it again. "
+                "Your application could not be confirmed right now. Please try submitting it again. "
                 "Contact an officer if the problem continues."
             ) from error
         except Exception:
             if attempt is not None:
-                _cleanup_password_signup(attempt.reserved_user_id, username)
+                _cleanup_password_signup(attempt, application_attempted=stage == "application")
                 record_signup_compensation(attempt)
             raise
         return user

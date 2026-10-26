@@ -10,6 +10,8 @@ from django.urls import reverse
 from membership.models import MembershipApplication
 
 from .models import Profile, Role
+from .provisioning import repair_signup
+from .signup_attempts import SignupAttempt
 from .testing import PASSWORD, make_user
 
 User = get_user_model()
@@ -37,6 +39,17 @@ class PasswordSignupRecoveryTests(TestCase):
     def assert_successful_retry(self):
         self.assertRedirects(self.submit(), reverse("core:home"))
         user = User.objects.get(username=self.payload["username"])
+        self.assertFalse(user.is_active)
+        self.assertTrue(user.check_password(self.payload["password"]))
+        self.assertEqual(Profile.objects.get(user=user).role, Role.APPLICANT)
+        self.assertEqual(MembershipApplication.objects.get(user=user).statement, self.payload["statement"])
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def assert_operator_recovery(self):
+        user = User.objects.get(username=self.payload["username"])
+        attempt = SignupAttempt.objects.get(reserved_user_id=user.pk)
+        repair_signup(attempt)
+        user.refresh_from_db()
         self.assertFalse(user.is_active)
         self.assertTrue(user.check_password(self.payload["password"]))
         self.assertEqual(Profile.objects.get(user=user).role, Role.APPLICANT)
@@ -85,25 +98,25 @@ class PasswordSignupRecoveryTests(TestCase):
         self.assertFalse(MembershipApplication.objects.exists())
         self.assert_successful_retry()
 
-    def test_application_database_failure_cleans_user_and_profile_and_can_retry(self):
+    def test_application_database_failure_preserves_owned_account_for_operator_recovery(self):
         with patch("accounts.forms.MembershipApplication.objects.create", side_effect=OperationalError("private details")):
             response = self.submit()
         self.assert_retry_form(response)
-        self.assertFalse(User.objects.exists())
-        self.assertFalse(Profile.objects.exists())
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(Profile.objects.count(), 1)
         self.assertFalse(MembershipApplication.objects.exists())
-        self.assert_successful_retry()
+        self.assert_operator_recovery()
 
-    def test_application_integrity_failure_cleans_user_and_profile_and_can_retry(self):
+    def test_application_integrity_failure_preserves_owned_account_for_operator_recovery(self):
         with patch("accounts.forms.MembershipApplication.objects.create", side_effect=IntegrityError("private details")):
             response = self.submit()
         self.assert_retry_form(response)
-        self.assertFalse(User.objects.exists())
-        self.assertFalse(Profile.objects.exists())
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(Profile.objects.count(), 1)
         self.assertFalse(MembershipApplication.objects.exists())
-        self.assert_successful_retry()
+        self.assert_operator_recovery()
 
-    def test_application_insert_then_failure_compensates_all_new_records_only(self):
+    def test_application_insert_then_failure_preserves_exposed_application_and_existing_accounts(self):
         existing = make_user("existing@example.com", Role.MEMBER)
         original = MembershipApplication.objects.create
 
@@ -114,10 +127,12 @@ class PasswordSignupRecoveryTests(TestCase):
         with patch("accounts.forms.MembershipApplication.objects.create", side_effect=inserted_then_failed):
             response = self.submit()
         self.assert_retry_form(response)
-        self.assertEqual(list(User.objects.values_list("pk", flat=True)), [existing.pk])
-        self.assertEqual(list(Profile.objects.values_list("user_id", flat=True)), [existing.pk])
-        self.assertFalse(MembershipApplication.objects.exists())
-        self.assert_successful_retry()
+        self.assertTrue(User.objects.filter(pk=existing.pk).exists())
+        self.assertTrue(Profile.objects.filter(user_id=existing.pk).exists())
+        self.assertEqual(User.objects.count(), 2)
+        original_application = MembershipApplication.objects.get()
+        self.assert_operator_recovery()
+        self.assertEqual(MembershipApplication.objects.get().pk, original_application.pk)
 
     def test_cleanup_failure_logs_safe_operator_alert_and_never_signs_in(self):
         with (
