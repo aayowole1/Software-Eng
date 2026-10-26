@@ -9,12 +9,16 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxLengthValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
 from accounts.models import Profile, ROSTER_ROLES, Role, has_minimum_role
-from committees.models import CommitteeMember
+from committees.models import Committee, CommitteeMember
+
+
+TASK_DESCRIPTION_LIMIT = 5000
 
 
 class TaskStatus(models.TextChoices):
@@ -125,7 +129,11 @@ class TaskQuerySet(models.QuerySet):
 
 class Task(models.Model):
     title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
+    description = models.TextField(
+        blank=True, max_length=TASK_DESCRIPTION_LIMIT,
+        validators=[MaxLengthValidator(TASK_DESCRIPTION_LIMIT)],
+        help_text="Maximum 5,000 characters.",
+    )
     committee = models.ForeignKey(
         "committees.Committee", on_delete=models.PROTECT, null=True, blank=True,
         related_name="tasks",
@@ -173,7 +181,14 @@ class Task(models.Model):
         self.title = self.title.strip()
         if not self.title:
             raise ValidationError({"title": "Enter a task title."})
-        if self.assignee_id and not eligible_assignees(self.committee).filter(pk=self.assignee_id).exists():
+        committee = None
+        if self.committee_id:
+            committee = Committee.objects.filter(pk=self.committee_id).first()
+            if committee is None:
+                raise ValidationError({
+                    "committee": "This committee no longer exists. Ask an officer to edit the task and choose another committee or Organization."
+                })
+        if self.assignee_id and not eligible_assignees(committee).filter(pk=self.assignee_id).exists():
             raise ValidationError({
                 "assignee": "Choose an active, unsuspended member of this committee, or leave it unassigned."
                 if self.committee_id else "Choose an active, unsuspended organization member."

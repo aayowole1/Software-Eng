@@ -6,7 +6,7 @@
   {% if can_manage %}<p><a class="button" href="{% url 'tasks:edit' task.pk %}">Edit task</a></p>{% endif %}
   <div class="card">
     <dl>
-      <dt>Committee</dt><dd>{% if task.committee %}<a href="{% url 'committees:detail' task.committee.pk %}">{{ task.committee }}</a>{% else %}Organization{% endif %}</dd>
+      <dt>Committee</dt><dd>{% if task.committee_id %}{% if task.committee %}<a href="{% url 'committees:detail' task.committee.pk %}">{{ task.committee }}</a>{% else %}Missing committee — an officer must edit this assignment{% endif %}{% else %}Organization{% endif %}</dd>
       <dt>Assignee</dt><dd>{{ task.assignee|default:"Unassigned" }}</dd>
       <dt>Status</dt><dd>{{ task.get_status_display }}</dd>
       <dt>Priority</dt><dd>{{ task.get_priority_display }}</dd>
@@ -25,7 +25,8 @@
     <p>This committee task is unassigned. Claim it to become responsible for its progress.</p><button type="submit">Assign to me</button>
   </form>{% endif %}
   <h2>Task history</h2>
-  <ol>{% for entry in history_entries %}<li class="card">
+  <p class="muted">Long descriptions are abbreviated in history with their character count and SHA-256 fingerprint. The current description appears in full above.</p>
+  <ol style="overflow-wrap: anywhere">{% for entry in history_entries %}<li class="card">
     <strong>{{ entry.action|capfirst }}</strong> by {{ entry.actor }} <span class="muted">{{ entry.at }}</span>
     {% if entry.display_changes %}<ul>{% for change in entry.display_changes %}<li>{{ change.label }}: {{ change.before }} → {{ change.after }}</li>{% endfor %}</ul>{% endif %}
   </li>{% empty %}<li>No recorded changes.</li>{% endfor %}</ol>

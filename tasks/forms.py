@@ -11,7 +11,12 @@ class AssignmentFieldsMixin:
     def _prepare_assignment_fields(self):
         self.fields["committee"].queryset = Committee.objects.all()
         self.fields["committee"].help_text = "Choose a committee to limit task visibility to its roster and officers."
-        committee = getattr(self.instance, "committee", None) if hasattr(self, "instance") else None
+        committee_id = getattr(getattr(self, "instance", None), "committee_id", None)
+        committee = Committee.objects.filter(pk=committee_id).first() if committee_id else None
+        if committee_id and committee is None:
+            self.fields["committee"].help_text = (
+                "The previous committee no longer exists. Choose a replacement, or leave blank for Organization."
+            )
         raw_committee = self.data.get(self.add_prefix("committee")) if self.is_bound else self.initial.get("committee")
         if raw_committee is not None:
             if isinstance(raw_committee, Committee):
