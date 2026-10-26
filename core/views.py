@@ -1,6 +1,11 @@
 from django.http import JsonResponse
+from django.db import DatabaseError, connections
 from django.shortcuts import render
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET
+from pymongo import timeout
+from pymongo.errors import PyMongoError
 
 from accounts.models import Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
@@ -44,3 +49,15 @@ def dashboard(request):
 
 def health(request):
     return JsonResponse({"status": "ok"})
+
+
+@require_GET
+@never_cache
+def readiness(request):
+    """Bounded database readiness; never return connection or credential details."""
+    try:
+        with timeout(3):
+            connections["default"].get_database().command("ping")
+    except (DatabaseError, PyMongoError):
+        return JsonResponse({"status": "unavailable"}, status=503)
+    return JsonResponse({"status": "ready"})

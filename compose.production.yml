@@ -1,0 +1,101 @@
+# Separate from the development Compose file. Inject real configuration at
+# runtime; terminate TLS in an operator-managed proxy on this same host.
+x-application: &application
+  image: orgflow-production:${ORGFLOW_IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: Dockerfile.production
+  env_file:
+    - path: ${ORGFLOW_ENV_FILE:-.env.production}
+      required: false
+  environment:
+    DJANGO_SETTINGS_MODULE: orgflow_project.settings_production
+    PYTHON_DOTENV_DISABLED: '1'
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set a unique production secret}
+    DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set exact production hosts}
+    DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+    DJANGO_TRUST_PROXY_HEADERS: ${DJANGO_TRUST_PROXY_HEADERS:-false}
+    DJANGO_HSTS_SECONDS: ${DJANGO_HSTS_SECONDS:-3600}
+    DJANGO_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_HSTS_INCLUDE_SUBDOMAINS:-false}
+    DJANGO_HSTS_PRELOAD: ${DJANGO_HSTS_PRELOAD:-false}
+    DJANGO_STATIC_ROOT: /var/lib/orgflow/static
+    DJANGO_EMAIL_POLICY: ${DJANGO_EMAIL_POLICY:-smtp}
+    DJANGO_ALLOW_INSECURE_SMTP: ${DJANGO_ALLOW_INSECURE_SMTP:-false}
+    EMAIL_HOST: ${EMAIL_HOST:-}
+    EMAIL_PORT: ${EMAIL_PORT:-587}
+    EMAIL_USE_TLS: ${EMAIL_USE_TLS:-true}
+    EMAIL_USE_SSL: ${EMAIL_USE_SSL:-false}
+    EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+    EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+    DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
+    MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+    MONGODB_NAME: ${MONGODB_NAME:?Set the intended database name}
+    TIME_ZONE: ${TIME_ZONE:-America/Chicago}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  networks: [database]
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks: [database]
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, "quit(db.adminCommand({ping:1}).ok ? 0 : 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Explicit release step: run once with writers stopped before starting web.
+  # No concurrent startup migrations or automatic schema/data repair.
+  release:
+    <<: *application
+    profiles: [release]
+    command: [sh, -c, 'python manage.py migrate --noinput && python manage.py collectstatic --noinput']
+    volumes:
+      - static_data:/var/lib/orgflow/static
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  web:
+    <<: *application
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${ORGFLOW_WEB_PORT:-8000}:8000'
+    volumes:
+      - static_data:/var/lib/orgflow/static:ro
+    networks: [database, default]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  cleanup:
+    <<: *application
+    restart: unless-stopped
+    command: [sh, -c, 'while true; do python manage.py purge_rejected_applications; sleep 3600; done']
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+networks:
+  database:
+    internal: true
+  default: {}
+
+volumes:
+  mongo_data:
+  static_data:
