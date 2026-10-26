@@ -1,0 +1,50 @@
+%% Logical Django references stored in MongoDB, not database-enforced SQL FKs.
+%% Task.history is embedded JSON; it is not a separate audit collection.
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"17px","primaryColor":"#e8f1ff","primaryTextColor":"#17324d","primaryBorderColor":"#3d6b9e","lineColor":"#64748b"},"er":{"diagramPadding":12,"entityPadding":10,"minEntityWidth":130,"minEntityHeight":55,"fontSize":17}}}%%
+erDiagram
+    direction TB
+    USER {
+        ObjectId id PK
+        string username
+        bool is_active
+    }
+    COMMITTEE {
+        ObjectId id PK
+        string name
+    }
+    COMMITTEE_MEMBER {
+        ObjectId user_id FK
+        ObjectId committee_id FK
+        string role
+    }
+    TASK {
+        ObjectId id PK
+        string title
+        string status "todo / in_progress / done"
+        string priority "low / medium / high"
+        date due_date "optional"
+        int version "compare-and-set"
+        JSON history "embedded actor, time, changes"
+        string origin_key UK "manual UUID or meeting item ID"
+        ObjectId assignee_id FK "nullable; SET_NULL"
+        ObjectId created_by_id FK "nullable; SET_NULL"
+        ObjectId committee_id FK "nullable; PROTECT"
+        ObjectId source_action_item_id FK "nullable; SET_NULL"
+    }
+    MEETING_DRAFT {
+        ObjectId id PK
+        string status "approved before conversion"
+    }
+    ACTION_ITEM {
+        ObjectId id PK
+        ObjectId draft_id FK
+        string description
+        bool accepted
+    }
+
+    USER ||--o{ COMMITTEE_MEMBER : joins
+    COMMITTEE ||--o{ COMMITTEE_MEMBER : contains
+    USER o|--o{ TASK : "assignee / creator"
+    COMMITTEE o|--o{ TASK : "optional scope"
+    MEETING_DRAFT ||--o{ ACTION_ITEM : contains
+    ACTION_ITEM o|--o{ TASK : "optional source"
