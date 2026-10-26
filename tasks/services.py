@@ -139,6 +139,8 @@ def import_action_items(actor, draft, **assignment_defaults):
     current = MeetingDraft.objects.get(pk=draft.pk)
     if current.status != DraftStatus.APPROVED:
         raise ValidationError("Only an approved meeting draft can create tasks.")
+    if current.review_update_pending:
+        raise ValidationError("Finish the recorded meeting review's action updates before creating tasks.")
     defaults = dict(assignment_defaults)
     if set(defaults) - {"committee", "assignee", "due_date", "priority"}:
         raise ValidationError("Choose only committee, assignee, due date and priority for imported tasks.")
@@ -147,13 +149,20 @@ def import_action_items(actor, draft, **assignment_defaults):
     candidate = Task(title="Meeting action", created_by=actor, **defaults)
     candidate.full_clean(validate_unique=False, validate_constraints=False)
     result = {"created": [], "existing": []}
-    for item in current.action_items.filter(accepted=True):
+    items = current.action_items.filter(accepted=True)
+    approved_text = None
+    if current.review_item_intent is not None:
+        approved_text = {
+            item["id"]: item["description"] for item in current.review_item_intent if item["accepted"]
+        }
+        items = items.filter(pk__in=list(approved_text))
+    for item in items:
         key = f"meeting:{item.pk}"
         existing = Task.objects.filter(origin_key=key).first()
         if existing is not None:
             result["existing"].append(existing)
             continue
-        description = item.description.strip()
+        description = (approved_text[str(item.pk)] if approved_text is not None else item.description).strip()
         if not description:
             continue
         fields = {**defaults, "title": description[:200], "description": description, "status": TaskStatus.TODO}

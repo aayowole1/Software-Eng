@@ -280,6 +280,9 @@ def import_draft(request, pk):
     if draft.status != DraftStatus.APPROVED:
         draft_error = "Approve this meeting draft before creating tasks."
         response_status = 400
+    elif draft.review_update_pending:
+        draft_error = "Finish the recorded meeting review's action updates before creating tasks."
+        response_status = 400
     elif request.method == "POST" and form.is_valid():
         try:
             result = import_action_items(request.user, draft, **form.cleaned_data)
@@ -292,4 +295,4 @@ def import_draft(request, pk):
         else:
             messages.success(request, f"Created {len(result['created'])} task(s); {len(result['existing'])} already existed.")
             return redirect("tasks:list")
-    return render(request, "tasks/import_draft.html", {"draft": draft, "items": items, "form": form, "draft_error": draft_error, "approved": draft.status == DraftStatus.APPROVED}, status=response_status)
+    return render(request, "tasks/import_draft.html", {"draft": draft, "items": items, "form": form, "draft_error": draft_error, "approved": draft.status == DraftStatus.APPROVED and not draft.review_update_pending}, status=response_status)

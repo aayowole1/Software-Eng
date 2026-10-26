@@ -8,6 +8,16 @@
     <p class="muted">Reviewed by {{ draft.reviewed_by.email }} on {{ draft.reviewed_at|date:"M j, Y" }}{% if draft.review_note %}: “{{ draft.review_note }}”{% endif %}</p>
   {% endif %}
 
+  {% if can_finish_review %}
+    <div class="card" role="status">
+      <h2>Action updates unfinished</h2>
+      <p>The review decision is recorded. Finish its saved action updates before converting tasks or revising notes.</p>
+      <form method="post" action="{% url 'meetings:finish_review' draft.pk %}">
+        {% csrf_token %}<button type="submit">Finish review</button>
+      </form>
+    </div>
+  {% endif %}
+
   <div class="card">
     <h2>AI summary</h2>
     <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
@@ -49,7 +59,7 @@
     <p><a class="button" href="{% url 'meetings:revise' draft.pk %}">Revise notes and regenerate</a></p>
   {% endif %}
 
-  {% if draft.status == "approved" and is_officer %}
+  {% if draft.status == "approved" and is_officer and not draft.review_update_pending %}
     <p><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
   {% endif %}
 

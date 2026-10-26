@@ -9,6 +9,7 @@ urlpatterns = [
     path("new/", views.draft_create, name="create"),
     path("<oid:pk>/", views.draft_detail, name="detail"),
     path("<oid:pk>/review/", views.draft_review, name="review"),
+    path("<oid:pk>/finish-review/", views.draft_finish_review, name="finish_review"),
     path("<oid:pk>/revise/", views.draft_revise, name="revise"),
     path("<oid:pk>/delete/", views.draft_delete, name="delete"),
 ]
