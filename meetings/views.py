@@ -115,7 +115,7 @@ def draft_review(request, pk):
     except DatabaseError:
         messages.error(
             request,
-            "The review could not be completed. Reload the draft and use Finish review "
+            "The review could not be confirmed complete. Reload the draft and use Finish review "
             "if action updates are unfinished. Task conversion stays unavailable until they finish.",
         )
         return redirect("meetings:detail", pk=draft.pk)
@@ -132,7 +132,11 @@ def draft_finish_review(request, pk):
     except ValueError as error:
         messages.error(request, str(error))
     except DatabaseError:
-        messages.error(request, "The saved review still has unfinished action updates. Please retry Finish review later.")
+        messages.error(
+            request,
+            "The saved review could not be confirmed complete. Reload the draft and retry "
+            "Finish review if action updates are still unfinished.",
+        )
     else:
         messages.success(request, "The saved review's action updates are complete.")
     return redirect("meetings:detail", pk=draft.pk)
