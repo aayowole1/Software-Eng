@@ -1,6 +1,10 @@
+import logging
+
+from bson import ObjectId
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
+from django.db import DatabaseError
 
 from membership.models import MembershipApplication, inactive_account_message
 
@@ -8,6 +12,19 @@ from .backends import find_user
 from .models import Role
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+class PasswordSignupRetryError(Exception):
+    """A safe, retryable failure while saving a password membership signup."""
+
+
+def _cleanup_password_signup(user_id, username):
+    """Compensate only this reserved attempt, including its related records."""
+    try:
+        User.objects.filter(pk=user_id, username=username).delete()
+    except Exception:
+        logger.error("An incomplete password signup could not be cleaned up; operator recovery is required.")
 
 
 def application_statement_field():
@@ -69,17 +86,28 @@ class RegisterForm(forms.Form):
 
     def save(self):
         """Create a switched-off account plus its membership application."""
-        user = User.objects.create_user(
-            username=self.cleaned_data["username"],
-            email=self.cleaned_data["email"],
-            password=self.cleaned_data["password"],
-            is_active=False,
-        )
+        # The post_save profile signal can fail after MongoDB inserts the user
+        # but before create_user returns. Reserve the identity before that call
+        # so every provisioning stage is covered by bounded compensation.
+        user_id = ObjectId()
+        username = self.cleaned_data["username"]
         try:
+            user = User.objects.create_user(
+                pk=user_id,
+                username=username,
+                email=self.cleaned_data["email"],
+                password=self.cleaned_data["password"],
+                is_active=False,
+            )
             MembershipApplication.objects.create(user=user, statement=self.cleaned_data["statement"])
+        except DatabaseError as error:
+            _cleanup_password_signup(user_id, username)
+            raise PasswordSignupRetryError(
+                "Your application could not be saved right now. Please try submitting it again. "
+                "Contact an officer if the problem continues."
+            ) from error
         except Exception:
-            # Don't leave an account behind that has no application to approve.
-            user.delete()
+            _cleanup_password_signup(user_id, username)
             raise
         return user
 
