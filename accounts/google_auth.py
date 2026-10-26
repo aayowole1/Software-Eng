@@ -10,7 +10,6 @@ import time
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from bson import ObjectId
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
@@ -31,6 +30,7 @@ from membership.models import MembershipApplication, inactive_account_message
 
 from .forms import EmailLoginForm, GoogleApplicationForm
 from .models import GoogleIdentity, Profile
+from .provisioning import complete_signup, record_signup_compensation, reserve_signup
 
 logger = logging.getLogger(__name__)
 
@@ -192,31 +192,32 @@ def create_google_applicant(subject, email, statement):
     """
     User = get_user_model()
     username = f"google_{uuid4().hex}"
-    # Reserve both keys before create_user: its post_save profile signal may
-    # fail after MongoDB has inserted the user but before the manager returns it.
-    user_id = ObjectId()
+    attempt = None
     attempted_create = False
     stage = "precheck"
     try:
         if GoogleIdentity.objects.filter(subject=subject).exists():
             raise GoogleSignInError("This Google account has already applied. Sign in to check its status.")
         _ensure_email_unused(email)
+        attempt = reserve_signup("google", username, email, statement, subject)
         stage = "user"
         attempted_create = True
         user = User.objects.create_user(
-            pk=user_id, username=username, email=email, password=None, is_active=False
+            pk=attempt.reserved_user_id, username=username, email=email, password=None, is_active=False
         )
-        # Standalone MongoDB has no multi-document transaction. Detect observed
-        # email races and compensate; canonical-email uniqueness is separate.
+        # Canonical database indexes reject identity races. Retain this check
+        # for a safe response when inspecting an older unmigrated database.
         if User.objects.filter(_email_collision(email)).exclude(pk=user.pk).exists():
             raise GoogleSignInError("An account already uses this email. Sign in with that account.")
         stage = "identity"
         GoogleIdentity.objects.create(subject=subject, user=user)
         stage = "application"
-        MembershipApplication.objects.create(user=user, statement=statement)
+        MembershipApplication.objects.create(pk=attempt.application_id, user=user, statement=statement)
+        complete_signup(attempt)
     except IntegrityError as error:
         if attempted_create:
-            _cleanup_google_signup(user_id, username)
+            _cleanup_google_signup(attempt.reserved_user_id, username)
+            record_signup_compensation(attempt)
         if stage == "identity":
             # A simultaneous sign-up with this subject may have won the race.
             raise GoogleSignInError(
@@ -229,13 +230,15 @@ def create_google_applicant(subject, email, statement):
         ) from error
     except DatabaseError as error:
         if attempted_create:
-            _cleanup_google_signup(user_id, username)
+            _cleanup_google_signup(attempt.reserved_user_id, username)
+            record_signup_compensation(attempt)
         raise GoogleSignupRetryError(
             "Your application could not be saved right now. Please try submitting it again."
         ) from error
     except Exception:
         if attempted_create:
-            _cleanup_google_signup(user_id, username)
+            _cleanup_google_signup(attempt.reserved_user_id, username)
+            record_signup_compensation(attempt)
         raise
     return user
 

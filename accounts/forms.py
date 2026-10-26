@@ -1,6 +1,5 @@
 import logging
 
-from bson import ObjectId
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
@@ -10,6 +9,7 @@ from membership.models import MembershipApplication, inactive_account_message
 
 from .backends import find_user
 from .models import Role
+from .provisioning import complete_signup, is_identifier_conflict, record_signup_compensation, reserve_signup
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 class PasswordSignupRetryError(Exception):
     """A safe, retryable failure while saving a password membership signup."""
+
+
+class PasswordSignupConflictError(PasswordSignupRetryError):
+    """The database identity constraint rejected a concurrent signup."""
 
 
 def _cleanup_password_signup(user_id, username):
@@ -86,28 +90,43 @@ class RegisterForm(forms.Form):
 
     def save(self):
         """Create a switched-off account plus its membership application."""
-        # The post_save profile signal can fail after MongoDB inserts the user
-        # but before create_user returns. Reserve the identity before that call
-        # so every provisioning stage is covered by bounded compensation.
-        user_id = ObjectId()
         username = self.cleaned_data["username"]
+        attempt = None
+        stage = "journal"
         try:
+            # Persist ownership before create_user, including profile signals.
+            # A process exit bypasses compensation but leaves this repair record.
+            attempt = reserve_signup(
+                "password", username, self.cleaned_data["email"], self.cleaned_data["statement"],
+            )
+            stage = "user"
             user = User.objects.create_user(
-                pk=user_id,
+                pk=attempt.reserved_user_id,
                 username=username,
                 email=self.cleaned_data["email"],
                 password=self.cleaned_data["password"],
                 is_active=False,
             )
-            MembershipApplication.objects.create(user=user, statement=self.cleaned_data["statement"])
+            stage = "application"
+            MembershipApplication.objects.create(
+                pk=attempt.application_id, user=user, statement=attempt.statement,
+            )
+            complete_signup(attempt)
         except DatabaseError as error:
-            _cleanup_password_signup(user_id, username)
+            conflict = stage == "user" and is_identifier_conflict(error)
+            if attempt is not None:
+                _cleanup_password_signup(attempt.reserved_user_id, username)
+                record_signup_compensation(attempt)
+            if conflict:
+                raise PasswordSignupConflictError("The username or email was claimed by another signup.") from error
             raise PasswordSignupRetryError(
                 "Your application could not be saved right now. Please try submitting it again. "
                 "Contact an officer if the problem continues."
             ) from error
         except Exception:
-            _cleanup_password_signup(user_id, username)
+            if attempt is not None:
+                _cleanup_password_signup(attempt.reserved_user_id, username)
+                record_signup_compensation(attempt)
             raise
         return user
 
