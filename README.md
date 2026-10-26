@@ -5,6 +5,8 @@ OrgFlow is a Django web application using MongoDB and Docker for a consistent de
 This integration preview combines Chau's task-management work (SCRUM-16 / WBS 1.6),
 Ayomide's events and attendance branch, and Jack's meeting recording branch on top
 of the team's merged membership and account safeguards at `26b5177`.
+See the [November 1 integration handoff](docs/integration-handoff.md) for tested
+revisions, review responsibilities, and remaining team checks.
 See the [task review and user guide](docs/tasks-checkpoint.md),
 [acceptance checklist](docs/tasks-acceptance.md), and
 [AI assistance record](docs/tasks-ai-use.md).
