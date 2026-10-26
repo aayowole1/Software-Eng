@@ -29,6 +29,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check tasks/static/tasks/assignment.js
+      - run: node --check core/static/core/sidebar.js
+      - run: node --test core/tests_sidebar_navigation.cjs
       - run: python -m pip install -r requirements.txt
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run

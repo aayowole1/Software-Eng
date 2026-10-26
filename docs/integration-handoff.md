@@ -37,17 +37,27 @@ Teammates retain ownership of their features and their final reviews.
   **267 tests collected, 265 executed successfully and 2 live Deepgram tests
   skipped**, in 34.484 seconds.
 - Combined system check: no issues. Migration drift check: no changes detected.
+- GitHub Actions also passed on the combined checkpoint `7eac4c6` with the normal
+  application password settings:
+  [run 40252569595](https://github.com/aayowole1/Software-Eng/actions/runs/40252569595).
 - Combined tests used standalone MongoDB 8.0.32 at localhost:27029 and a separate
   disposable test database. A fast password hasher was set only in the test
   process; application password settings were unchanged. Provider keys were
   explicitly empty. No live OpenAI or Deepgram request was made.
 - The subsequent merge of `3509516` brought documentation only. This handoff and
-  its README link also change documentation only.
+  its README link also change documentation only. A subsequent preview-only
+  navigation fix makes the closed mobile menu hidden and inert, exposes expanded
+  state, and handles Escape and focus return. Seven dependency-free interaction
+  tests and actual browser keyboard checks passed; see
+  [the quality evidence](tasks-quality-evidence.md). The workflow now runs those
+  navigation checks and JavaScript syntax checks alongside the Django suite.
 
 The combined run is retained in
 [the test transcript](evidence/integration-preview-tests.txt).
 Chau's [verification record](tasks-verification.txt) and
 [acceptance guide](tasks-acceptance.md) include the task browser observations.
+The combined [desktop](evidence/integration-tasks-desktop.jpg) and
+[mobile](evidence/integration-tasks-mobile.jpg) images use synthetic local data.
 
 ## Remaining team checks for the November 1 target
 
