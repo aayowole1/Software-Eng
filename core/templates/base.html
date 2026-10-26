@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="{% static 'core/site.css' %}">
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
+    <a class="skip-link" href="#main">Skip to content</a>
     <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
     <nav aria-label="Main">
       {% if user.is_authenticated %}
@@ -40,7 +40,7 @@
     </nav>
   </header>
 
-  <main id="main">
+  <main id="main" tabindex="-1">
     {% if messages %}
       <ul class="messages" role="status">
         {% for message in messages %}

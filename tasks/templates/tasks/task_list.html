@@ -4,7 +4,7 @@
   <h1>Tasks</h1>
   <p class="muted">Members see tasks in their committees and organization tasks assigned to them. Officers manage all tasks.</p>
   {% if can_manage %}<p><a class="button" href="{% url 'tasks:create' %}">New task</a></p>{% endif %}
-  <div class="application-summary" aria-label="Tasks you can access">
+  <div class="application-summary" role="group" aria-label="Tasks you can access">
     <div class="card"><strong>{{ counts.total }}</strong><span>Visible tasks</span></div>
     <div class="card"><strong>{{ counts.completed }}</strong><span>Completed</span></div>
     <div class="card"><strong>{{ counts.overdue }}</strong><span>Overdue</span></div>
