@@ -137,12 +137,14 @@
           </div>
         {% endif %}
 
-        <div class="sidebar-group">
-          <h3>Meeting Actions</h3>
-          <ul>
-            <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
-          </ul>
-        </div>
+        {% if is_officer %}
+          <div class="sidebar-group">
+            <h3>Meeting Actions</h3>
+            <ul>
+              <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
+            </ul>
+          </div>
+        {% endif %}
       {% else %}
         <div class="sidebar-group">
           <h3>Authentication</h3>

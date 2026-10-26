@@ -51,6 +51,15 @@ Teammates retain ownership of their features and their final reviews.
   tests and actual browser keyboard checks passed; see
   [the quality evidence](tasks-quality-evidence.md). The workflow now runs those
   navigation checks and JavaScript syntax checks alongside the Django suite.
+- A full coverage run at `8e2f734` also completed all 267 collected tests
+  (265 passed, two live-provider skips) in 59.940 seconds. The measured
+  Accounts/Tasks Python scope achieved **94.59% statement coverage** and
+  **86.92% branch coverage**. This is not a whole-project coverage claim; the
+  quality record lists exclusions and retained summaries.
+- The Start a meeting link now follows the endpoint's existing officer/admin
+  restriction. Seven cross-app integration tests passed in 2.107 seconds after
+  adding navigation assertions, and a synthetic member browser check confirmed
+  the link is absent.
 
 The combined run is retained in
 [the test transcript](evidence/integration-preview-tests.txt).

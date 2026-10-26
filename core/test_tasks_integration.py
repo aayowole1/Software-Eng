@@ -39,6 +39,7 @@ class TaskIntegrationTests(TestCase):
         self.assertNotContains(response, "Officer private task")
         self.assertNotContains(response, "Completed poster")
         self.assertContains(response, reverse("tasks:list"))
+        self.assertNotContains(response, reverse("meetings:create"))
 
     def test_public_and_applicant_dashboards_hide_tasks(self):
         create_task(self.officer, title="Internal follow-up", committee=self.committee)
@@ -48,6 +49,7 @@ class TaskIntegrationTests(TestCase):
             response = self.client.get(reverse("core:dashboard"))
             self.assertNotContains(response, "Internal follow-up")
             self.assertNotContains(response, reverse("tasks:list"))
+            self.assertNotContains(response, reverse("meetings:create"))
 
     def test_committee_task_summary_requires_membership_or_officer_role(self):
         create_task(self.officer, title="Committee work", committee=self.committee)
@@ -79,6 +81,7 @@ class TaskIntegrationTests(TestCase):
     def test_only_approved_meeting_shows_conversion_link(self):
         draft = MeetingDraft.objects.create(title="Reviewed planning", notes="Private notes", created_by=self.officer)
         self.client.force_login(self.officer)
+        self.assertContains(self.client.get(reverse("core:dashboard")), reverse("meetings:create"))
         link = reverse("tasks:import_draft", args=[draft.pk])
         self.assertNotContains(self.client.get(reverse("meetings:detail", args=[draft.pk])), link)
         draft.review(self.officer, DraftStatus.APPROVED)

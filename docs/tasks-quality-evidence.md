@@ -116,6 +116,14 @@ Screenshots retained by the root agent:
 the stated navigation and status behavior only; they are not an axe scan, screen-reader
 session or a complete task-form keyboard audit.
 
+A later preview-only navigation check found that Start a meeting was displayed
+to members even though its endpoint already requires an officer. The link is now
+restricted to officers/admins. The seven existing cross-app integration tests
+passed in 2.107 seconds after adding member/applicant absence and officer presence
+assertions. A refreshed synthetic member browser view confirms the link is absent.
+This follow-up changes the shared template and test assertions; the measured
+Accounts/Tasks Python sources below are unchanged.
+
 ## Authorization and integration traceability
 
 The test names below exist in the inspected source and were included in the
@@ -200,6 +208,11 @@ clone, are retained under `tmp/orgflow_tasks_runtime/`:
 - Corresponding `coverage-focused84*` files preserve the intermediate run.
 - `run_focused_branch_coverage.py --full` reproduces the full measurement using
   the isolated coverage and existing preview dependency targets.
+
+The full-run [transcript](evidence/coverage-full267-raw.txt),
+[module summary](evidence/coverage-full267-summary.txt) and
+[aggregate totals](evidence/coverage-full267-totals.json) are also retained in this
+repository for a fresh clone. The detailed JSON and coverage database remain local.
 
 ## Limits and remaining acceptance evidence
 
