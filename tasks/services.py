@@ -157,6 +157,19 @@ def claim_task(actor, task, expected_version):
     return _persist(actor, current, {"assignee": actor}, expected_version, "claimed")
 
 
+def accepted_actions_for_import(draft):
+    """One source of truth for the confirmation page and task creation."""
+    items = draft.current_action_items
+    if draft.review_item_intent is None:
+        return [{"source": item, "description": item.description} for item in items.filter(accepted=True)]
+    accepted = [item for item in draft.review_item_intent if item["accepted"]]
+    sources = {str(item.pk): item for item in items.filter(pk__in=[item["id"] for item in accepted])}
+    return [
+        {"source": sources[item["id"]], "description": item["description"]}
+        for item in accepted if item["id"] in sources
+    ]
+
+
 def import_action_items(actor, draft, **assignment_defaults):
     """Convert approved accepted items once, safely retrying a partial import.
 
@@ -178,20 +191,14 @@ def import_action_items(actor, draft, **assignment_defaults):
     candidate = Task(title="Meeting action", created_by=actor, **defaults)
     candidate.full_clean(validate_unique=False, validate_constraints=False)
     result = {"created": [], "existing": []}
-    items = current.action_items.filter(accepted=True)
-    approved_text = None
-    if current.review_item_intent is not None:
-        approved_text = {
-            item["id"]: item["description"] for item in current.review_item_intent if item["accepted"]
-        }
-        items = items.filter(pk__in=list(approved_text))
-    for item in items:
+    for approved in accepted_actions_for_import(current):
+        item = approved["source"]
         key = f"meeting:{item.pk}"
         existing = Task.objects.filter(origin_key=key).first()
         if existing is not None:
             result["existing"].append(existing)
             continue
-        description = (approved_text[str(item.pk)] if approved_text is not None else item.description).strip()
+        description = approved["description"].strip()
         if not description:
             continue
         fields = {**defaults, "title": description[:200], "description": description, "status": TaskStatus.TODO}
