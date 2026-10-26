@@ -10,6 +10,8 @@
 <p class="muted">
   Manage organization roles and account access.
   Only administrators can change roles or suspend user accounts.
+  Finish membership reviews before changing roles. For a rejected review whose
+  account access is unfinished, restore Applicant, then ask an officer to finish account access.
 </p>
 
 <div class="table-wrap">
@@ -21,6 +23,7 @@
         <th scope="col">Account Status</th>
         <th scope="col">Change Role</th>
         <th scope="col">Account Actions</th>
+        <th scope="col">Role history</th>
       </tr>
     </thead>
 
@@ -75,6 +78,7 @@
                 class="inline"
               >
                 {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.role_version|default_if_none:0 }}">
 
                 <label
                   for="role-{{ p.pk }}"
@@ -167,11 +171,40 @@
             {% endif %}
           </td>
 
+          <td>
+            <details>
+              <summary>Role history ({{ p.role_history|length }})</summary>
+              <ul>
+                {% for entry in p.role_history %}
+                  <li>
+                    <strong>{{ entry.old_role|capfirst }} to {{ entry.new_role|capfirst }}</strong><br>
+                    {{ entry.actor }} · <time datetime="{{ entry.at }}">{{ entry.at }}</time><br>
+                    <span class="muted">
+                      {% if entry.source == "account_role_management" %}
+                        Administrator role change
+                      {% elif entry.source|slice:":18" == "membership_review:" %}
+                        Membership approval
+                      {% elif entry.source == "system" %}
+                        System update
+                      {% elif entry.source == "rejected_membership_reconciliation" %}
+                        Rejected membership access correction
+                      {% else %}
+                        {{ entry.source }}
+                      {% endif %}
+                    </span>
+                  </li>
+                {% empty %}
+                  <li class="muted">No recorded role changes.</li>
+                {% endfor %}
+              </ul>
+            </details>
+          </td>
+
         </tr>
 
       {% empty %}
         <tr>
-          <td colspan="5" class="muted">
+          <td colspan="6" class="muted">
             No users found.
           </td>
         </tr>
