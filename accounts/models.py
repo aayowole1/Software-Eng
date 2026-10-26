@@ -63,6 +63,10 @@ class Profile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     role_version = models.PositiveIntegerField(default=0)
     role_history = models.JSONField(default=list, blank=True)
+    suspension_was_active = models.BooleanField(default=None, null=True, blank=True)
+    suspension_restore_active = models.BooleanField(default=None, null=True, blank=True)
+    suspension_version = models.PositiveIntegerField(default=0)
+    suspension_update_pending = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.email or self.user.username} ({self.role})"
@@ -131,6 +135,7 @@ def _membership_role_source(
     actor_profile = Profile.objects.filter(user_id=actor_user.pk).first() if actor_user else None
     actor_is_admin = bool(
         actor_user and actor_user.is_active and actor_profile and not actor_profile.is_suspended
+        and not actor_profile.suspension_update_pending
         and (actor_user.is_superuser or actor_profile.role == Role.ADMIN)
     )
     if (
