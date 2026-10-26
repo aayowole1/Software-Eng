@@ -77,3 +77,8 @@ to meeting code using `atomic()` and requires the meeting owner's review.
 Chau's personal explanation and demonstration still need to be performed by Chau.
 No actual hours, live Jira status changes, team approvals, or completed submission
 are asserted here.
+
+The older Accounts plan also mentions role-change audit history. Current task
+history covers task mutations; it does not fulfill organization-wide role audit.
+The team should reconcile that older Accounts commitment with the current audit
+feature owner and backlog before marking the wider audit requirement complete.

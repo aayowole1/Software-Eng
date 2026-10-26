@@ -36,12 +36,26 @@ remain estimates until a member supplies an actual work record.
 
 ## Product AI boundary
 
-This work does not replace or evaluate the team's meeting summarizer. Main's
-summarizer remains rule based; the task import accepts only actions approved by
-an officer and does not trust unreviewed generated content. Jack's separate AI
-work remains a team dependency. No live Google sign-in was repeated as part of
-the task implementation; mocked provider tests and prior live evidence have
-different scopes.
+Chau's independent PR #12 uses merged main's existing rule-based summarizer.
+The combined preview in PR #13 imports Jack's OpenAI and Deepgram call paths
+without changing their authorship. Neither provider was exercised live during
+this integration. Task conversion accepts only actions approved by an officer
+and does not trust unreviewed generated content. No live Google sign-in was
+repeated as part of the task implementation; mocked provider tests and prior
+live evidence have different scopes.
+
+## Combined preview assistance
+
+Codex merged Ayomide's Events and Jack's Meetings branches into a separate
+preview, resolved shared-file conflicts, and checked that Chau's permission,
+recovery and task conversion contracts remained intact. A preview-only sidebar
+correction adds visible controls, hidden/inert closed state, expanded-state
+relationships and keyboard focus handling. Codex wrote the seven navigation
+interaction checks, performed the recorded synthetic browser checks, and added
+those checks to CI. Codex also produced the three source-derived design diagrams
+and the current contribution/integration handoff supplement. Historical course
+reports were preserved. Test results and their limits remain in the verification,
+quality and handoff records rather than being inferred from generated prose.
 
 ## Completion dates
 
