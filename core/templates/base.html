@@ -22,11 +22,15 @@
       display: none;
       position: absolute;
       top: 1rem;
-      right: -1.5rem;
-      background: none;
-      border: none;
+      right: 1rem;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
       font-size: 1.5rem;
       cursor: pointer;
+    }
+    .sidebar[hidden], .sidebar-toggle[hidden] {
+      display: none;
     }
     .sidebar-content {
       margin-top: 2rem;
@@ -80,8 +84,8 @@
   </style>
 </head>
 <body>
-  <div class="sidebar" id="sidebar">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">×</button>
+  <nav class="sidebar" id="sidebar" aria-label="Main">
+    <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Close navigation" aria-controls="sidebar" aria-expanded="false">×</button>
     <div class="sidebar-content">
       <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
 
@@ -150,10 +154,10 @@
         </div>
       {% endif %}
     </div>
-  </div>
+  </nav>
 
   <div class="main-content">
-    <button class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Toggle sidebar">☰</button>
+    <button type="button" class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">☰</button>
     <a class="skip-link" href="#main">Skip to content</a>
 
     <main id="main">
@@ -168,24 +172,6 @@
     </main>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const sidebar = document.getElementById('sidebar');
-      const sidebarToggle = document.getElementById('sidebarToggle');
-      const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
-
-      function toggleSidebar() {
-        sidebar.classList.toggle('open');
-      }
-
-      if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-      }
-
-      if (sidebarToggleMobile) {
-        sidebarToggleMobile.addEventListener('click', toggleSidebar);
-      }
-    });
-  </script>
+  <script src="{% static 'core/sidebar.js' %}" defer></script>
 </body>
 </html>
