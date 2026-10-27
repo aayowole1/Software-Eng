@@ -26,7 +26,7 @@ UI with Django and VS Code's Copilot interface was used to fix errors with the i
 | `announcements/admin.py` | Registers announcement models with Django admin |
 | `announcements/templates/announcements/` | Contains page, form, detail, and card templates |
 | `announcements/migrations/` | Contains MongoDB-compatible migrations |
-| `announcements/tests.py` | Reserved for module tests |
+| `announcements/tests/` | Unit and request tests for the module |
 
 The global navigation sidebar is defined in
 `core/templates/base.html`. It includes announcement links for all
@@ -156,10 +156,34 @@ docker compose exec web python manage.py makemigrations announcements
 docker compose exec web python manage.py migrate
 ```
 
-Run the module tests:
+The initial migration must describe the current models, including
+`Announcement.author`. If an old development migration has already been
+recorded as applied while the announcement collections were dropped, remove
+only that migration record from MongoDB before running `migrate` again:
+
+```javascript
+use orgflow
+db.django_migrations.deleteOne({app: "announcements", name: "0001_initial"})
+```
+
+Do not delete the migration record on a shared or production database without
+first preserving and migrating its announcement data.
+
+Run all module tests:
 
 ```bash
 docker compose exec web python manage.py test announcements
+```
+
+The test suite covers model calculations and constraints, form validation,
+authentication and authorization, list filtering, creation and editing,
+attachments, unpublished announcements, and idempotent read receipts.
+
+Run an individual test file when debugging:
+
+```bash
+docker compose exec web python manage.py test announcements.tests.test_models_and_forms
+docker compose exec web python manage.py test announcements.tests.test_views
 ```
 
 Open the module locally:
