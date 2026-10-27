@@ -7,7 +7,7 @@ This README was developed with the help of gpt-5.6-luna via VS Code's Copilot in
 docker compose exec web python manage.py startapp [module]
 ```
 
-2) Register the module by adding `[module].apps.[ModuleConfig]` `orgflow_project/settings.py`; e.g.,
+2) Register the module by adding `[module].apps.[ModuleConfig]` to `orgflow_project/settings.py`; e.g.,
 ```python
 INSTALLED_APPS = [
     # existing apps
@@ -33,9 +33,20 @@ class Module(models.Model):
         return self.title
 ```
 
+```python
+# [module]/apps.py
+# ensure the default auto field is ObjectIdAutoField
+from django.apps import AppConfig
+
+
+class ModuleConfig(AppConfig):
+    default_auto_field = "django_mongodb_backend.fields.ObjectIdAutoField"
+    name = "module"
+```
+
 ```bash
 # creating and applying migrations
-docker compose exec web python manage.py makemigrations tasks
+docker compose exec web python manage.py makemigrations [module]
 docker compose exec web python manage.py migrate
 ```
 
@@ -99,5 +110,6 @@ class ModuleAdmin(admin.ModelAdmin):
 7) Check the project and run tests
 ```bash
 docker compose exec web python manage.py check
+# the command below runs the module's test cases
 docker compose exec web python manage.py test [module]
 ```
