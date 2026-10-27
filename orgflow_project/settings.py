@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "membership.apps.MembershipConfig",
     "committees.apps.CommitteesConfig",
     "meetings.apps.MeetingsConfig",
+    "events.apps.EventsConfig",
 ]
 
 MIDDLEWARE = [
@@ -132,7 +133,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Times are shown and entered in this zone (dates are still stored in UTC).
+TIME_ZONE = os.getenv("TIME_ZONE", "America/Chicago")
 
 USE_I18N = True
 
