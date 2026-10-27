@@ -1,189 +1,425 @@
-{% load static %}<!doctype html>
-<html lang="en">
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}OrgFlow{% endblock %} · OrgFlow</title>
-  <link rel="stylesheet" href="{% static 'core/site.css' %}">
+
+  <!-- Typography: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN (with forms and typography plugins) -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f3ff',
+              100: '#cfdaf2',
+              600: '#1b3a6b',
+              800: '#0c2340', // Campus Pulse Primary Brand
+              900: '#061324',
+            }
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Site Stylesheet -->
+<link href="{% static 'core/site.css' %}" rel="stylesheet"/>
+
+  {% block extra_head %}{% endblock %}
   {% block extra_css %}{% endblock %}
-  <style>
-    .sidebar {
-      position: fixed;
-      left: 0;
-      top: 0;
-      height: 100vh;
-      width: 250px;
-      background: #f8f9fa;
-      border-right: 1px solid #dee2e6;
-      padding: 1rem;
-      overflow-y: auto;
-    }
-    .sidebar-toggle {
-      display: none;
-      position: absolute;
-      top: 1rem;
-      right: -1.5rem;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-    }
-    .sidebar-content {
-      margin-top: 2rem;
-    }
-    .sidebar-group {
-      margin-bottom: 1.5rem;
-    }
-    .sidebar-group h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: #6c757d;
-      margin-bottom: 0.5rem;
-    }
-    .sidebar-group ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .sidebar-group li {
-      margin-bottom: 0.25rem;
-    }
-    .sidebar-group a {
-      display: block;
-      padding: 0.25rem 0;
-      color: #212529;
-      text-decoration: none;
-    }
-    .sidebar-group a:hover {
-      color: #0d6efd;
-    }
-    .main-content {
-      margin-left: 250px;
-      padding: 1rem;
-    }
-    @media (max-width: 768px) {
-      .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-      }
-      .sidebar.open {
-        transform: translateX(0);
-      }
-      .sidebar-toggle {
-        display: block;
-      }
-      .main-content {
-        margin-left: 0;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="sidebar" id="sidebar">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">×</button>
-    <div class="sidebar-content">
-      <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
 
+<body class="h-full font-sans text-slate-800 antialiased bg-slate-50 selection:bg-slate-800 selection:text-white">
+<!-- Accessible Skip Link -->
+<a class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-slate-900 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none text-xs font-semibold" href="#main">
+    Skip to main content
+  </a>
+<!-- Mobile Backdrop Overlay -->
+<div aria-hidden="true" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 hidden md:hidden transition-opacity opacity-0" id="sidebarBackdrop"></div>
+<!-- Master App Shell Container -->
+<div class="min-h-screen flex flex-col md:flex-row">
+<!-- ================================================================= -->
+<!-- PERSISTENT LEFT SIDEBAR -->
+<!-- ================================================================= -->
+<aside aria-label="Sidebar Navigation" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transform -translate-x-full md:translate-x-0 md:static md:inset-auto transition-transform duration-200 ease-in-out shrink-0 min-h-screen" id="sidebar">
+<!-- Brand & Mobile Close Header -->
+<div class="h-16 px-5 border-b border-slate-200 flex items-center justify-between shrink-0">
+<a class="flex items-center gap-2.5 group" href="{% url 'core:home' %}">
+<div class="w-8 h-8 rounded-lg bg-slate-900 text-white font-bold text-xs flex items-center justify-center tracking-tight shadow-xs group-hover:bg-slate-800 transition">
+<span class="text-amber-400 font-extrabold text-sm">O</span>
+</div>
+<div>
+<span class="font-bold text-slate-900 text-sm tracking-tight block">OrgFlow</span>
+<span class="text-[10px] text-slate-400 block -mt-0.5 font-normal">Student Portal</span>
+</div>
+</a>
+<!-- Mobile Drawer Close Button -->
+<button aria-label="Close sidebar" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition" id="sidebarToggle">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<!-- Navigation Content Scroll Area -->
+<div class="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 text-xs">
+        
+        {% if user.is_authenticated %}
+
+          <!-- Group: Primary Navigation -->
+<div class="space-y-1">
+<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Navigation</span>
+<ul class="space-y-1">
+<!-- Dashboard -->
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.url_name == 'dashboard' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'core:dashboard' %}">
+<svg class="w-4 h-4 {% if request.resolver_match.url_name == 'dashboard' %}text-amber-400{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Dashboard</span>
+</a>
+</li>
+
+              {% if is_member %}
+                <!-- Announcements Main Link -->
+<li>
+<a class="flex items-center justify-between px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' %}bg-slate-900 text-white shadow-xs font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}">
+<div class="flex items-center gap-2.5">
+<svg class="w-4 h-4 {% if request.resolver_match.namespace == 'announcements' %}text-amber-400{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Announcements</span>
+</div>
+</a>
+<!-- Announcement Views Subgroup -->
+<div class="mt-1 ml-4 pl-3 border-l-2 border-slate-100 space-y-0.5">
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status != 'draft' and request.GET.status != 'scheduled' %}text-slate-900 bg-slate-100 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}">
+<span>All announcements</span>
+</a>
+                    {% if is_admin %}
+                      <a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'draft' %}text-amber-900 bg-amber-50 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}?status=draft">
+<span>Drafts</span>
+</a>
+<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'scheduled' %}text-cyan-900 bg-cyan-50 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}?status=scheduled">
+<span>Scheduled</span>
+</a>
+                    {% endif %}
+                  </div>
+</li>
+<!-- Roster -->
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'membership' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'membership:roster' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Roster</span>
+</a>
+</li>
+<!-- Committees -->
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'committees' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'committees:list' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Committees</span>
+</a>
+</li>
+              {% else %}
+                <li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'membership:apply' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Apply for Membership</span>
+</a>
+</li>
+              {% endif %}
+            </ul>
+</div>
+<!-- Group: Officer Tools (if applicable) -->
+          {% if is_officer %}
+            <div class="space-y-1">
+<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Officer Tools</span>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'membership:application_list' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Applications</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'meetings:list' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Meeting drafts</span>
+</a>
+</li>
+</ul>
+</div>
+          {% endif %}
+
+          <!-- Group: Admin Actions -->
+          {% if is_admin %}
+            <div class="space-y-1">
+<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Administration</span>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'accounts:user_list' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Users &amp; Permissions</span>
+</a>
+</li>
+</ul>
+</div>
+          {% endif %}
+
+          <!-- Group: Meeting Actions -->
+<div class="space-y-1">
+<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Meeting Actions</span>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition" href="{% url 'meetings:create' %}">
+<svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Start a meeting</span>
+</a>
+</li>
+</ul>
+</div>
+
+        {% else %}
+
+          <!-- Unauthenticated State -->
+<div class="space-y-1">
+<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Authentication</span>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'core:dashboard' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'accounts:login' %}">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Sign in</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-900 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition" href="{% url 'accounts:register' %}">
+<svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Create account</span>
+</a>
+</li>
+</ul>
+</div>
+
+        {% endif %}
+
+      </div>
+<!-- Persistent Sidebar Footer / User Profile Card -->
       {% if user.is_authenticated %}
-        <div class="sidebar-group">
-          <h3>Account</h3>
-          <ul>
-            <li><a href="{% url 'accounts:profile' %}">My account</a></li>
-            <li>
-              <form method="post" action="{% url 'accounts:logout' %}" class="inline">
+        <div class="p-3 border-t border-slate-200 mt-auto bg-slate-50/60">
+<div class="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
+<!-- User Info Row -->
+<a class="flex items-center gap-2.5 hover:opacity-80 transition group" href="{% url 'accounts:profile' %}">
+<div class="w-7 h-7 rounded-lg bg-slate-900 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                {{ user.first_name|first|default:"U" }}{{ user.last_name|first|default:"" }}
+              </div>
+<div class="truncate">
+<strong class="font-semibold text-slate-800 block truncate group-hover:text-slate-900 leading-tight">
+                  {{ user.get_full_name|default:user.username }}
+                </strong>
+<span class="text-[10px] text-slate-400 block font-normal truncate">
+                  {% if is_admin %}Administrator{% elif is_officer %}Officer{% elif is_member %}Active Member{% else %}Guest{% endif %}
+                </span>
+</div>
+</a>
+<!-- Quick Action Links (My Account & Sign Out) -->
+<div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+<a class="text-slate-500 hover:text-slate-900 font-medium" href="{% url 'accounts:profile' %}">My account</a>
+<!-- Clean CSRF Sign-Out Form Button -->
+<form action="{% url 'accounts:logout' %}" class="inline" method="post">
                 {% csrf_token %}
-                <button type="submit" class="link-button">Sign out</button>
-              </form>
-            </li>
-          </ul>
-        </div>
-
-        {% if is_admin %}
-          <div class="sidebar-group">
-            <h3>Admin</h3>
-            <ul>
-              <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
-            </ul>
-          </div>
-        {% endif %}
-
-        <div class="sidebar-group">
-          <h3>Navigation</h3>
-          <ul>
-            <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
-            {% if is_member %}
-              <li><a href="{% url 'membership:roster' %}">Roster</a></li>
-              <li><a href="{% url 'committees:list' %}">Committees</a></li>
-            {% else %}
-              <li><a href="{% url 'membership:apply' %}">Apply</a></li>
-            {% endif %}
-          </ul>
-        </div>
-
-        {% if is_officer %}
-          <div class="sidebar-group">
-            <h3>Officer Tools</h3>
-            <ul>
-              <li><a href="{% url 'membership:application_list' %}">Applications</a></li>
-              <li><a href="{% url 'meetings:list' %}">Meeting drafts</a></li>
-            </ul>
-          </div>
-        {% endif %}
-
-        <div class="sidebar-group">
-          <h3>Meeting Actions</h3>
-          <ul>
-            <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
-          </ul>
-        </div>
-      {% else %}
-        <div class="sidebar-group">
-          <h3>Authentication</h3>
-          <ul>
-            <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
-            <li><a href="{% url 'accounts:login' %}">Sign in</a></li>
-            <li><a href="{% url 'accounts:register' %}">Create account</a></li>
-          </ul>
-        </div>
+                <button class="text-rose-600 hover:text-rose-800 font-medium flex items-center gap-1 transition cursor-pointer" type="submit">
+<span>Sign out</span>
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</form>
+</div>
+</div>
+</div>
       {% endif %}
-    </div>
-  </div>
 
-  <div class="main-content">
-    <button class="sidebar-toggle" id="sidebarToggleMobile" aria-label="Toggle sidebar">☰</button>
-    <a class="skip-link" href="#main">Skip to content</a>
-
-    <main id="main">
+    </aside>
+<!-- ================================================================= -->
+<!-- DYNAMIC MAIN CONTENT WORKSPACE -->
+<!-- ================================================================= -->
+<div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+<!-- Top Utility Header -->
+<header class="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-2xs">
+<!-- Mobile Sidebar Hamburger & Breadcrumbs -->
+<div class="flex items-center gap-3">
+<button aria-label="Open sidebar" class="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition" id="sidebarToggleMobile">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<nav aria-label="Breadcrumb" class="flex items-center text-xs text-slate-500 font-medium">
+            {% block breadcrumbs %}
+              <a class="hover:text-slate-900 transition" href="{% url 'core:home' %}">Portal</a>
+<span class="mx-2 text-slate-300">/</span>
+<span class="text-slate-800 font-semibold">Workspace</span>
+            {% endblock %}
+          </nav>
+</div>
+<!-- Top Right Header Utilities -->
+<div class="flex items-center gap-3">
+          {% if user.is_authenticated %}
+            <!-- Notifications Bell -->
+<button aria-label="Notifications" class="relative p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition" type="button">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"></path></svg>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white"></span>
+</button>
+<!-- User Quick Avatar Badge -->
+<div class="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200">
+<div class="w-7 h-7 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
+                {{ user.first_name|first|default:"U" }}{{ user.last_name|first|default:"" }}
+              </div>
+<span class="text-xs font-semibold text-slate-800">{{ user.username }}</span>
+</div>
+          {% else %}
+            <div class="flex items-center gap-2 text-xs">
+<a class="px-3 py-1.5 text-slate-700 hover:text-slate-900 font-medium" href="{% url 'accounts:login' %}">Sign in</a>
+<a class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition" href="{% url 'accounts:register' %}">Get Started</a>
+</div>
+          {% endif %}
+        </div>
+</header>
+<!-- Global Django Messages Framework (Flash Alerts) -->
       {% if messages %}
-        <ul class="messages" role="status">
-          {% for message in messages %}
-            <li class="message {{ message.tags }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
+        <aside aria-label="System Notifications" class="px-4 sm:px-6 lg:px-8 pt-4">
+<div class="space-y-2 max-w-7xl mx-auto">
+            {% for message in messages %}
+              <div class="flex items-start justify-between p-3.5 rounded-xl text-xs font-medium border shadow-2xs transition-all {% if message.tags == 'error' %} bg-rose-50 text-rose-800 border-rose-200 {% elif message.tags == 'warning' %} bg-amber-50 text-amber-900 border-amber-200 {% elif message.tags == 'success' %} bg-emerald-50 text-emerald-800 border-emerald-200 {% else %} bg-blue-50 text-blue-800 border-blue-200 {% endif %}" role="alert">
+<div class="flex items-center gap-2">
+                  {% if message.tags == 'success' %}
+                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="currentColor" viewbox="0 0 20 20"><path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path></svg>
+                  {% elif message.tags == 'error' %}
+                    <svg class="w-4 h-4 text-rose-600 shrink-0" fill="currentColor" viewbox="0 0 20 20"><path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" fill-rule="evenodd"></path></svg>
+                  {% else %}
+                    <svg class="w-4 h-4 text-blue-600 shrink-0" fill="currentColor" viewbox="0 0 20 20"><path clip-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" fill-rule="evenodd"></path></svg>
+                  {% endif %}
+                  <span>{{ message }}</span>
+</div>
+<button class="text-slate-400 hover:text-slate-700 ml-4 p-0.5 rounded cursor-pointer" onclick="this.parentElement.remove()" type="button">
+<span class="sr-only">Dismiss</span>
+                  ×
+                </button>
+</div>
+            {% endfor %}
+          </div>
+</aside>
       {% endif %}
-      {% block content %}{% endblock %}
-    </main>
-  </div>
 
-  <script>
+      <!-- Primary Viewport Content -->
+<main class="flex-1 focus:outline-none" id="main">
+        {% block content %}{% endblock %}
+      </main>
+<!-- Global Minimalist Footer -->
+      {% block footer %}
+      <footer class="py-5 px-6 lg:px-8 border-t border-slate-200 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white mt-auto">
+<p>© {% now "Y" %} OrgFlow Student Portal. Campus Governance &amp; Operations.</p>
+<div class="flex items-center gap-4 text-slate-500">
+<a class="hover:text-slate-800 transition" href="#">Accessibility</a>
+<a class="hover:text-slate-800 transition" href="#">Bylaws &amp; Governance</a>
+<a class="hover:text-slate-800 transition" href="#">Privacy</a>
+</div>
+</footer>
+      {% endblock %}
+
+    </div>
+</div>
+<!-- Mobile Drawer Toggle Script -->
+<script>
     document.addEventListener('DOMContentLoaded', function() {
       const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
       const sidebarToggle = document.getElementById('sidebarToggle');
       const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
 
-      function toggleSidebar() {
-        sidebar.classList.toggle('open');
+      function openSidebar() {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => {
+          backdrop.classList.remove('opacity-0');
+        }, 10);
+        document.body.classList.add('overflow-hidden');
       }
 
-      if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
+      function closeSidebar() {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('opacity-0');
+        setTimeout(() => {
+          backdrop.classList.add('hidden');
+        }, 200);
+        document.body.classList.remove('overflow-hidden');
       }
 
       if (sidebarToggleMobile) {
-        sidebarToggleMobile.addEventListener('click', toggleSidebar);
+        sidebarToggleMobile.addEventListener('click', openSidebar);
+      }
+
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', closeSidebar);
+      }
+
+      if (backdrop) {
+        backdrop.addEventListener('click', closeSidebar);
       }
     });
   </script>
+
+  {% block extra_js %}{% endblock %}
 </body>
-</html>
+
+```
+
+---
+
+## 2. Updated `static/core/site.css`
+
+Ensure your `static/core/site.css` has these companion styles to guarantee pixel-perfect rendering:
+
+```css
+@charset "UTF-8";
+
+:root {
+  --color-brand-primary: #0c2340;
+  --color-brand-accent: #f59e0b;
+  --color-surface: #f9f9ff;
+  --color-border: #e2e8f0;
+  --font-family-base: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --radius-base: 0.5rem;
+}
+
+html {
+  font-family: var(--font-family-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle, ergonomic scrollbar for sidebar */
+#sidebar div::-webkit-scrollbar {
+  width: 4px;
+}
+#sidebar div::-webkit-scrollbar-track {
+  background: transparent;
+}
+#sidebar div::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 9999px;
+}
+#sidebar div::-webkit-scrollbar-thumb:hover {
+  background-color: #cbd5e1;
+}
+
+/* Accessible outline focus rings */
+:focus-visible {
+  outline: 2px solid #0c2340 !important;
+  outline-offset: 2px !important;
+}
