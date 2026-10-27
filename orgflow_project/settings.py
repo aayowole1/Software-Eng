@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "membership.apps.MembershipConfig",
     "committees.apps.CommitteesConfig",
     "meetings.apps.MeetingsConfig",
+    "announcements.apps.AnnouncementsConfig",
 ]
 
 MIDDLEWARE = [
