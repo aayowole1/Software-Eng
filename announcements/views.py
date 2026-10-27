@@ -10,7 +10,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
-from django.db.models import F
+from django.db.models import F, Q
+
+from accounts.models import Profile, Role
 
 from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
 from .forms import AnnouncementForm, AnnouncementAttachmentForm
@@ -28,6 +30,21 @@ def is_officer_or_admin(user) -> bool:
     )
 
 
+def get_author_role(user) -> str:
+    """Return the display label used for an announcement author."""
+    if user.is_superuser:
+        return "System Administrator"
+
+    try:
+        profile = user.profile
+    except Profile.DoesNotExist:
+        profile = None
+    if profile and profile.role in {Role.ADMIN, Role.OFFICER}:
+        return profile.get_role_display()
+
+    return "Officer"
+
+
 # === [ADMIN] CREATE ANNOUNCEMENT
 @login_required
 @user_passes_test(is_officer_or_admin, login_url="announcements:list")
@@ -42,13 +59,7 @@ def announcement_create(request):
             announcement = form.save(commit=False)
             announcement.author = request.user
 
-            # auto-assign author role based on profile / group
-            if hasattr(request.user, "profile") and request.user.profile.title:
-                announcement.author_role = request.user.profile.title
-            elif request.user.is_superuser:
-                announcement.author_role = "System Administrator"
-            else:
-                announcement.author_role = "Officer"
+            announcement.author_role = get_author_role(request.user)
 
             # auto-set published_at if publishing immediately
             if announcement.status == "published" and not announcement.published_at:
@@ -104,8 +115,11 @@ def announcement_edit(request, pk):
         pk=pk
     )
 
-    # security check: only author or superuser/staff can edit
-    if not (request.user.is_staff or announcement.author == request.user):
+    # Editing is limited to the announcement author and superusers.
+    if not (
+        request.user.is_superuser
+        or announcement.author == request.user
+    ):
         raise PermissionDenied("You do not have permission to edit this announcement.")
 
     if request.method == "POST":
@@ -233,9 +247,13 @@ def announcement_detail(request, pk):
     )
 
     is_admin = is_officer_or_admin(request.user)
+    is_published = Announcement.objects.filter(
+        pk=announcement.pk,
+        status="published",
+    ).exists()
 
     # permission check: regular members cannot view unpublished/draft posts
-    if announcement.status != "published" and not is_admin:
+    if not is_published and not is_admin:
         raise PermissionDenied("This announcement has not been published yet.")
 
     # record / check read receipt for telemetry
@@ -265,7 +283,10 @@ def announcement_detail(request, pk):
     context = {
         "announcement": announcement,
         "is_admin": is_admin,
-        "can_edit": is_admin and (request.user.is_staff or announcement.author == request.user),
+        "can_edit": is_admin and (
+            request.user.is_superuser
+            or announcement.author == request.user
+        ),
         "is_read_by_user": is_read_by_user,
         "receipt_just_created": receipt_created,
         "related_announcements": related_announcements,
@@ -288,6 +309,6 @@ def announcement_mark_read(request, pk):
             announcement.refresh_from_db(fields=["read_count"])
 
         # return updated read button HTML or JSON response
-        return redirect("announcements")
+        return redirect("announcements:list")
 
-    return redirect("announcements")
+    return redirect("announcements:list")

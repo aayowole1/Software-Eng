@@ -122,7 +122,7 @@ class AnnouncementAttachment(models.Model):
     announcement = models.ForeignKey(
         Announcement,
         on_delete=models.CASCADE,
-        related_name="attachements",
+        related_name="attachments",
     )
     file = models.FileField(
         upload_to="announcements/%Y/%m/"
