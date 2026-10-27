@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}{{ announcement.title }} - MyOrg Announcements{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 text-slate-800 flex">
+  
+  <main class="flex-1 p-6 lg:p-10 max-w-5xl mx-auto">
+    
+    <!-- Top Breadcrumb & Actions Bar -->
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+      <div class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+        <a href="{% url 'announcements:list' %}" class="hover:text-slate-900 transition">Announcements</a>
+        <span>&rsaquo;</span>
+        <span class="text-slate-800 font-semibold truncate max-w-xs">{{ announcement.category.name|default:"General" }}</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        {% if can_edit %}
+          <a href="{% url 'announcements:edit' announcement.id %}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-medium transition shadow-sm">
+            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            Edit Post
+          </a>
+        {% endif %}
+        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium transition">
+          &larr; Back to Feed
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Notice Card -->
+    <article class="bg-white rounded-xl border border-slate-200 p-6 lg:p-8 shadow-sm mb-6">
+      
+      <!-- Meta Badges Bar -->
+      <div class="flex items-center flex-wrap gap-2.5 mb-4">
+        {% if announcement.is_pinned %}
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+            <svg class="w-3.5 h-3.5 fill-amber-700" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v2.1l2.5 1.5A1 1 0 0114 7.5v2.8l2 2a1 1 0 01-.7 1.7H11v4a1 1 0 11-2 0v-4H4.7a1 1 0 01-.7-1.7l2-2V7.5a1 1 0 01.5-.9L9 5.1V3a1 1 0 011-1z"/></svg>
+            Pinned Notice
+          </span>
+        {% endif %}
+
+        {% if announcement.category %}
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            {{ announcement.category.name }}
+          </span>
+        {% endif %}
+
+        {% if is_admin %}
+          {% if announcement.status == 'published' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Live</span>
+          {% elif announcement.status == 'scheduled' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200">Scheduled: {{ announcement.scheduled_for|date:"M d, Y" }}</span>
+          {% elif announcement.status == 'draft' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Draft</span>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <!-- Headline -->
+      <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-4 leading-tight">
+        {{ announcement.title }}
+      </h1>
+
+      <!-- Author Byline & Date -->
+      <div class="flex items-center justify-between py-3 border-y border-slate-100 mb-6 text-xs text-slate-600">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-slate-800 text-white font-semibold flex items-center justify-center text-xs">
+            {{ announcement.author.first_name|first }}{{ announcement.author.last_name|first }}
+          </div>
+          <div>
+            <strong class="font-medium text-slate-900 block">{{ announcement.author.get_full_name|default:announcement.author.username }}</strong>
+            <span class="text-slate-500">{{ announcement.author_role }}</span>
+          </div>
+        </div>
+
+        <div class="text-right">
+          <time datetime="{{ announcement.published_at|date:'c' }}" class="font-medium text-slate-700 block">
+            {{ announcement.published_at|date:"F j, Y &bull; g:i A" }}
+          </time>
+          <span class="text-slate-400 text-[11px]">{{ announcement.published_at|timesince }} ago</span>
+        </div>
+      </div>
+
+      <!-- Meeting Logistics Box (if present) -->
+      {% if announcement.meeting_location or announcement.meeting_virtual_url %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 mb-6 text-xs">
+          {% if announcement.meeting_location %}
+            <div class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-slate-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              <div>
+                <strong class="block text-slate-900 font-semibold">Location</strong>
+                <span class="text-slate-600">{{ announcement.meeting_location }}</span>
+              </div>
+            </div>
+          {% endif %}
+
+          {% if announcement.meeting_virtual_url %}
+            <div class="flex items-start gap-2.5">
+              <svg class="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <div>
+                <strong class="block text-slate-900 font-semibold">Hybrid Stream</strong>
+                <a href="{{ announcement.meeting_virtual_url }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">
+                  Join Virtual Session &rarr;
+                </a>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Full Body Text -->
+      <div class="prose max-w-none text-slate-700 text-sm leading-relaxed mb-8 space-y-4">
+        {{ announcement.content|linebreaks }}
+      </div>
+
+      <!-- File Attachments Box -->
+      {% if announcement.attachments.all %}
+        <div class="border-t border-slate-100 pt-5 mb-6">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Official Attachments</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% for att in announcement.attachments.all %}
+              <a href="{{ att.file.url }}" download class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white text-xs text-slate-800 hover:border-slate-300 transition group shadow-sm">
+                <div class="flex items-center gap-2.5 truncate">
+                  <svg class="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  <span class="font-medium truncate">{{ att.name }}</span>
+                </div>
+                {% if att.size_label %}
+                  <span class="text-slate-400 text-[11px] shrink-0 ml-2">({{ att.size_label }})</span>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Engagement / Telemetry Bar -->
+      <div class="border-t border-slate-100 pt-4 flex items-center justify-between text-xs">
+        {% if is_admin %}
+          <div class="flex items-center gap-3 text-slate-500">
+            <span class="font-medium text-slate-700">{{ announcement.read_count }} / {{ announcement.target_reach }} Members Read ({{ announcement.read_percentage }}%)</span>
+            <div class="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-slate-800 rounded-full" style="width: {{ announcement.read_percentage }}%;"></div>
+            </div>
+          </div>
+        {% else %}
+          <div class="flex items-center gap-2">
+            {% if is_read_by_user %}
+              <span class="inline-flex items-center gap-1 text-emerald-700 font-medium bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                ✓ Acknowledged & Read
+              </span>
+            {% else %}
+              <form method="post" action="{% url 'announcements:mark_read' announcement.id %}">
+                {% csrf_token %}
+                <button type="submit" class="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition">
+                  ✓ Mark as Read
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <div class="text-slate-400 text-[11px]">
+          ID: #{{ announcement.id }} &bull; Updated {{ announcement.updated_at|date:"M d, Y" }}
+        </div>
+      </div>
+
+    </article>
+
+    <!-- Related Notices Footer (if available) -->
+    {% if related_announcements %}
+      <div class="mt-8">
+        <h3 class="text-sm font-bold text-slate-900 mb-3">More from {{ announcement.category.name }}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% for item in related_announcements %}
+            <a href="{% url 'announcements:detail' item.id %}" class="bg-white p-4 rounded-xl border border-slate-200 hover:border-slate-300 shadow-sm transition block group">
+              <span class="text-[11px] text-slate-400 block mb-1">{{ item.published_at|date:"M d, Y" }}</span>
+              <h4 class="text-xs font-bold text-slate-800 group-hover:text-blue-600 line-clamp-2 leading-snug">{{ item.title }}</h4>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}

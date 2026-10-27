@@ -1,0 +1,108 @@
+<!-- This HTML file was rendered with the aid of Google Stitch. -->
+{% load static %}
+
+<article class="bg-white rounded-xl border {% if item.is_pinned %}border-amber-300 ring-1 ring-amber-200/60 shadow-sm{% else %}border-slate-200 shadow-sm{% endif %} p-5 transition hover:border-slate-300 mb-4" data-id="{{ item.id }}">
+  
+  <!-- Header: Category & Badges -->
+  <div class="flex items-center justify-between gap-3 mb-3">
+    <div class="flex items-center flex-wrap gap-2">
+      {% if item.is_pinned %}
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+          <svg class="w-3.5 h-3.5 fill-amber-700" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v2.1l2.5 1.5A1 1 0 0114 7.5v2.8l2 2a1 1 0 01-.7 1.7H11v4a1 1 0 11-2 0v-4H4.7a1 1 0 01-.7-1.7l2-2V7.5a1 1 0 01.5-.9L9 5.1V3a1 1 0 011-1z"/></svg>
+          Pinned to Top
+        </span>
+      {% endif %}
+
+      {% if item.category %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          {{ item.category.name }}
+        </span>
+      {% endif %}
+
+      {% if is_admin %}
+        {% if item.status == 'published' %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Live</span>
+        {% elif item.status == 'scheduled' %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200">Scheduled: {{ item.scheduled_for|date:"M d, Y" }}</span>
+        {% elif item.status == 'draft' %}
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Unpublished Draft</span>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <!-- Date info -->
+    <div class="text-xs text-slate-500 flex items-center gap-2">
+      <time datetime="{{ item.published_at|date:'c' }}">{{ item.published_at|timesince }} ago</time>
+      {% if is_admin %}
+        <button type="button" class="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600" aria-label="Item options">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Announcement Headline & Content Body -->
+  <h3 class="text-base font-bold text-slate-900 mb-2 leading-snug">
+    {{ item.title }}
+  </h3>
+  <p class="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed">
+    {{ item.content|linebreaksbr }}
+  </p>
+
+  <!-- Author Identification -->
+  <div class="flex items-center gap-2.5 py-2.5 border-t border-slate-100 mb-3 text-xs text-slate-600">
+    <div class="w-6 h-6 rounded-full bg-slate-800 text-white font-semibold flex items-center justify-center text-[10px]">
+      {{ item.author.first_name|first }}{{ item.author.last_name|first }}
+    </div>
+    <span>
+      <strong class="font-medium text-slate-800">{{ item.author.get_full_name|default:item.author.username }}</strong>
+      &bull; {{ item.author_role }}
+    </span>
+  </div>
+
+  <!-- Optional File Attachments Loop -->
+  {% if item.attachments.all %}
+    <div class="flex flex-wrap gap-2 mb-4">
+      {% for att in item.attachments.all %}
+        <a href="{{ att.file.url }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white text-xs font-medium text-slate-700 hover:text-blue-700 transition" download>
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>{{ att.name }}</span>
+          {% if att.size_label %}<span class="text-slate-400 text-[11px]">({{ att.size_label }})</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Bottom Actions Toolbar: Admin vs Member Logic -->
+  <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+    {% if is_admin %}
+      <!-- Admin Telemetry & Quick Management -->
+      <div class="flex items-center gap-3 text-slate-500">
+        <span class="font-medium text-slate-700">{{ item.read_count }} / {{ item.target_reach }} Read ({{ item.read_percentage }}%)</span>
+        <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full bg-slate-800 rounded-full" style="width: {{ item.read_percentage }}%;"></div>
+        </div>
+        <span>&bull; {{ item.comments_count }} comments</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <a href="{% url 'announcements:edit' item.id %}" class="px-2.5 py-1 text-slate-700 hover:bg-slate-100 rounded border border-slate-200 font-medium">Edit</a>
+      </div>
+    {% else %}
+      <!-- Member Engagement -->
+      <div class="flex items-center gap-2">
+        <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition" onclick="markAnnouncementRead({{ item.id }})">
+          ✓ Mark as Read
+        </button>
+        <button type="button" class="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500" aria-label="Bookmark">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+        </button>
+      </div>
+
+      <a href="{% url 'announcements:detail' item.id %}" class="font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
+        Read full notice &rarr;
+      </a>
+    {% endif %}
+  </div>
+
+</article>

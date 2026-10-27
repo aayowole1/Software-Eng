@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements - MyOrg{% endblock %}
+
+{% block content %}
+<div class="announcement-page min-h-screen bg-slate-50 text-slate-800">
+  <div class="p-6 lg:p-8 max-w-7xl mx-auto">
+    
+    <!-- Top Breadcrumbs & Search Bar -->
+    <div class="flex items-center justify-between pb-6 border-b border-slate-200 mb-6">
+      <div class="text-xs text-slate-500 font-medium">
+        <span>Portal</span> &rsaquo; <span class="text-slate-800">Workspace</span>
+      </div>
+      <form method="get" class="relative w-72">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search portal... (press /)" class="w-full text-xs bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
+        <svg class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </form>
+    </div>
+
+    <!-- Header Block: Admin View vs Member View -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h1 class="text-2xl font-bold text-slate-900">
+            {% if is_admin %}Announcements Management{% else %}Announcements{% endif %}
+          </h1>
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium {% if is_admin %}bg-blue-100 text-blue-800{% else %}bg-slate-100 text-slate-600{% endif %}">
+            {% if is_admin %}Admin Portal{% else %}Member View (Read Only){% endif %}
+          </span>
+        </div>
+        <p class="text-sm text-slate-500">
+          {% if is_admin %}
+            Create, broadcast, schedule, and manage club-wide announcements, meeting reminders, and council communications.
+          {% else %}
+            Official updates, executive briefings, meeting agendas, and institutional records from MyOrg leadership.
+          {% endif %}
+        </p>
+      </div>
+
+      {% if is_admin %}
+        <!-- Admin Primary Action Buttons -->
+        <div class="flex items-center gap-3">
+          <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
+            <span>+</span> Create Announcement
+          </a>
+          <a href="?status=draft" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
+            Drafts ({{ stats.active_drafts }})
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if is_admin %}
+      <!-- Admin Metric KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 block mb-1">Total Published</span>
+          <span class="text-2xl font-bold text-slate-900">{{ stats.total_published }}</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 block mb-1">Active Drafts</span>
+          <span class="text-2xl font-bold text-slate-900">{{ stats.active_drafts }}</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 block mb-1">Scheduled Queue</span>
+          <span class="text-2xl font-bold text-slate-900">{{ stats.scheduled_queue }}</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-500 block mb-1">Member Read Rate</span>
+          <span class="text-2xl font-bold text-slate-900">{{ stats.avg_read_rate }}%</span>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Filter & Category Pills Bar -->
+    <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
+      <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+        All Announcements ({{ announcements|length }})
+      </a>
+      {% for cat in categories %}
+        <a href="?category={{ cat.slug }}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_category == cat.slug %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+          {{ cat.name }}
+        </a>
+      {% endfor %}
+    </div>
+
+    <!-- Main Grid: Announcement Cards + Side Rail -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Primary Announcements Feed Column -->
+      <div class="lg:col-span-2">
+        {% for announcement in announcements %}
+          {% include "announcements/partials/_card.html" with item=announcement is_admin=is_admin %}
+        {% empty %}
+          <div class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500">
+            <p class="font-medium text-slate-700">No announcements found</p>
+            <p class="text-xs mt-1">There are no updates matching your current query or filters.</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Right Utility Rail -->
+      <aside class="space-y-6">
+        {% if is_admin %}
+          <!-- Admin Audience Reach Widget -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+              <span>Audience Reach</span>
+              <span class="text-xs font-normal text-slate-500">165 Members</span>
+            </h3>
+            <ul class="text-xs space-y-2 text-slate-600">
+              <li class="flex justify-between py-1 border-b border-slate-100">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> All Active Members</span>
+                <strong>165</strong>
+              </li>
+              <li class="flex justify-between py-1 border-b border-slate-100">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Executive Officers</span>
+                <strong>8</strong>
+              </li>
+              <li class="flex justify-between py-1">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> New Recruits</span>
+                <strong>34</strong>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <!-- Member Key Deadlines Widget -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900 mb-3">Key Member Deadlines</h3>
+            <div class="space-y-3 text-xs">
+              <div class="flex items-start gap-3 p-2 rounded-lg bg-amber-50/50 border border-amber-100">
+                <div class="bg-amber-100 text-amber-900 font-bold px-2 py-1 rounded text-[11px] text-center">
+                  OCT<br>24
+                </div>
+                <div>
+                  <h4 class="font-bold text-slate-800">Mandatory GBM #3</h4>
+                  <p class="text-slate-500 text-[11px]">7:00 PM &bull; Student Union</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </aside>
+
+    </div>
+
+  </div>
+</div>
+{% endblock %}
