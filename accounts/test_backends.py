@@ -1,6 +1,7 @@
 """Unit tests for accounts/backends.py — find_user() and EmailOrUsernameBackend."""
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import RequestFactory, TestCase
 
 from .backends import EmailOrUsernameBackend, find_user
@@ -28,10 +29,12 @@ class FindUserTests(TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.username, "Ada")
 
-    def test_finds_user_by_username_when_another_has_same_email(self):
-        User.objects.create_user("second", "ada@example.com", PASSWORD)
-        # "ada@example.com" as username should match only self.user
-        self.assertEqual(find_user("ada@example.com"), self.user)
+    def test_username_match_wins_over_another_accounts_email(self):
+        # Emails are unique, but one account's username can equal another
+        # account's email; the username match must win.
+        by_username = User.objects.create_user("carol@example.com", "carol.work@example.com", PASSWORD)
+        User.objects.create_user("carol2", "carol@example.com", PASSWORD)
+        self.assertEqual(find_user("carol@example.com"), by_username)
 
     # ---- email lookup ----
 
@@ -43,10 +46,13 @@ class FindUserTests(TestCase):
         other = User.objects.create_user("bob", "bob@example.com", PASSWORD)
         self.assertEqual(find_user("BOB@EXAMPLE.COM"), other)
 
-    def test_email_lookup_returns_none_when_two_accounts_share_email(self):
+    def test_two_accounts_cannot_share_an_email(self):
+        # The database rejects duplicate emails (any letter case), so an email
+        # always identifies at most one account.
         User.objects.create_user("first", "shared@example.com", PASSWORD)
-        User.objects.create_user("second", "shared@example.com", PASSWORD)
-        self.assertIsNone(find_user("shared@example.com"))
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user("second", "SHARED@example.com", PASSWORD)
+        self.assertEqual(find_user("shared@example.com").username, "first")
 
     def test_unknown_identifier_returns_none(self):
         self.assertIsNone(find_user("nobody@example.com"))
@@ -119,8 +125,11 @@ class EmailOrUsernameBackendTests(TestCase):
         result = self.backend.authenticate(self.request, username="alice@example.com", password=PASSWORD)
         self.assertEqual(result, other)
 
-    def test_ambiguous_email_prevents_sign_in(self):
-        User.objects.create_user("first", "shared@example.com", PASSWORD)
-        User.objects.create_user("second", "shared@example.com", PASSWORD)
+    def test_email_sign_in_reaches_the_single_owner(self):
+        # Duplicate emails are blocked by the database, so signing in by email
+        # can never be ambiguous.
+        owner = User.objects.create_user("first", "shared@example.com", PASSWORD)
+        with self.assertRaises(IntegrityError):
+            User.objects.create_user("second", "shared@example.com", PASSWORD)
         result = self.backend.authenticate(self.request, username="shared@example.com", password=PASSWORD)
-        self.assertIsNone(result)
+        self.assertEqual(result, owner)
