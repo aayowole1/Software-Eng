@@ -1,0 +1,20 @@
+{
+  "checked_at_utc": "2026-10-28T15:28:18.437677+00:00",
+  "base_url": "http://127.0.0.1:8017",
+  "all_data_synthetic": true,
+  "committee_created": true,
+  "committee_id": "6ae21491543cc770104b89e9",
+  "committee_url": "http://127.0.0.1:8017/committees/6ae21491543cc770104b89e9/",
+  "committee_edit_url": "http://127.0.0.1:8017/committees/6ae21491543cc770104b89e9/edit/",
+  "checks": {
+    "officer_roster_status": 200,
+    "officer_edit_status": 200,
+    "edit_link_rendered": true,
+    "save_role_rendered": true,
+    "signed_revision_rendered": true,
+    "member_edit_denied": true
+  },
+  "live_provider_calls": 0,
+  "human_rehearsal_completed": false,
+  "note": "Prepared fixture and rendered HTTP prerequisites only; no personal rehearsal or VM deployment claimed."
+}

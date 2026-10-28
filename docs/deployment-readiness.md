@@ -1,5 +1,10 @@
 # November 1 deployment check record
 
+> **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
+> Earlier dates, counts and receipts below retain their original checkpoints.
+> The new 23 focused tests passed; current full/coverage/CI results and human or
+> owner acceptance are not inferred from the older runs.
+
 Checked October 25, 2026, America/Chicago. Scope: Chau's Accounts and Tasks,
 approved meeting-to-task integration, and the deployment path supporting them.
 The user confirmed the existing team Docker/VM as the target and explicitly left
@@ -62,6 +67,39 @@ and [WhiteNoise's Django integration](https://whitenoise.readthedocs.io/en/stabl
 The new configuration received independent Codex-agent review; the earlier
 Claude static review covered its recorded source snapshot and is not described
 as a review of these later deployment files.
+
+## October 28 compatibility follow-up and current CI
+
+The previous latest-head CI attempts failed before application tests because
+MongoDB 8.0 aborted on the newer Ubuntu 26.04 runner with the recorded
+Linux-kernel compatibility error (SERVER-121912). Both workflow jobs now use a
+temporary **Ubuntu 22.04** pin. This avoids relying on a moving
+`ubuntu-latest` environment; it is not a database downgrade, an application
+test result, or a guarantee about every kernel on the team's VM. The successful
+CI receipts below identify their runner image; the exact running kernel was not
+recorded.
+
+The Ubuntu 24.04 intermediate attempt was mixed (one job passed, one MongoDB
+startup failure); the retained successful configuration is Ubuntu 22.04 image
+`20261025.340.1` with MongoDB `8.0.34`. Its exact running kernel was unobserved,
+so a particular uname version is not claimed. Re-evaluate the temporary pin
+before April 2027; this tested CI compatibility is not a team VM certification.
+
+Main now includes Ayomide's Events app. The primary production image therefore
+copies `events/` as well, matching its installed-app registration. Earlier
+Events-free primary packaging notes describe the older source only. The latest
+committee update source is primary `0641a63` / preview `b3c6dad`; its 23
+focused tests passed in 11.881 seconds. Current primary CI passed 661/661 tests in
+219.247 seconds and deployment smoke ([run 40713730179](https://github.com/aayowole1/Software-Eng/actions/runs/40713730179));
+preview CI passed 638 of 640 collected tests with two live Deepgram skips in
+166.342 seconds and deployment smoke ([run 40713734468](https://github.com/aayowole1/Software-Eng/actions/runs/40713734468)).
+Primary local regression/committee-task coverage is in the closeout; preview
+local coverage remains pending its own receipt. These are separate from the
+October 25 table above and do not establish actual team VM or live services.
+
+See the [six-subtask closeout](chau-closeout-20261028.md). Public TLS, real
+provider/SMTP delivery, actual VM release, host benchmarks, human rehearsal,
+peer review and policy acceptance remain open.
 
 ## Remaining November 1 gates
 

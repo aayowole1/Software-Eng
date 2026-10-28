@@ -1,5 +1,10 @@
 # OrgFlow Individual Contribution Report
 
+> **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
+> Earlier dates, counts and receipts below retain their original checkpoints.
+> The new 23 focused tests passed; current full/coverage/CI results and human or
+> owner acceptance are not inferred from the older runs.
+
 Accounts Tasks and Shared Integration
 
 Chau Minh Viet Nguyen | CSE 6324 Advanced Topics in Software Engineering | October 25, 2026
