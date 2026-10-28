@@ -1,0 +1,35 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review committee setup · OrgFlow</title>
+  <link rel="stylesheet" href="{% static 'core/site.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
+    <nav aria-label="Committee setup"><a href="{% url 'committees:list' %}">Committees</a></nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <h1>Review committee setup</h1>
+    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+    <h2>{{ committee.name }}</h2>
+    {% if committee.description %}<p>{{ committee.description }}</p>{% endif %}
+    <p><a href="{% url 'committees:detail' committee.pk %}">Review the current roster</a> · <a href="{{ recovery_check_url }}">Reload current setup</a></p>
+    {% if creator_membership %}
+      <p>Your saved committee role is {{ creator_membership.get_role_display }}. This continuation does not change an existing role. Use the roster's role form if an intentional change is needed.</p>
+    {% else %}
+      <p>You are not currently on this committee. Setup may have been interrupted, or your membership may have been removed later. Review the roster before adding yourself as Chair.</p>
+      <p>Committee Chair does not grant organization Officer or Admin authority.</p>
+      <form method="post" action="{{ recovery_url }}" class="card">
+        {% csrf_token %}
+        <input type="hidden" name="creation_intent" value="{{ creation_intent }}">
+        {{ form.as_p }}
+        <button type="submit">Confirm: add me as committee Chair</button>
+      </form>
+    {% endif %}
+  </main>
+</body>
+</html>
