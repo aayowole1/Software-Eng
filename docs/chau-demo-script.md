@@ -1,5 +1,10 @@
 # OrgFlow Contribution Demo Script
 
+> **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
+> Earlier dates, counts and receipts below retain their original checkpoints.
+> The new 23 focused tests passed; current full/coverage/CI results and human or
+> owner acceptance are not inferred from the older runs.
+
 A Guided Rehearsal for Chau Minh Viet Nguyen
 
 Target length 8 to 10 minutes | Prepared October 25, 2026 | Local synthetic demonstration
@@ -14,7 +19,7 @@ Use the running combined preview at http://127.0.0.1:8017. It contains your Acco
 | Outreach member | task_demo_member | Claim and update accessible tasks; prove restricted actions. |
 | Finance member | task_demo_finance | Optional committee comparison. |
 
-Shared local practice password: Task-Demo-2026! These are isolated synthetic accounts, not real team or service credentials. Do not change their roles/passwords or use this credential for a real deployment.
+Shared local practice password: Task-Demo-2026! These are isolated synthetic accounts, not real team or service credentials. Do not change their organization roles/passwords or use this credential for a real deployment. The October 28 step changes only committee-role labels on a dedicated synthetic rehearsal committee.
 
 [Start with the local sign-in page](http://127.0.0.1:8017/accounts/login/)
 
@@ -39,6 +44,47 @@ Time 00:40 to 01:30
 **Expected** The officer dashboard shows the officer role, Tasks and Meeting drafts. The separate registration form explains the pending membership application. A password-reset entry point is visible; real email delivery is not demonstrated.
 
 **Say** Access comes from the current account state and role. Google identity is verified on the server when configured, but local registration and membership approval are not proof of mailbox ownership. Role changes and recovery safeguards extend the original account system.
+
+## Committee edit and member role — October 28 addition
+
+Allow about 1 to 2 minutes. Trim the optional registration/filter discussion to
+keep the original 8 to 10 minute target; the older timestamps below are an
+outline, not a measured rehearsal with this addition.
+
+**Prepare** Confirm that the local server serves the current application source
+listed in the closeout. The [dedicated October 28 committee](http://127.0.0.1:8017/committees/6ae21491543cc770104b89e9/)
+contains the practice officer and member. Six rendered HTTP prerequisites passed
+([receipt](evidence/chau-closeout-20261028/demo-update-readiness.json)); this prepares
+the scene without performing Chau's personal rehearsal. Use synthetic data and
+recheck fixture state if it was already used. The server must be running before
+opening the local links.
+
+**Do** As the officer, open the committee and choose Edit committee. Open a second
+edit tab before saving. Change the description in the first tab and save. Submit
+a different description from the older second tab, without reloading it.
+
+**Expected** The first edit saves. The older submission returns **409** with
+reload/conflict feedback and does not replace the first description. An unchanged
+name remains valid; another committee's case-insensitive duplicate name is
+rejected. This is signed current-value conflict protection, not a new model
+version or global case-folded uniqueness guarantee.
+
+**Do** On the roster, change the synthetic member's committee role from Member to
+Chair and choose Save role. Sign out, sign in as that member, and revisit the
+committee and Tasks. Finish the stale-tab check before switching accounts,
+because tabs on the same origin share the active session. Return to the officer
+account before continuing the original create/delegate segment.
+
+**Expected** The committee label changes to Chair, but the account remains an
+organization Member. Committee management and New task remain unavailable; a
+direct unauthorized edit/create request remains **403**. Existing task state,
+version/history and roster membership are not recreated by the role change.
+
+**Say** Committee Chair and organization Officer are different roles. The new
+forms recheck current access and reject stale writes. Officer/President/lead
+policy still needs team acceptance. These are rehearsal expectations supported
+by automated HTTP tests; mark personal completion only after actually observing
+and explaining this flow.
 
 ## Create and delegate
 Time 01:30 to 02:40

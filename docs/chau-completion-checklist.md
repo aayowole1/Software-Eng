@@ -1,11 +1,19 @@
 # Chau contribution completion checklist
 
+> **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
+> Earlier dates, counts and receipts below retain their original checkpoints.
+> The new 23 focused tests passed; current full/coverage/CI results and human or
+> owner acceptance are not inferred from the older runs.
+
 Prepared October 25, 2026. Team target November 1; reported course deadline
 November 10. Scope is Chau's assigned Accounts/Tasks, shared integration and
 architecture/test foundation. This is not whole-project acceptance.
 
 ## Completed within the recorded scope
 
+- [x] October 28: both application-head CI workflows and local regressions passed (661 primary; 638 preview plus two live skips). Current committees/tasks branch coverage is 95.31%; dated receipts and the isolated SDK environment repair are linked in the closeout.
+
+- [x] October 28: normal committee edit and existing-member committee-role update added; 23 focused regressions passed in 11.881 seconds. See the dated closeout for contract and limits.
 - [x] Accounts extensions, canonical identity uniqueness, role history and bounded signup/lifecycle recovery implemented and reviewed.
 - [x] Tasks creation/delegation, effective permissions, claiming, progress, filters/counts and versioned history implemented and reviewed.
 - [x] Completed approved accepted-action import, repeat-safe origin keys, generation/review conflict and recovery safeguards verified.
@@ -19,7 +27,7 @@ architecture/test foundation. This is not whole-project acceptance.
 ## Pending human or owner evidence
 
 - [ ] Chau personally rehearses and explains the submitted work, records actual observed outcomes, and reviews the report before use.
-- [ ] Affected owners review the draft PRs and the team accepts the integrated demonstration revision.
+- [ ] Affected owners review the current PR heads and the team accepts the integrated demonstration revision.
 - [ ] Team reconciles Officer/President committee authority and strict local mailbox-verification wording. Current local signup plus membership review does not establish mailbox possession.
 - [ ] Team records the global audit/report/export owner and accepts the scope of local role/task history, recovery retention and the documented assignment/lifecycle rules.
 - [ ] VM operator verifies the actual target release, TLS/origin settings, backup operation/retention and the required host benchmark. CI containers do not establish those results.

@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "captured_utc": "2026-10-28T15:19:38Z",
+  "repository": "aayowole1/Software-Eng",
+  "scope": "Exact application commits completing SCRUM-23 / SCRUM-25 committee work and CI compatibility fixes; later documentation commits require their own current-head CI result.",
+  "branches": [
+    {
+      "pull_request": 12,
+      "head_sha": "0641a632f46e21567a33772cc5396e340068e731",
+      "run_id": 40713730179,
+      "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713730179",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_utc": "2026-10-28T15:17:53Z",
+      "runner": {
+        "label": "ubuntu-22.04",
+        "image_version": "20261025.340.1",
+        "kernel_observed": null,
+        "kernel_note": "The job logs do not print uname/kernel version. Do not infer an exact host kernel from the OS label. Both database services started and both complete jobs passed."
+      },
+      "mongo_version": "8.0.34",
+      "test_summary": {
+        "collected": 661,
+        "ran": 661,
+        "passed": 661,
+        "skipped": 0,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 219.247,
+        "result": "OK",
+        "skipped_tests": []
+      },
+      "checkout": {
+        "merge_short_sha": "05ec3ea",
+        "source_head": "0641a632f46e21567a33772cc5396e340068e731",
+        "base_sha": "f93fd18d1b0a2c15e22bd86aabd796e0ffaf1bc2"
+      },
+      "jobs": [
+        {
+          "id": 122905615874,
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713730179/job/122905615874",
+          "started_utc": "2026-10-28T15:13:21Z",
+          "completed_utc": "2026-10-28T15:17:52Z"
+        },
+        {
+          "id": 122905616489,
+          "name": "deployment-smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713730179/job/122905616489",
+          "started_utc": "2026-10-28T15:13:20Z",
+          "completed_utc": "2026-10-28T15:14:50Z"
+        }
+      ],
+      "deployment_summary": {
+        "result": "Container deployment smoke passed.",
+        "evidence_artifact_name": "deployment-smoke-evidence",
+        "environment": "Isolated disposable CI; synthetic accounts/data; internal SMTP; no real provider or production deployment claimed."
+      }
+    },
+    {
+      "pull_request": 13,
+      "head_sha": "b3c6dada394dae7757655efae12db9481cf7912f",
+      "run_id": 40713734468,
+      "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713734468",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "completed_utc": "2026-10-28T15:17:06Z",
+      "runner": {
+        "label": "ubuntu-22.04",
+        "image_version": "20261025.340.1",
+        "kernel_observed": null,
+        "kernel_note": "The job logs do not print uname/kernel version. Do not infer an exact host kernel from the OS label. Both database services started and both complete jobs passed."
+      },
+      "mongo_version": "8.0.34",
+      "test_summary": {
+        "collected": 640,
+        "ran": 640,
+        "passed": 638,
+        "skipped": 2,
+        "failed": 0,
+        "errors": 0,
+        "seconds": 166.342,
+        "result": "OK (skipped=2)",
+        "skipped_tests": [
+          "test_multi_speaker_audio_quality (meetings.tests.test_stt_deepgram.DeepgramSttTests.test_multi_speaker_audio_quality) ... skipped 'Set DEEPGRAM_API_KEY to run Deepgram STT integration tests.'",
+          "test_single_speaker_audio_quality (meetings.tests.test_stt_deepgram.DeepgramSttTests.test_single_speaker_audio_quality) ... skipped 'Set DEEPGRAM_API_KEY to run Deepgram STT integration tests.'"
+        ]
+      },
+      "checkout": {
+        "merge_short_sha": "2db47ff",
+        "source_head": "b3c6dada394dae7757655efae12db9481cf7912f",
+        "base_sha": "f93fd18d1b0a2c15e22bd86aabd796e0ffaf1bc2"
+      },
+      "jobs": [
+        {
+          "id": 122905631504,
+          "name": "test",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713734468/job/122905631504",
+          "started_utc": "2026-10-28T15:13:22Z",
+          "completed_utc": "2026-10-28T15:17:05Z"
+        },
+        {
+          "id": 122905631907,
+          "name": "deployment-smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/aayowole1/Software-Eng/actions/runs/40713734468/job/122905631907",
+          "started_utc": "2026-10-28T15:13:22Z",
+          "completed_utc": "2026-10-28T15:14:55Z"
+        }
+      ],
+      "deployment_summary": {
+        "result": "Container deployment smoke passed.",
+        "evidence_artifact_name": "deployment-smoke-evidence",
+        "environment": "Isolated disposable CI; synthetic accounts/data; internal SMTP; no real provider or production deployment claimed."
+      }
+    }
+  ],
+  "test_count_difference": "Primary has 34 rule-based/legacy meeting tests absent from the combined preview; preview has 11 mocked OpenAI summarizer tests and 2 skipped live Deepgram tests absent from primary (661 - 34 + 13 = 640). This is a branch-specific test layout, not 21 test failures.",
+  "limits": [
+    "No external Google/OpenAI/Deepgram/SMTP checks were performed by this audit.",
+    "Team VM/public HTTPS, recording/performance checks and human/team acceptance remain pending.",
+    "Combined preview recording uses one synchronous worker and active recording state does not survive restart.",
+    "Only compact sanitized facts are retained here; no credentials, provider settings, reset tokens or full raw job logs are saved."
+  ],
+  "compatibility_sources": [
+    "https://www.mongodb.com/docs/manual/administration/production-notes/",
+    "https://jira.mongodb.org/browse/SERVER-125742",
+    "https://jira.mongodb.org/browse/SERVER-131779"
+  ]
+}
