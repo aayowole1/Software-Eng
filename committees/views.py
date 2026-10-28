@@ -1,6 +1,9 @@
 from hashlib import sha256
 import json
+from urllib.parse import urlencode
 
+from bson import ObjectId
+from bson.errors import InvalidId
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -8,7 +11,11 @@ from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError, IntegrityError
 from django.db.models.deletion import ProtectedError
+from django.http import Http404, HttpResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -41,6 +48,23 @@ class CommitteeEditForm(CommitteeForm):
     revision = forms.CharField(widget=forms.HiddenInput)
 
 
+class CommitteeCreationForm(CommitteeForm):
+    creation_intent = forms.CharField(widget=forms.HiddenInput)
+
+
+class CommitteeCreationRecoveryForm(forms.Form):
+    revision = forms.CharField(widget=forms.HiddenInput)
+    confirm_add_creator = forms.BooleanField(
+        label="I reviewed the current roster and want to add myself as Chair.",
+        widget=forms.CheckboxInput(attrs={"value": "1"}),
+    )
+
+    def clean_confirm_add_creator(self):
+        if self.data.get("confirm_add_creator") != "1":
+            raise forms.ValidationError("Confirm the Chair addition after reviewing the current roster.")
+        return True
+
+
 class CommitteeMemberRoleForm(forms.Form):
     role = forms.ChoiceField(label="Committee role", choices=CommitteeRole.choices)
     revision = forms.CharField(widget=forms.HiddenInput)
@@ -48,6 +72,99 @@ class CommitteeMemberRoleForm(forms.Form):
 
 EDIT_SALT = "committees.edit.v1"
 MEMBER_ROLE_SALT = "committees.member-role.v1"
+CREATION_SALT = "committees.create.v1"
+CREATION_RECOVERY_SALT = "committees.creation-recovery.v1"
+
+
+def _new_creation_intent(user):
+    return signing.dumps({"id": str(ObjectId()), "actor": str(user.pk)}, salt=CREATION_SALT)
+
+
+def _creation_id(ticket, user):
+    try:
+        intent = signing.loads(ticket, salt=CREATION_SALT, max_age=86400)
+        if not isinstance(intent, dict) or intent.get("actor") != str(user.pk):
+            raise ValueError
+        if not isinstance(intent.get("id"), str) or not ObjectId.is_valid(intent["id"]):
+            raise ValueError
+        return ObjectId(intent["id"])
+    except (signing.BadSignature, InvalidId, ValueError, TypeError, KeyError):
+        return None
+
+
+def _creation_recovery_url(pk, ticket):
+    return reverse("committees:recover_creation", args=[pk]) + "?" + urlencode({"creation_intent": ticket})
+
+
+def _creation_values(committee, membership):
+    return {
+        **_committee_values(committee), "created_by_id": str(committee.created_by_id),
+        "created_at": committee.created_at.isoformat(),
+        "membership": None if membership is None else {
+            "id": str(membership.pk), **_member_values(membership),
+            "joined_at": membership.joined_at.isoformat(),
+        },
+    }
+
+
+def _creation_response(template, request, context, *, status):
+    # No RequestContext: database failures must not invoke the role/auth context
+    # processors or evaluate an unvalidated ModelForm while rendering feedback.
+    return HttpResponse(render_to_string(template, {**context, "csrf_token": get_token(request)}), status=status)
+
+
+def _creation_retry(request, ticket, pk, *, recovery_only=False):
+    return _creation_response("committees/committee_creation_retry.html", request, {
+        "creation_intent": ticket,
+        "name": request.POST.get("name", ""), "description": request.POST.get("description", ""),
+        "recovery_url": _creation_recovery_url(pk, ticket), "recovery_only": recovery_only,
+    }, status=503)
+
+
+def _check_creation_owner(committee, user):
+    if committee.created_by_id != user.pk:
+        raise PermissionDenied("This creation attempt does not belong to the selected committee's creator.")
+
+
+def _render_creation_recovery(request, committee, membership, ticket, *, status=200, form=None, error=None):
+    if form is None:
+        form = CommitteeCreationRecoveryForm(initial={
+            "revision": _revision(committee, _creation_values(committee, membership), CREATION_RECOVERY_SALT),
+        })
+    return _creation_response("committees/committee_creation_recovery.html", request, {
+        "committee": committee, "creator_membership": membership, "form": form,
+        "creation_intent": ticket, "error": error,
+        "recovery_url": reverse("committees:recover_creation", args=[committee.pk]),
+        "recovery_check_url": _creation_recovery_url(committee.pk, ticket),
+    }, status=status)
+
+
+def _creation_observed(request, committee, membership, ticket, *, uncertain=False):
+    _check_creation_owner(committee, request.user)
+    if membership is not None and membership.role == CommitteeRole.CHAIR:
+        messages.success(request, f"Committee “{committee.name}” and creator Chair membership confirmed.")
+        return redirect("committees:detail", pk=committee.pk)
+    if membership is not None:
+        return _render_creation_recovery(request, committee, membership, ticket, status=409,
+            error="Your committee role is already set. It was preserved; review the roster before changing it.")
+    return _render_creation_recovery(request, committee, None, ticket, status=503 if uncertain else 200,
+        error="The committee exists, but Chair setup could not be confirmed. Review the current committee and explicitly confirm below." if uncertain else None)
+
+
+def _creation_after_error(request, pk, ticket, *, recovery_only=False):
+    # One bounded read of each exact record; no deletion, compensation, metadata
+    # rewrite, or retry of a write whose acknowledgement may have been lost.
+    try:
+        committee = Committee.objects.filter(pk=pk).first()
+        if committee is None:
+            if recovery_only:
+                raise Http404("This committee no longer exists. Start a new creation if appropriate.")
+            return _creation_retry(request, ticket, pk)
+        _check_creation_owner(committee, request.user)
+        membership = CommitteeMember.objects.filter(committee_id=pk, user_id=request.user.pk).first()
+    except DatabaseError:
+        return _creation_retry(request, ticket, pk, recovery_only=recovery_only)
+    return _creation_observed(request, committee, membership, ticket, uncertain=True)
 
 
 def _digest(values):
@@ -113,18 +230,108 @@ def committee_list(request):
     return render(request, "committees/committee_list.html", {"committees": Committee.objects.all()})
 
 
+@require_http_methods(["GET", "POST"])
 @role_required(Role.OFFICER)
 def committee_create(request):
-    form = CommitteeForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    _require_current_manager(request.user)
+    if request.method == "GET":
+        form = CommitteeCreationForm(initial={"creation_intent": _new_creation_intent(request.user)})
+        return render(request, "committees/committee_form.html", {"form": form})
+
+    data = request.POST.copy()
+    # Older clients did not have an attempt ticket. An explicitly supplied bad
+    # ticket must never fall back to a fresh identity.
+    if "creation_intent" not in data:
+        data["creation_intent"] = _new_creation_intent(request.user)
+    ticket = data["creation_intent"]
+    pk = _creation_id(ticket, request.user)
+    form = CommitteeCreationForm(data)
+    if pk is None:
+        # Validate only the ticket here, not database-backed name uniqueness.
+        return _creation_response("committees/committee_creation_retry.html", request, {
+            "invalid_ticket": True,
+        }, status=400)
+
+    try:
+        existing = Committee.objects.filter(pk=pk).first()
+        if existing is not None:
+            _check_creation_owner(existing, request.user)
+            membership = CommitteeMember.objects.filter(committee_id=pk, user_id=request.user.pk).first()
+            return _creation_observed(request, existing, membership, ticket)
+        if not form.is_valid():
+            return render(request, "committees/committee_form.html", {"form": form})
         committee = form.save(commit=False)
+        committee.pk = pk
         committee.created_by = request.user
-        committee.save()
-        # The creator chairs the new committee.
-        CommitteeMember.objects.create(committee=committee, user=request.user, role=CommitteeRole.CHAIR)
-        messages.success(request, f"Committee “{committee.name}” created.")
-        return redirect("committees:detail", pk=committee.pk)
-    return render(request, "committees/committee_form.html", {"form": form})
+        _require_current_manager(request.user)
+        # force_insert cannot turn an uncertain retry into an update of metadata.
+        committee.save(force_insert=True)
+    except IntegrityError:
+        # Another request may have inserted this exact attempt, or a different
+        # committee may now own the submitted unique name. Never adopt by name.
+        try:
+            existing = Committee.objects.filter(pk=pk).first()
+            if existing is not None:
+                _check_creation_owner(existing, request.user)
+                membership = CommitteeMember.objects.filter(committee_id=pk, user_id=request.user.pk).first()
+                return _creation_observed(request, existing, membership, ticket)
+        except DatabaseError:
+            return _creation_retry(request, ticket, pk)
+        return _creation_response("committees/committee_creation_retry.html", request, {
+            "name_conflict": True, "creation_intent": ticket,
+            "name": request.POST.get("name", ""), "description": request.POST.get("description", ""),
+        }, status=400)
+    except DatabaseError:
+        return _creation_after_error(request, pk, ticket)
+
+    try:
+        # Only an acknowledged brand-new insert takes this automatic path.
+        membership = CommitteeMember.objects.create(committee=committee, user=request.user, role=CommitteeRole.CHAIR)
+    except DatabaseError:
+        return _creation_after_error(request, pk, ticket)
+    return _creation_observed(request, committee, membership, ticket)
+
+
+@require_http_methods(["GET", "POST"])
+@role_required(Role.OFFICER)
+def recover_committee_creation(request, pk):
+    _require_current_manager(request.user)
+    ticket = (request.POST if request.method == "POST" else request.GET).get("creation_intent", "")
+    if _creation_id(ticket, request.user) != pk:
+        return _creation_response("committees/committee_creation_retry.html", request, {
+            "invalid_ticket": True,
+        }, status=400)
+    try:
+        committee = get_object_or_404(Committee, pk=pk)
+        _check_creation_owner(committee, request.user)
+        membership = CommitteeMember.objects.filter(committee_id=pk, user_id=request.user.pk).first()
+        # Already completed is an idempotent confirmation; it does not write and
+        # does not need to re-use the earlier, now-stale missing-member snapshot.
+        if membership is not None:
+            return _creation_observed(request, committee, membership, ticket)
+        if request.method == "GET":
+            return _render_creation_recovery(request, committee, None, ticket)
+        form = CommitteeCreationRecoveryForm(request.POST)
+        status = 400
+        if form.is_valid():
+            # The signed actor is also the target creator. This fresh access
+            # check covers suspension/pending state and valid superusers
+            # without requiring an unrelated assignee Profile row.
+            _require_current_manager(request.user)
+            committee = get_object_or_404(Committee, pk=pk)
+            _check_creation_owner(committee, request.user)
+            status = _check_revision(form, committee, _creation_values(committee, None), CREATION_RECOVERY_SALT)
+            if status is None:
+                # Preserve a concurrently inserted Member or Chair. This is an
+                # explicit add confirmation, never a promotion or a rollback.
+                membership, _created = CommitteeMember.objects.get_or_create(
+                    committee_id=pk, user_id=request.user.pk,
+                    defaults={"role": CommitteeRole.CHAIR},
+                )
+                return _creation_observed(request, committee, membership, ticket)
+        return _render_creation_recovery(request, committee, None, ticket, form=form, status=status)
+    except DatabaseError:
+        return _creation_after_error(request, pk, ticket, recovery_only=True)
 
 
 @role_required(Role.MEMBER)

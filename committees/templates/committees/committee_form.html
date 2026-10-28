@@ -5,7 +5,7 @@
   <form method="post" class="card" novalidate>
     {% csrf_token %}
     {{ form.as_p }}
-    {% if not editing %}<p class="muted">You'll be added as the committee chair.</p>{% endif %}
+    {% if not editing %}<p class="muted">You'll be added as the committee chair. If setup is interrupted, review the saved committee before confirming Chair setup.</p>{% endif %}
     <button type="submit">{% if editing %}Save committee{% else %}Create committee{% endif %}</button>
     {% if editing %}<a href="{% url 'committees:detail' committee.pk %}">Cancel</a>{% endif %}
   </form>

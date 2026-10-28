@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.committee_list, name="list"),
     path("new/", views.committee_create, name="create"),
     path("<oid:pk>/", views.committee_detail, name="detail"),
+    path("<oid:pk>/creation-recovery/", views.recover_committee_creation, name="recover_creation"),
     path("<oid:pk>/edit/", views.committee_edit, name="edit"),
     path("<oid:pk>/delete/", views.committee_delete, name="delete"),
     path("<oid:pk>/members/", views.add_member, name="add_member"),
