@@ -1,5 +1,7 @@
 # November 1 deployment check record
 
+> **Creation recovery follow-up (October 28):** [Resolved partial-creation finding and new evidence](chau-creation-recovery-20261028.md). Earlier results below retain their named source checkpoints.
+
 > **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
 > Earlier dates, counts and receipts below retain their original checkpoints.
 > The new 23 focused tests passed; current full/coverage/CI results and human or
