@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}New committee{% endblock %}
+{% block title %}{% if editing %}Edit committee{% else %}New committee{% endif %}{% endblock %}
 {% block content %}
-  <h1>New committee</h1>
+  <h1>{% if editing %}Edit committee{% else %}New committee{% endif %}</h1>
   <form method="post" class="card" novalidate>
     {% csrf_token %}
     {{ form.as_p }}
-    <p class="muted">You'll be added as the committee chair.</p>
-    <button type="submit">Create committee</button>
+    {% if not editing %}<p class="muted">You'll be added as the committee chair.</p>{% endif %}
+    <button type="submit">{% if editing %}Save committee{% else %}Create committee{% endif %}</button>
+    {% if editing %}<a href="{% url 'committees:detail' committee.pk %}">Cancel</a>{% endif %}
   </form>
 {% endblock %}
