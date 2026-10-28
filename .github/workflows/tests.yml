@@ -7,8 +7,9 @@ on:
 
 jobs:
   test:
-    # MongoDB 8.0 cannot start on the Linux 6.19+ kernel in Ubuntu 26 runners.
-    runs-on: ubuntu-24.04
+    # MongoDB 8.0 needs a supported host kernel; newer 24.04 images use 6.19.
+    # Temporary compatibility runner (6.8 kernel); re-evaluate before April 2027.
+    runs-on: ubuntu-22.04
     services:
       mongo:
         image: mongo:8.0
@@ -36,7 +37,7 @@ jobs:
       - run: python manage.py test --verbosity 2 --noinput
 
   deployment-smoke:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4

@@ -21,6 +21,7 @@ COPY --chown=root:root membership ./membership
 COPY --chown=root:root committees ./committees
 COPY --chown=root:root meetings ./meetings
 COPY --chown=root:root tasks ./tasks
+COPY --chown=root:root events ./events
 COPY --chown=root:root core ./core
 COPY --chown=root:root mongo_migrations ./mongo_migrations
 COPY --chown=root:root deploy ./deploy
