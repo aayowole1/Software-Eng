@@ -1,5 +1,7 @@
 # OrgFlow Contribution Demo Script
 
+> **Creation recovery follow-up (October 28):** [Resolved partial-creation finding and new evidence](chau-creation-recovery-20261028.md). Earlier results below retain their named source checkpoints.
+
 > **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
 > Earlier dates, counts and receipts below retain their original checkpoints.
 > The new 23 focused tests passed; current full/coverage/CI results and human or
@@ -195,3 +197,11 @@ Codex assisted analysis, implementation, tests, integration and documents. Claud
 ## Personal rehearsal record
 
 After practicing, record the real date/revision, task/draft IDs, observed claim/status/403/404/conflict/import outcomes and any corrections. Confirm that you can explain each answer in your own words. Record only outcomes you actually observe during the rehearsal; no personal effort hours or approval is inferred from the prepared script.
+
+## Explain interrupted creation recovery
+
+Allow about 30 seconds; trim an optional explanation to keep the target length.
+
+**Say** A committee and its creator roster entry are saved separately. If a database confirmation is lost, the app checks the exact saved records and preserves them. A missing creator membership requires an officer to review the current roster and explicitly confirm adding themselves as Chair. Existing role changes remain unchanged.
+
+**Expected** A fresh confirmation is unchecked. Existing Chair membership confirms success; an existing different role is preserved. Unconfirmed outcomes show safe retry guidance. Use the [recovery evidence](chau-creation-recovery-20261028.md) to explain fault cases; do not stop a shared database or claim a live outage rehearsal. Personal demonstration and provider/VM acceptance remain pending.

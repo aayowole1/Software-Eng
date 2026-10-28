@@ -1,5 +1,7 @@
 # Chau SCRUM-16 closeout addendum — October 28, 2026
 
+> **Creation recovery follow-up (October 28):** [Resolved partial-creation finding and new evidence](chau-creation-recovery-20261028.md). Earlier results below retain their named source checkpoints.
+
 Scope: Chau's Accounts/Tasks contribution and the shared committee/task connections.
 Team target: November 1; reported course deadline: November 10. This is a dated
 follow-up to the October 25 reports, not whole-project acceptance or a personal

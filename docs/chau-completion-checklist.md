@@ -1,5 +1,7 @@
 # Chau contribution completion checklist
 
+> **Creation recovery follow-up (October 28):** [Resolved partial-creation finding and new evidence](chau-creation-recovery-20261028.md). Earlier results below retain their named source checkpoints.
+
 > **October 28 follow-up:** [SCRUM-16 closeout and new committee update flows](chau-closeout-20261028.md).
 > Earlier dates, counts and receipts below retain their original checkpoints.
 > The new 23 focused tests passed; current full/coverage/CI results and human or
@@ -10,6 +12,8 @@ November 10. Scope is Chau's assigned Accounts/Tasks, shared integration and
 architecture/test foundation. This is not whole-project acceptance.
 
 ## Completed within the recorded scope
+
+- [x] Committee creation now reconciles uncertain writes and provides explicit, signed Chair recovery; 21 new focused regressions and both new full local suites passed. See the recovery follow-up for current counts/scope.
 
 - [x] October 28: both application-head CI workflows and local regressions passed (661 primary; 638 preview plus two live skips). Current committees/tasks branch coverage is 95.31%; dated receipts and the isolated SDK environment repair are linked in the closeout.
 
