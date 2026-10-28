@@ -136,7 +136,9 @@ class MeetingDraftReviewTests(TestCase):
         self.assertEqual(self.draft.reviewed_by, self.officer)
 
     def test_review_stores_timestamp(self):
+        # MongoDB stores milliseconds, so compare from the start of this millisecond.
         before = timezone.now()
+        before = before.replace(microsecond=before.microsecond // 1000 * 1000)
         self.draft.review(self.officer, DraftStatus.APPROVED)
         after = timezone.now()
         self.assertGreaterEqual(self.draft.reviewed_at, before)
