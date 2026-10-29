@@ -317,7 +317,7 @@
       {% endif %}
 
       <!-- Primary Viewport Content -->
-<main class="flex-1 focus:outline-none" id="main">
+<main class="flex-1 focus:outline-none{% if request.resolver_match.namespace != 'announcements' %} module-main{% endif %}" id="main">
         {% block content %}{% endblock %}
       </main>
 <!-- Global Minimalist Footer -->
@@ -376,50 +376,3 @@
 
   {% block extra_js %}{% endblock %}
 </body>
-
-```
-
----
-
-## 2. Updated `static/core/site.css`
-
-Ensure your `static/core/site.css` has these companion styles to guarantee pixel-perfect rendering:
-
-```css
-@charset "UTF-8";
-
-:root {
-  --color-brand-primary: #0c2340;
-  --color-brand-accent: #f59e0b;
-  --color-surface: #f9f9ff;
-  --color-border: #e2e8f0;
-  --font-family-base: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
-  --radius-base: 0.5rem;
-}
-
-html {
-  font-family: var(--font-family-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Subtle, ergonomic scrollbar for sidebar */
-#sidebar div::-webkit-scrollbar {
-  width: 4px;
-}
-#sidebar div::-webkit-scrollbar-track {
-  background: transparent;
-}
-#sidebar div::-webkit-scrollbar-thumb {
-  background-color: #e2e8f0;
-  border-radius: 9999px;
-}
-#sidebar div::-webkit-scrollbar-thumb:hover {
-  background-color: #cbd5e1;
-}
-
-/* Accessible outline focus rings */
-:focus-visible {
-  outline: 2px solid #0c2340 !important;
-  outline-offset: 2px !important;
-}
