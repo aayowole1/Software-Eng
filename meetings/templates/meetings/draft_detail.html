@@ -50,7 +50,12 @@
   {% endif %}
 
   <h2>Original notes</h2>
-  <div class="card"><p>{{ draft.notes|linebreaksbr }}</p></div>
+  <div class="card">
+    <h3>Transcript</h3>
+    <p>{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
+    <h3>Officer notes</h3>
+    <p>{{ draft.notes|default:"(No officer notes provided.)"|linebreaksbr }}</p>
+  </div>
 
   {% if is_admin %}
     <form method="post" action="{% url 'meetings:delete' draft.pk %}" onsubmit="return confirm('Delete this draft?');">

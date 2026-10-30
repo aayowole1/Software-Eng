@@ -33,7 +33,8 @@ REVIEW_DECISIONS = [DraftStatus.APPROVED, DraftStatus.REJECTED, DraftStatus.REVI
 
 class MeetingDraft(models.Model):
     title = models.CharField(max_length=200)
-    notes = models.TextField()
+    transcript = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
     summary = models.TextField(blank=True)
     status = models.CharField(
         max_length=30,
@@ -64,8 +65,8 @@ class MeetingDraft(models.Model):
         return self.title
 
     def generate(self):
-        """Run the AI over the notes, replacing any earlier summary and items."""
-        result = summarize_meeting(self.notes)
+        """Run the AI over the transcript and officer notes."""
+        result = summarize_meeting(self.transcript, self.notes)
         self.summary = result.summary
         self.save()
         self.action_items.all().delete()
@@ -83,11 +84,13 @@ class MeetingDraft(models.Model):
         self.review_note = note
         self.save()
 
-    def revise(self, notes):
-        """Resubmit after a revision request: new notes, fresh AI output, back to review."""
+    def revise(self, notes, transcript=None):
+        """Resubmit after a revision request with fresh notes and transcript."""
         if self.status != DraftStatus.REVISION_REQUESTED:
             raise ValueError("Only drafts with a revision request can be revised.")
         self.notes = notes
+        if transcript is not None:
+            self.transcript = transcript
         self.status = DraftStatus.PENDING_REVIEW
         self.reviewed_by = None
         self.reviewed_at = None

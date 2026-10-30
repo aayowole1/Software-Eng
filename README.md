@@ -139,19 +139,20 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
 
-`meetings/ai.py` uses OpenAI to produce a concise discussion summary and
-proposed action items. Set `OPENAI_API_KEY` in `.env`; `OPENAI_MODEL` is
-optional and defaults to `gpt-4o-mini`. The response must be valid JSON with
-validated summary and action-item fields. Action items are normalized to start
-with `Action:`, `TODO:`, or `- [ ]` before they are saved. Approved action
-items will become tasks once the task module (WBS 1.6) exists.
+`meetings/ai.py` uses OpenRouter to produce a concise discussion summary and
+proposed action items. Set `OPENROUTER_API_KEY` in `.env`;
+`OPENROUTER_MODEL` is optional and defaults to `openai/gpt-4o-mini`. The
+response must be valid JSON with validated summary and action-item fields.
+Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
+they are saved. The officer's notes are sent alongside the Deepgram transcript.
+Approved action items will become tasks once the task module (WBS 1.6) exists.
 
 Meeting recording uses Deepgram real-time transcription. The browser sends
 16 kHz mono PCM chunks to Django. Django writes the active session to a
 uniquely named temporary PCM file, sends that file to Deepgram when recording
-stops, saves the returned transcript in `MeetingDraft.notes`, and deletes the
-temporary file in all success and error paths. Only the resulting meeting
-notes are retained by OrgFlow.
+stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
+the temporary file in all success and error paths. The officer can add notes
+before submitting; both sources are retained and passed to OpenRouter.
 
 Set `DEEPGRAM_API_KEY` in `.env` before starting Docker:
 

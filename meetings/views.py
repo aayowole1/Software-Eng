@@ -22,14 +22,15 @@ _active_recordings = {}
 class MeetingNotesForm(forms.ModelForm):
     class Meta:
         model = MeetingDraft
-        fields = ["title", "notes"]
-        labels = {"notes": "Meeting notes"}
+        fields = ["title", "transcript", "notes"]
+        labels = {"transcript": "Transcript", "notes": "Officer notes"}
         help_texts = {
-            "notes": 'Put action items on their own line starting with "Action:", "TODO:" or "- [ ]".',
+            "notes": "Add context, corrections, or other notes for the summarizer.",
         }
         widgets = {
             "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
-            "notes": forms.HiddenInput(),
+            "transcript": forms.HiddenInput(),
+            "notes": forms.Textarea(attrs={"rows": 6}),
         }
 
 
@@ -166,7 +167,7 @@ def draft_revise(request, pk):
         draft.title = form.cleaned_data["title"]
         try:
             with transaction.atomic():
-                draft.revise(form.cleaned_data["notes"])
+                draft.revise(form.cleaned_data["notes"], form.cleaned_data["transcript"])
         except (RuntimeError, ValueError) as error:
             messages.error(request, f"Could not generate the meeting summary: {error}")
             return render(

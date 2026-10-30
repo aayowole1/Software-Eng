@@ -13,8 +13,15 @@
       {{ form.title }}
       {{ form.title.errors }}
     </p>
-    {{ form.notes }}
-    {{ form.notes.errors }}
+    <p>
+      {{ form.notes.label_tag }}
+      {{ form.notes }}
+      {{ form.notes.errors }}
+    </p>
+    <p>
+      {{ form.transcript.errors }}
+    </p>
+    <p class="muted">Add your own notes below. They will be sent to the summarizer with the transcript.</p>
     <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
@@ -34,11 +41,11 @@
     (() => {
       const form = document.getElementById("meeting-form");
       const title = document.getElementById("id_title");
-      const notes = document.getElementById("id_notes");
       const startButton = document.getElementById("start-recording");
       const stopButton = document.getElementById("stop-recording");
       const submitButton = document.getElementById("submit-meeting");
       const status = document.getElementById("recording-status");
+      const transcript = document.getElementById("id_transcript");
       const transcribeUrl = "{% url 'meetings:transcribe' %}";
       const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
       let audioContext;
@@ -52,14 +59,14 @@
       let isStopping = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
-      let committedTranscript = notes.value.trim();
+      let committedTranscript = transcript.value.trim();
       let currentSegment = "";
 
       function setTranscript(value) {
         currentSegment = value.trim();
         const parts = [committedTranscript, currentSegment].filter(Boolean);
         const fullTranscript = parts.join("\n");
-        notes.value = fullTranscript;
+        transcript.value = fullTranscript;
       }
 
       function downsample(buffer, inputRate, outputRate) {
