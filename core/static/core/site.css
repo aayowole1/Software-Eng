@@ -30,7 +30,7 @@ select:focus-visible, textarea:focus-visible {
 }
 
 .skip-link { position: absolute; left: -999px; }
-.skip-link:focus { left: 16px; top: 8px; background: var(--surface); padding: 8px; }
+.skip-link:focus { left: 16px; top: 8px; z-index: 1000; background: var(--surface); padding: 8px; }
 
 .site-header {
   display: flex;
@@ -71,7 +71,7 @@ h2 { font-size: 1.2rem; margin-top: 32px; }
 /* Forms */
 form p { margin: 0 0 12px; }
 label { display: block; font-weight: 600; margin-bottom: 4px; }
-input[type=text], input[type=email], input[type=password], select, textarea {
+input[type=text], input[type=email], input[type=password], input[type=date], select, textarea {
   width: 100%;
   max-width: 560px;
   padding: 8px 10px;

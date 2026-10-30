@@ -10,6 +10,8 @@
 <p class="muted">
   Manage organization roles and account access.
   Only administrators can change roles or suspend user accounts.
+  Finish membership reviews before changing roles. For a rejected review whose
+  account access is unfinished, restore Applicant, then ask an officer to finish account access.
 </p>
 
 <div class="table-wrap">
@@ -21,6 +23,7 @@
         <th scope="col">Account Status</th>
         <th scope="col">Change Role</th>
         <th scope="col">Account Actions</th>
+        <th scope="col">Role history</th>
       </tr>
     </thead>
 
@@ -59,6 +62,9 @@
             {% else %}
               <span class="badge">Not active yet</span>
             {% endif %}
+            {% if p.suspension_update_pending %}
+              <span class="muted">Account access update pending</span>
+            {% endif %}
           </td>
 
           <!-- Role management -->
@@ -75,6 +81,7 @@
                 class="inline"
               >
                 {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.role_version|default_if_none:0 }}">
 
                 <label
                   for="role-{{ p.pk }}"
@@ -121,6 +128,15 @@
                 Cannot suspend yourself
               </span>
 
+            {% elif p.suspension_update_pending %}
+              <form method="post" action="{% url 'accounts:change_suspension' p.user.pk %}" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
+                <input type="hidden" name="action" value="{% if p.is_suspended %}suspend{% else %}reinstate{% endif %}">
+                <button type="submit" class="secondary">
+                  {% if p.is_suspended %}Finish suspension{% else %}Finish reinstatement{% endif %}
+                </button>
+              </form>
             {% elif p.is_suspended %}
               <form
                 method="post"
@@ -128,6 +144,7 @@
                 class="inline"
               >
                 {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
 
                 <input
                   type="hidden"
@@ -156,6 +173,7 @@
                   name="action"
                   value="suspend"
                 >
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
 
                 <button
                   type="submit"
@@ -167,11 +185,40 @@
             {% endif %}
           </td>
 
+          <td>
+            <details>
+              <summary>Role history ({{ p.role_history|length }})</summary>
+              <ul>
+                {% for entry in p.role_history %}
+                  <li>
+                    <strong>{{ entry.old_role|capfirst }} to {{ entry.new_role|capfirst }}</strong><br>
+                    {{ entry.actor }} · <time datetime="{{ entry.at }}">{{ entry.at }}</time><br>
+                    <span class="muted">
+                      {% if entry.source == "account_role_management" %}
+                        Administrator role change
+                      {% elif entry.source|slice:":18" == "membership_review:" %}
+                        Membership approval
+                      {% elif entry.source == "system" %}
+                        System update
+                      {% elif entry.source == "rejected_membership_reconciliation" %}
+                        Rejected membership access correction
+                      {% else %}
+                        {{ entry.source }}
+                      {% endif %}
+                    </span>
+                  </li>
+                {% empty %}
+                  <li class="muted">No recorded role changes.</li>
+                {% endfor %}
+              </ul>
+            </details>
+          </td>
+
         </tr>
 
       {% empty %}
         <tr>
-          <td colspan="5" class="muted">
+          <td colspan="6" class="muted">
             No users found.
           </td>
         </tr>
@@ -183,7 +230,9 @@
 <p class="muted">
   Note: Suspending an account prevents the user from signing in.
   Reinstating an account removes the administrative suspension,
-  but accounts awaiting membership approval remain inactive.
+  restores its saved prior activation, and finishes recorded membership access
+  updates. Deliberately inactive accounts stay inactive; pending applications
+  still require a review.
 </p>
 
 {% endblock %}

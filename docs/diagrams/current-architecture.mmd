@@ -1,0 +1,39 @@
+%% Current preview architecture derived from repository source at 812d9e6.
+%% Blue: Chau Accounts/Tasks. Gray: shared and teammate integration.
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"18px","primaryColor":"#e8f1ff","primaryTextColor":"#17324d","primaryBorderColor":"#3d6b9e","lineColor":"#64748b","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"linear","nodeSpacing":22,"rankSpacing":28,"htmlLabels":true}}}%%
+flowchart TB
+    browser["Member / officer / admin<br/>Browser forms and session"]
+    web["Django routes, templates and CSRF<br/>Shared sidebar and dashboard"]
+    browser --> web
+
+    accounts["Accounts<br/>Password / verified Google subject<br/>Signup recovery<br/>Role history and versioned<br/>suspension recovery state"]
+    tasks["Tasks<br/>Scoped views and validated forms<br/>Authorized task services"]
+    shared["Shared integration<br/>Membership and committee rosters<br/>Published meeting generations / Events"]
+    web --> accounts
+    web --> tasks
+    web --> shared
+
+    access["Current access checks<br/>Active and unsuspended<br/>No unfinished access / suspension"]
+    accounts --> access
+    tasks --> access
+    shared -->|"membership + committee state"| access
+
+    mutation["Task writes<br/>Validated change + bounded audit<br/>Conditional version update<br/>State + history in one document"]
+    tasks --> mutation
+    shared -->|"approved + accepted + finished<br/>explicit repeat-safe import"| mutation
+
+    mongo[("Standalone MongoDB<br/>Account and organization collections<br/>Task state + embedded history")]
+    access --> mongo
+    mutation --> mongo
+    shared --> mongo
+
+    provider["External provider boundary<br/>Google / OpenAI / Deepgram<br/>Live checks remain separate"]
+    accounts -. "Google verification" .-> provider
+    shared -. "meeting providers" .-> provider
+
+    classDef own fill:#e8f1ff,stroke:#3d6b9e,color:#17324d;
+    classDef shared fill:#f1f5f9,stroke:#94a3b8,color:#334155;
+    classDef external fill:#f6f0ff,stroke:#9370b7,color:#4c3266;
+    class accounts,tasks,access,mutation own;
+    class browser,web,shared,mongo shared;
+    class provider external;

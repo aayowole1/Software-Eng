@@ -1,5 +1,7 @@
 # Accounts 1.3 checkpoint
 
+Historical record prepared October 8. Later uniqueness, recovery, Tasks and container changes supersede the implementation limits in this snapshot. Use the [current review resolution](chau-claude-review.md), [contribution report](chau-contribution-report.md) and [deployment checks](deployment-readiness.md) for current evidence; the original narrative is retained below.
+
 Owner: Chau Minh Viet Nguyen. Prepared with Codex assistance on October 8, 2026.
 This work extends the team's existing Django Accounts implementation. The
 registration, password sign-in, original role system, and original tests were

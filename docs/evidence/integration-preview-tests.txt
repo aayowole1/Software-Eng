@@ -1,0 +1,18 @@
+Integration preview: 9d5cf4365642c745adf64b8453667a74fd5b59db; full combined suite; standalone MongoDB 127.0.0.1:27029.
+Database: orgflow_combined_preview (Django test database: test_orgflow_combined_preview).
+Test-only in-memory PASSWORD_HASHERS override: django.contrib.auth.hashers.MD5PasswordHasher.
+OpenAI and Deepgram keys explicitly empty; provider network checks disabled.
+Separate dependency target: jiwer==4.0.0, rapidfuzz==3.14.6, click==8.5.0; shared venv unchanged.
+Creating test database for alias 'default'...
+
+.........................................................................................................................................................................................................................................................................ss
+----------------------------------------------------------------------
+Ran 267 tests in 34.484s
+
+OK (skipped=2)
+Destroying test database for alias 'default'...
+
+System check identified no issues (0 silenced).
+No changes detected
+Found 267 test(s).
+System check identified no issues (0 silenced).

@@ -1,0 +1,41 @@
+Accounts role audit and membership policy verification
+Date: 2026-10-25, America/Chicago
+Source: the implementation commit containing this record, based on c99ce06.
+Environment: standalone MongoDB mongodb://127.0.0.1:27029
+MONGODB_NAME=orgflow_role_audit_review
+Test database=test_orgflow_role_audit_review (created/destroyed by Django)
+Interpreter: existing OrgFlow-Chau/.venv/Scripts/python.exe
+No production database or provider calls; no MongoDB transactions.
+
+FINAL FOCUSED AUDIT AND REVIEW RECOVERY
+python manage.py test accounts.test_role_audit membership.test_review_recovery --verbosity 1 --noinput
+Found 43 test(s).
+Ran 43 tests in 12.493s
+OK
+System check identified no issues (0 silenced).
+
+POST-POLICY EXISTING REGRESSION
+python manage.py test accounts.tests.AdminRoleManagementTests membership.tests core.test_tasks_integration --verbosity 1 --noinput
+Found 37 test(s).
+Ran 37 tests in 133.869s
+OK
+System check identified no issues (0 silenced).
+
+FINAL CHECKS
+python manage.py check
+System check identified no issues (0 silenced).
+python manage.py makemigrations --check --dry-run
+No changes detected
+git diff --check
+Passed.
+
+Earlier 193-test Accounts/membership/shared-task run passed in 217.829s before
+the added review-state guard. It is historical diagnostic evidence, not the
+final full-suite result for the commit containing this record. Full-suite CI
+and coverage must be remeasured for the integrated revision.
+
+Full local command logs retained outside the repository under
+../tmp/orgflow_claude_review_20261025/:
+  role-audit-final-tests.txt
+  role-policy-regression-tests.txt
+  role-audit-regression-tests.txt (earlier 193-test diagnostic)

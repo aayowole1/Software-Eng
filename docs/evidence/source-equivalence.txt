@@ -1,0 +1,1 @@
+Compared 19 measured Accounts/Tasks Python sources after application freeze. Primary8c58a07 and combined812d9e6 have identical normalized UTF8 source text if the differences list is empty; checkout line endings may differ. Differences: []

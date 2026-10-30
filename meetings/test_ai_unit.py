@@ -1,131 +1,115 @@
-"""Unit tests for meetings/ai.py — summarize_meeting().
+"""Unit tests for meetings/ai.py — summarize_meeting() with the OpenAI provider.
 
-These complement the integration tests in tests.py with more targeted checks
-on action-item extraction patterns, summary limits, and edge cases.
+The OpenAI client is replaced with a fake, so these run without an API key,
+network access or cost. They check the request we send and how provider
+responses are validated and normalized.
 """
 
+import json
+import os
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
 from django.test import SimpleTestCase
+from openai import OpenAIError
 
-from .ai import SUMMARY_SENTENCES, MeetingSummary, summarize_meeting
+from .ai import MeetingSummary, summarize_meeting
 
 
+def provider_returning(content):
+    """A fake OpenAI class whose chat completion returns `content`."""
+    client = MagicMock()
+    client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+    )
+    return MagicMock(return_value=client), client
+
+
+@patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
 class SummarizeMeetingTests(SimpleTestCase):
-    """Direct unit tests for summarize_meeting()."""
 
-    # ---- return type ----
+    def summarize(self, content, notes="We met. Action: Book room"):
+        fake_class, client = provider_returning(content)
+        with patch("openai.OpenAI", fake_class):
+            result = summarize_meeting(notes)
+        return result, fake_class, client
 
-    def test_returns_meeting_summary_instance(self):
-        result = summarize_meeting("Hello world.")
+    def payload(self, summary="We planned the event.", items=("Action: Book room",)):
+        return json.dumps({"summary": summary, "action_items": list(items)})
+
+    # ---- successful responses ----
+
+    def test_returns_meeting_summary(self):
+        result, _, _ = self.summarize(self.payload())
         self.assertIsInstance(result, MeetingSummary)
+        self.assertEqual(result.summary, "We planned the event.")
+        self.assertEqual(result.action_items, ["Action: Book room"])
 
-    def test_summary_field_is_string(self):
-        result = summarize_meeting("One sentence.")
-        self.assertIsInstance(result.summary, str)
+    def test_summary_and_items_are_trimmed(self):
+        result, _, _ = self.summarize(self.payload("  Summary.  ", ["  TODO: Email sponsors  "]))
+        self.assertEqual(result.summary, "Summary.")
+        self.assertEqual(result.action_items, ["TODO: Email sponsors"])
 
-    def test_action_items_field_is_list(self):
-        result = summarize_meeting("")
-        self.assertIsInstance(result.action_items, list)
+    def test_items_keep_their_allowed_prefix(self):
+        items = ["Action: One", "TODO: Two", "- [ ] Three"]
+        result, _, _ = self.summarize(self.payload(items=items))
+        self.assertEqual(result.action_items, items)
 
-    # ---- empty / whitespace input ----
+    def test_items_without_a_prefix_get_action_prefix(self):
+        result, _, _ = self.summarize(self.payload(items=["Book the atrium"]))
+        self.assertEqual(result.action_items, ["Action: Book the atrium"])
 
-    def test_empty_notes_produces_empty_summary_and_no_actions(self):
-        result = summarize_meeting("")
-        self.assertEqual(result.summary, "")
+    def test_no_action_items_is_allowed(self):
+        result, _, _ = self.summarize(self.payload(items=[]))
         self.assertEqual(result.action_items, [])
 
-    def test_whitespace_only_notes_produces_empty_summary(self):
-        result = summarize_meeting("   \n\n   ")
-        self.assertEqual(result.summary, "")
-        self.assertEqual(result.action_items, [])
+    # ---- request sent to the provider ----
 
-    # ---- action-item extraction ----
+    def test_sends_notes_with_json_format_and_default_model(self):
+        _, fake_class, client = self.summarize(self.payload(), notes="Budget talk")
+        fake_class.assert_called_once()
+        self.assertEqual(fake_class.call_args.kwargs["api_key"], "test-key")
+        request = client.chat.completions.create.call_args.kwargs
+        self.assertEqual(request["model"], "gpt-4o-mini")
+        self.assertEqual(request["response_format"], {"type": "json_object"})
+        self.assertIn("Budget talk", request["messages"][-1]["content"])
 
-    def test_action_prefix_is_extracted(self):
-        result = summarize_meeting("Action: Buy coffee filters")
-        self.assertIn("Buy coffee filters", result.action_items)
+    @patch.dict(os.environ, {"OPENAI_MODEL": "gpt-test"})
+    def test_model_can_be_overridden(self):
+        _, _, client = self.summarize(self.payload())
+        self.assertEqual(client.chat.completions.create.call_args.kwargs["model"], "gpt-test")
 
-    def test_todo_prefix_is_extracted(self):
-        result = summarize_meeting("TODO: Send the agenda")
-        self.assertIn("Send the agenda", result.action_items)
+    # ---- inputs rejected before calling the provider ----
 
-    def test_todo_dash_prefix_is_extracted(self):
-        result = summarize_meeting("TODO - Draft the proposal")
-        self.assertIn("Draft the proposal", result.action_items)
+    def test_empty_notes_are_rejected(self):
+        for notes in ["", "   \n  "]:
+            with self.subTest(notes=notes), self.assertRaises(ValueError):
+                summarize_meeting(notes)
 
-    def test_checkbox_prefix_is_extracted(self):
-        result = summarize_meeting("- [ ] Book the room")
-        self.assertIn("Book the room", result.action_items)
+    @patch.dict(os.environ, {"OPENAI_API_KEY": ""})
+    def test_missing_api_key_is_reported(self):
+        with self.assertRaisesMessage(RuntimeError, "OPENAI_API_KEY is not configured"):
+            summarize_meeting("Some notes")
 
-    def test_ai_prefix_is_extracted(self):
-        result = summarize_meeting("AI: Generate the meeting summary")
-        self.assertIn("Generate the meeting summary", result.action_items)
+    # ---- malformed provider responses ----
 
-    def test_action_item_prefix_is_extracted(self):
-        result = summarize_meeting("Action Item: Update the roadmap")
-        self.assertIn("Update the roadmap", result.action_items)
+    def test_invalid_responses_raise_runtime_error(self):
+        bad = {
+            "empty": "",
+            "not json": "Here is your summary!",
+            "not an object": json.dumps(["a", "b"]),
+            "missing summary": json.dumps({"action_items": []}),
+            "blank summary": json.dumps({"summary": "  ", "action_items": []}),
+            "items not a list": json.dumps({"summary": "S", "action_items": "Action: x"}),
+            "blank item": json.dumps({"summary": "S", "action_items": ["  "]}),
+            "non-string item": json.dumps({"summary": "S", "action_items": [3]}),
+        }
+        for label, content in bad.items():
+            with self.subTest(label), self.assertRaises(RuntimeError):
+                self.summarize(content)
 
-    def test_action_items_are_case_insensitive(self):
-        result = summarize_meeting("action: lower case item")
-        self.assertIn("lower case item", result.action_items)
-
-    def test_extracted_text_is_stripped(self):
-        result = summarize_meeting("Action:   Trim whitespace   ")
-        self.assertIn("Trim whitespace", result.action_items)
-
-    def test_ordinary_lines_are_not_extracted_as_actions(self):
-        result = summarize_meeting("We discussed the budget.")
-        self.assertEqual(result.action_items, [])
-
-    def test_multiple_action_items_preserve_order(self):
-        notes = (
-            "Action: First task\n"
-            "Action: Second task\n"
-            "Action: Third task\n"
-        )
-        result = summarize_meeting(notes)
-        self.assertEqual(result.action_items, ["First task", "Second task", "Third task"])
-
-    # ---- summary construction ----
-
-    def test_summary_excludes_action_item_lines(self):
-        notes = "We had a great meeting.\nAction: Do something."
-        result = summarize_meeting(notes)
-        self.assertNotIn("Do something", result.summary)
-        self.assertIn("great meeting", result.summary)
-
-    def test_summary_is_limited_to_three_sentences(self):
-        sentences = [f"Sentence {i}." for i in range(10)]
-        result = summarize_meeting(" ".join(sentences))
-        summary_sentences = [s for s in result.summary.split(". ") if s]
-        self.assertLessEqual(len(summary_sentences), SUMMARY_SENTENCES)
-
-    def test_summary_from_fewer_than_three_sentences(self):
-        result = summarize_meeting("Only one sentence.")
-        self.assertIn("Only one sentence", result.summary)
-
-    def test_summary_strips_bullet_and_dash_prefixes(self):
-        notes = "- A bullet point.\n* Another point."
-        result = summarize_meeting(notes)
-        self.assertNotIn("-", result.summary)
-
-    def test_notes_with_only_action_items_produces_empty_summary(self):
-        notes = "Action: Do this.\nTODO: Do that."
-        result = summarize_meeting(notes)
-        self.assertEqual(result.summary, "")
-        self.assertEqual(len(result.action_items), 2)
-
-    # ---- mixed content ----
-
-    def test_mixed_notes_produce_correct_summary_and_actions(self):
-        notes = (
-            "The team met to plan the conference.\n"
-            "We agreed on the venue.\n"
-            "Action: Book the venue by Friday\n"
-            "TODO - Send invitations next week\n"
-            "Budget discussion will continue next meeting.\n"
-        )
-        result = summarize_meeting(notes)
-        self.assertIn("conference", result.summary)
-        self.assertNotIn("Book the venue", result.summary)
-        self.assertIn("Book the venue by Friday", result.action_items)
-        self.assertIn("Send invitations next week", result.action_items)
+    def test_provider_errors_become_runtime_errors(self):
+        fake_class, client = provider_returning(self.payload())
+        client.chat.completions.create.side_effect = OpenAIError("service unavailable")
+        with patch("openai.OpenAI", fake_class), self.assertRaisesMessage(RuntimeError, "OpenAI summarization failed"):
+            summarize_meeting("Some notes")

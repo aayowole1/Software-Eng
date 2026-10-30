@@ -2,12 +2,22 @@
 {% block title %}{{ committee.name }}{% endblock %}
 {% block content %}
   <h1>{{ committee.name }}</h1>
+  {% if can_manage_committee %}<p><a class="button" href="{% url 'committees:edit' committee.pk %}">Edit committee</a></p>{% endif %}
   {% if committee.description %}<p>{{ committee.description }}</p>{% endif %}
 
+  {% if can_see_tasks %}
+    <h2>Committee tasks</h2>
+    <p>{{ task_counts.total }} total · {{ task_counts.completed }} completed · {{ task_counts.overdue }} overdue</p>
+    <p><a href="{% url 'tasks:list' %}?committee={{ committee.pk }}">View committee tasks</a>
+      {% if is_officer %} · <a href="{% url 'tasks:create' %}?committee={{ committee.pk }}">Create a task</a>{% endif %}
+    </p>
+  {% endif %}
+
   <h2>Roster</h2>
+  {% if role_target_missing %}<p class="errorlist" role="alert">This membership is no longer on the committee. Reload the roster before trying again.</p>{% endif %}
   <div class="table-wrap">
     <table>
-      <thead><tr><th scope="col">Email</th><th scope="col">Committee role</th><th scope="col">Joined</th>{% if is_officer %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}</tr></thead>
+      <thead><tr><th scope="col">Email</th><th scope="col">Committee role</th><th scope="col">Joined</th>{% if can_manage_committee %}<th scope="col"><span class="visually-hidden">Actions</span></th>{% endif %}</tr></thead>
       <tbody>
         {% for m in roster %}
           <tr>
@@ -16,9 +26,14 @@
                 {{ m.user.email|default:m.user.username }}
               </a>
           </td>
-            <td>{{ m.get_role_display }}</td>
+            <td>{% if can_manage_committee %}
+              <form method="post" action="{% url 'committees:update_member_role' committee.pk m.user.pk %}">
+                {% csrf_token %}{{ m.role_form.as_p }}
+                <button type="submit" class="secondary">Save role</button>
+              </form>
+            {% else %}{{ m.get_role_display }}{% endif %}</td>
             <td>{{ m.joined_at|date:"M j, Y" }}</td>
-            {% if is_officer %}
+            {% if can_manage_committee %}
               <td>
                 <form method="post" action="{% url 'committees:remove_member' committee.pk m.user.pk %}" class="inline">
                   {% csrf_token %}
@@ -34,7 +49,8 @@
     </table>
   </div>
 
-  {% if is_officer %}
+  <p class="muted">Committee roles do not grant organization Officer or Admin authority.</p>
+  {% if can_manage_committee %}
     <h2>Add a member</h2>
     <form method="post" action="{% url 'committees:add_member' committee.pk %}" class="card">
       {% csrf_token %}

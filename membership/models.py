@@ -14,16 +14,28 @@ and why; rejected ones are deleted REJECTED_RETENTION after the decision
 from datetime import timedelta
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 
-from accounts.models import Role, get_role, set_role
+from accounts.models import Profile, Role, set_role
 
 
 # How long a rejected applicant waits before applying again.
 REAPPLY_WAIT = timedelta(days=1)
 # How long a rejected application (with its reason and reviewer) is kept.
 REJECTED_RETENTION = timedelta(days=7)
+
+
+def _check_suspension_completion(profile, suspension_version):
+    """Only the current reinstatement may finish review access in its phase."""
+    if suspension_version is not None and (type(suspension_version) is not int or suspension_version < 0):
+        raise ValueError("Invalid suspension completion version.")
+    if profile.suspension_update_pending:
+        if suspension_version is None or suspension_version != profile.suspension_version:
+            raise ValueError("This account has an unfinished suspension update. An administrator must finish it first.")
+    elif suspension_version is not None:
+        raise ValueError("The account's suspension update changed; review access remains pending.")
 
 
 class ApplicationStatus(models.TextChoices):
@@ -54,6 +66,10 @@ class MembershipApplication(models.Model):
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     review_note = models.TextField(blank=True)
+    access_update_pending = models.BooleanField(
+        default=False,
+        help_text="A recorded review still needs its account access update completed.",
+    )
 
     class Meta:
         ordering = ["-submitted_at"]
@@ -79,11 +95,20 @@ class MembershipApplication(models.Model):
                 "This application has already been reviewed."
             )
 
-        # R-02: Block reviews of administratively suspended accounts.
-        if self.user.profile.is_suspended:
+        current = type(self).objects.get(pk=self.pk)
+        if not current.is_pending:
+            raise ValueError("This application has already been reviewed.")
+
+        profile = Profile.objects.filter(user_id=current.user_id).first()
+        if profile is None:
+            raise ValueError("This account needs a profile before it can be reviewed.")
+        # Re-read suspension state rather than trusting a cached related object.
+        if profile.is_suspended:
             raise ValueError(
                 "This account is administratively suspended and cannot be reviewed."
             )
+        if profile.suspension_update_pending:
+            raise ValueError("This account has an unfinished suspension update and cannot be reviewed yet.")
 
         # Validate the rejection reason.
         note = (note or "").strip()
@@ -93,27 +118,82 @@ class MembershipApplication(models.Model):
                 "Give a reason when rejecting an application."
             )
 
-        # Update the application decision.
-        self.status = (
+        decision = (
             ApplicationStatus.APPROVED
             if approve
             else ApplicationStatus.REJECTED
         )
 
-        self.reviewed_by = reviewer
-        self.reviewed_at = timezone.now()
-        self.review_note = note
-        self.save()
+        # Recording both the decision and its unfinished access intent in one
+        # conditional document update prevents competing stale reviewers from
+        # replacing each other's decisions. No MongoDB transaction is assumed.
+        changed = type(self).objects.filter(
+            pk=self.pk, status=ApplicationStatus.PENDING
+        ).update(
+            status=decision, reviewed_by=reviewer.pk, reviewed_at=timezone.now(),
+            review_note=note, access_update_pending=True,
+        )
+        if changed != 1:
+            raise ValueError("This application has already been reviewed.")
+        self.refresh_from_db()
+        self.complete_access_update()
 
-        # Activate the account only when it is not suspended.
-        if not self.user.profile.is_suspended and not self.user.is_active:
-            self.user.is_active = True
-            self.user.save(update_fields=["is_active"])
+    def complete_access_update(self, *, suspension_version=None):
+        """Finish only a recorded, explicitly unfinished review's access work.
 
-        # Promote approved applicants to the Member role.
-        # Existing Officers and Admins retain their roles.
-        if approve and get_role(self.user) == Role.APPLICANT:
-            set_role(self.user, Role.MEMBER)
+        This retry preserves the original decision, reviewer, note and date.
+        The intent flag stays set until every effect completes, so authentication
+        can fail closed even if a later write fails after account activation.
+        """
+        current = type(self).objects.get(pk=self.pk)
+        if current.status not in (ApplicationStatus.APPROVED, ApplicationStatus.REJECTED) or not current.access_update_pending:
+            raise ValueError("This application has no unfinished review access update.")
+        user = get_user_model().objects.get(pk=current.user_id)
+        profile = Profile.objects.filter(user_id=user.pk).first()
+        if profile is None or profile.role not in Role.values:
+            raise ValueError("This account needs a valid profile before access can be updated.")
+        if profile.is_suspended:
+            raise ValueError("This account is administratively suspended and cannot be activated.")
+        _check_suspension_completion(profile, suspension_version)
+        if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
+            raise ValueError(
+                "The rejection is recorded, but this account has an elevated role. "
+                "An administrator must restore Applicant before account access can finish."
+            )
+
+        # Promote before activation. Conditional promotion preserves a newer
+        # officer/admin assignment and makes a partially completed retry harmless.
+        if current.status == ApplicationStatus.APPROVED and not user.is_superuser:
+            set_role(
+                user, Role.MEMBER, actor=current.reviewed_by,
+                source=f"membership_review:{current.pk}",
+                expected_role=Role.APPLICANT, require_unsuspended=True,
+                membership_review=current,
+            )
+
+        # Suspension may have changed while promotion was being applied.
+        profile.refresh_from_db()
+        if profile.is_suspended:
+            raise ValueError("This account is administratively suspended and cannot be activated.")
+        _check_suspension_completion(profile, suspension_version)
+        user.refresh_from_db()
+        if not user.is_active:
+            user.is_active = True
+            user.save(update_fields=["is_active"])
+
+        profile.refresh_from_db()
+        if profile.is_suspended:
+            raise ValueError("This account is administratively suspended; access remains pending.")
+        _check_suspension_completion(profile, suspension_version)
+        if current.status == ApplicationStatus.REJECTED and (user.is_superuser or profile.role != Role.APPLICANT):
+            raise ValueError("The account's role changed; rejected membership access remains pending.")
+        # Only this flag changes on completion. Review metadata is immutable.
+        type(self).objects.filter(
+            pk=current.pk, status=current.status, access_update_pending=True
+        ).update(access_update_pending=False)
+        self.refresh_from_db()
+        if self.access_update_pending:
+            raise ValueError("The review changed while access was being updated. Account access remains pending.")
 
 
 
@@ -122,6 +202,11 @@ def inactive_account_message(user):
     latest = user.membership_applications.order_by("-submitted_at").first()
     if latest is None:
         return "This account is inactive."
+    if latest.access_update_pending:
+        return (
+            "Your membership decision is recorded, but account access is still "
+            "being updated. Please contact an officer."
+        )
     if latest.status == ApplicationStatus.PENDING:
         return (
             "Your membership application is still pending. "
@@ -147,7 +232,8 @@ def purge_old_rejected_applications(now=None):
     """
     cutoff = (now or timezone.now()) - REJECTED_RETENTION
     old = MembershipApplication.objects.filter(
-        status=ApplicationStatus.REJECTED, reviewed_at__lt=cutoff
+        status=ApplicationStatus.REJECTED, reviewed_at__lt=cutoff,
+        access_update_pending=False,
     )
     count = old.count()
     old.delete()

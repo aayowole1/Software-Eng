@@ -273,8 +273,9 @@ class ValidatedClaimsTests(SimpleTestCase):
             _validated_claims(claims)
 
     def test_oversized_email_raises(self):
-        local = "a" * 245
-        claims = {**self._valid(), "email": f"{local}@x.com"}
+        # 250 + len("@example.com") = 262 characters, over the 254 limit.
+        local = "a" * 250
+        claims = {**self._valid(), "email": f"{local}@example.com"}
         with self.assertRaises(GoogleSignInError):
             _validated_claims(claims)
 

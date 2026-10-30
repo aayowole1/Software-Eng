@@ -1,13 +1,39 @@
+import logging
+
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
+from django.db import DatabaseError
 
 from membership.models import MembershipApplication, inactive_account_message
 
 from .backends import find_user
 from .models import Role
+from .provisioning import (
+    complete_signup, is_identifier_conflict, prepare_signup_compensation,
+    record_signup_compensation, reserve_signup,
+)
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+
+
+class PasswordSignupRetryError(Exception):
+    """A safe, retryable failure while saving a password membership signup."""
+
+
+class PasswordSignupConflictError(PasswordSignupRetryError):
+    """The database identity constraint rejected a concurrent signup."""
+
+
+def _cleanup_password_signup(attempt, *, application_attempted=False):
+    """Compensate only this reserved attempt, including its related records."""
+    if not prepare_signup_compensation(attempt, application_attempted=application_attempted):
+        return
+    try:
+        User.objects.filter(pk=attempt.reserved_user_id, username=attempt.username).delete()
+    except Exception:
+        logger.error("An incomplete password signup could not be cleaned up; operator recovery is required.")
 
 
 def application_statement_field():
@@ -69,17 +95,43 @@ class RegisterForm(forms.Form):
 
     def save(self):
         """Create a switched-off account plus its membership application."""
-        user = User.objects.create_user(
-            username=self.cleaned_data["username"],
-            email=self.cleaned_data["email"],
-            password=self.cleaned_data["password"],
-            is_active=False,
-        )
+        username = self.cleaned_data["username"]
+        attempt = None
+        stage = "journal"
         try:
-            MembershipApplication.objects.create(user=user, statement=self.cleaned_data["statement"])
+            # Persist ownership before create_user, including profile signals.
+            # A process exit bypasses compensation but leaves this repair record.
+            attempt = reserve_signup(
+                "password", username, self.cleaned_data["email"], self.cleaned_data["statement"],
+            )
+            stage = "user"
+            user = User.objects.create_user(
+                pk=attempt.reserved_user_id,
+                username=username,
+                email=self.cleaned_data["email"],
+                password=self.cleaned_data["password"],
+                is_active=False,
+            )
+            stage = "application"
+            MembershipApplication.objects.create(
+                pk=attempt.application_id, user=user, statement=attempt.statement,
+            )
+            complete_signup(attempt)
+        except DatabaseError as error:
+            conflict = stage == "user" and is_identifier_conflict(error)
+            if attempt is not None:
+                _cleanup_password_signup(attempt, application_attempted=stage == "application")
+                record_signup_compensation(attempt)
+            if conflict:
+                raise PasswordSignupConflictError("The username or email was claimed by another signup.") from error
+            raise PasswordSignupRetryError(
+                "Your application could not be confirmed right now. Please try submitting it again. "
+                "Contact an officer if the problem continues."
+            ) from error
         except Exception:
-            # Don't leave an account behind that has no application to approve.
-            user.delete()
+            if attempt is not None:
+                _cleanup_password_signup(attempt, application_attempted=stage == "application")
+                record_signup_compensation(attempt)
             raise
         return user
 
@@ -111,9 +163,11 @@ class GoogleApplicationForm(forms.Form):
 
 class RoleForm(forms.Form):
     role = forms.ChoiceField(label="Role", choices=Role.choices)
+    version = forms.IntegerField(min_value=0, required=False, widget=forms.HiddenInput)
 
 
 class SuspensionForm(forms.Form):
+    version = forms.IntegerField(min_value=0, required=False, widget=forms.HiddenInput)
     action = forms.ChoiceField(
         choices=[
             ("suspend", "Suspend"),

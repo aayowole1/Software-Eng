@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+  <h1>Tasks</h1>
+  <p class="muted">Members see tasks in their committees and organization tasks assigned to them. Officers manage all tasks.</p>
+  {% if can_manage %}<p><a class="button" href="{% url 'tasks:create' %}">New task</a></p>{% endif %}
+  <div class="application-summary" role="group" aria-label="Tasks you can access">
+    <div class="card"><strong>{{ counts.total }}</strong><span>Visible tasks</span></div>
+    <div class="card"><strong>{{ counts.completed }}</strong><span>Completed</span></div>
+    <div class="card"><strong>{{ counts.overdue }}</strong><span>Overdue</span></div>
+  </div>
+  <form method="get" class="card" aria-label="Filter tasks">
+    {{ filter_form.as_p }}
+    <button type="submit">Filter tasks</button> <a href="{% url 'tasks:list' %}">Clear filters</a>
+  </form>
+  <p>{{ page_obj.paginator.count }} matching task{{ page_obj.paginator.count|pluralize }}.</p>
+  <div class="table-wrap">
+    <table>
+      <caption class="visually-hidden">Tasks matching your filters</caption>
+      <thead><tr><th scope="col">Task</th><th scope="col">Committee</th><th scope="col">Assignee</th><th scope="col">Due</th><th scope="col">Priority</th><th scope="col">Status</th></tr></thead>
+      <tbody>{% for task in page_obj %}<tr>
+        <td><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a></td>
+        <td>{% if task.committee_id %}{{ task.committee|default:"Missing committee" }}{% else %}Organization{% endif %}</td><td>{{ task.assignee|default:"Unassigned" }}</td>
+        <td>{{ task.due_date|date:"M j, Y"|default:"No due date" }}{% if task.is_overdue %} <strong class="badge">Overdue</strong>{% endif %}</td>
+        <td>{{ task.get_priority_display }}</td><td>{{ task.get_status_display }}</td>
+      </tr>{% empty %}<tr><td colspan="6">No tasks match these filters.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% if page_obj.has_other_pages %}<nav aria-label="Task pages">
+    {% if page_obj.has_previous %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+  </nav>{% endif %}
+{% endblock %}

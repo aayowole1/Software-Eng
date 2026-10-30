@@ -1,0 +1,68 @@
+name: Django integration tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    # MongoDB 8.0 needs a supported host kernel; newer 24.04 images use 6.19.
+    # Temporary compatibility runner (6.8 kernel); re-evaluate before April 2027.
+    runs-on: ubuntu-22.04
+    services:
+      mongo:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping: 1}).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      MONGODB_NAME: orgflow_ci
+      GOOGLE_CLIENT_ID: ""
+      TIME_ZONE: America/Chicago
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check tasks/static/tasks/assignment.js
+      - run: node --check core/static/core/sidebar.js
+      - run: node --test core/tests_sidebar_navigation.cjs
+      - run: python -m pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test --verbosity 2 --noinput
+
+  deployment-smoke:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Disposable production container, HTTPS, email and recovery checks
+        run: sh deploy/ci_smoke.sh
+      - name: Preserve sanitized deployment receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-smoke-evidence
+          path: |
+            deploy/ci/https-*.json
+            deploy/ci/smtp-result.json
+            deploy/ci/readiness.txt
+            deploy/ci/image-safety.txt
+            deploy/ci/backup.txt
+            deploy/ci/restore-data.txt
+            deploy/ci/container-logs.txt
+          if-no-files-found: warn

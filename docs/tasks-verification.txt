@@ -1,0 +1,60 @@
+Chau task management and account integration verification
+Date: October 25 2026 (America/Chicago)
+Code revision: 638123e0fa60178e3d57c0f32f3d18bae92c5e50
+Base: main 26b5177
+Review: https://github.com/aayowole1/Software-Eng/pull/12
+
+Environment
+Python 3.12.14; Django 5.2.17; django-mongodb-backend 5.2.4
+Standalone MongoDB 8.0.32, bound to localhost:27029
+Isolated orgflow_tasks_dev; Django test_orgflow_tasks_dev
+Calendar timezone America/Chicago. Application password settings unchanged;
+new targeted test classes use a fast test-only password hasher.
+
+Checks
+manage.py check: no issues
+manage.py makemigrations --check --dry-run: No changes detected
+node --check tasks/static/tasks/assignment.js: passed
+git diff --check: passed
+
+Final full regression run
+Command: python manage.py test --verbosity 1 --noinput
+Found 254 test(s).
+Ran 254 tests in 267.225s
+OK
+
+Final targeted task/account/membership integration run
+Command: python manage.py test tasks core.test_tasks_integration
+         membership.test_review_recovery accounts.test_provisioning_recovery
+         --verbosity 1 --noinput
+Ran 84 tests in 13.081s
+OK
+
+Earlier merged-main baseline: 170 tests passed in 268.454s.
+
+Browser observations using synthetic localhost demo data
+1. Officer signs in and sees Tasks, Applications and Meeting drafts links.
+2. Officer creates a committee task with a member and November 1 due date.
+3. Changing committee refreshes eligible assignees and blocks save while loading.
+4. Saved detail shows the assigned member, due date and Created history.
+5. Member list exposes Outreach only, omits Finance work and officer links.
+6. Member claims an unassigned task, then marks it Done; both history entries persist.
+7. Member list shows 4 visible tasks, 2 completed, 1 overdue after those actions.
+8. The narrow default browser viewport keeps controls readable and the wide
+   task table inside its horizontal scroll container.
+Evidence: docs/evidence/tasks-member-view.jpg
+Demo URL: http://127.0.0.1:8016/tasks/
+Demo database: orgflow_tasks_demo_v2, separate from tests and team data.
+
+These browser checks were performed by Codex, not asserted as Chau's personal
+presentation. No live Google/AI provider run, production deployment, Docker
+startup, performance certification or accessibility-tool audit is claimed.
+GitHub Actions Django integration tests run 40251632739 completed successfully
+for code revision 638123e: dependency installation, system check, migration drift
+and the full test command all passed.
+https://github.com/aayowole1/Software-Eng/actions/runs/40251632739
+
+Raw local logs outside a fresh repository clone
+../tmp/orgflow_tasks_runtime/full-final-pass.txt
+../tmp/orgflow_tasks_runtime/integration-final-targeted.txt
+../tmp/orgflow_tasks_runtime/baseline-tests.txt

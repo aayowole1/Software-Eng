@@ -1,0 +1,6 @@
+{"turn": 1, "speaker_id": "speaker_1", "type": "speech", "text": "Okay, everyone, thanks for jumping on. Quick agenda today: the launch timeline, the open bugs, and who owns what. Let's start with the timeline."}
+{"turn": 2, "speaker_id": "speaker_2", "type": "speech", "text": "Thanks, Hope. So, engineering is about ninety percent done. The main risk is the payment integration, which slipped by a week because the vendor changed their API."}
+{"turn": 3, "speaker_id": "speaker_3", "type": "speech", "text": "A week? That's a problem. Marketing already locked the announcement for the fifteenth, and we can't move that without losing our press slot."}
+{"turn": 4, "speaker_id": "speaker_4", "type": "speech", "text": "Right, right. Mike, is there any way to recover those days? Even a partial release would help us."}
+{"turn": 5, "speaker_id": "speaker_1", "type": "speech", "text": "Okay, everyone, thanks for jumping on. Quick agenda today: the launch timeline, the open bugs, and who owns what. Let's start with the timeline."}
+{"turn": 6, "speaker_id": "speaker_3", "type": "speech", "text": "A week? That's a problem. Marketing already locked the announcement for the fifteenth, and we can't move that without losing our press slot."}

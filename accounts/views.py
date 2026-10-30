@@ -2,14 +2,15 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-from .forms import RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
+from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
 
 from .decorators import role_required
 from .google_auth import apply_google_login_headers, google_login_context
+from .lifecycle import apply_suspension
 from .models import Profile, Role, get_role, set_role
 
 User = get_user_model()
@@ -19,13 +20,16 @@ def register(request):
     if request.user.is_authenticated:
         return redirect("core:dashboard")
     form = RegisterForm(request.POST or None)
+    response_status = 200
     if request.method == "POST" and form.is_valid():
         try:
             user = form.save()
-        except IntegrityError:
-            # A username can be claimed after form validation but before save.
-            # Email/case-folded uniqueness still needs a separate schema change.
-            form.add_error(None, "Account creation could not be completed. Try a different username or sign in.")
+        except (IntegrityError, PasswordSignupConflictError):
+            # Database identity indexes can reject a race after form validation.
+            form.add_error(None, "Account creation could not be completed. Try a different username or email, or sign in.")
+        except PasswordSignupRetryError as error:
+            form.add_error(None, str(error))
+            response_status = 503
         else:
             # The account stays switched off until an officer approves the
             # application, so don't sign in yet.
@@ -36,7 +40,7 @@ def register(request):
             )
             return redirect("core:home")
     context = {"form": form, **google_login_context(request)}
-    response = render(request, "accounts/register.html", context)
+    response = render(request, "accounts/register.html", context, status=response_status)
     if context.get("google_enabled"):
         apply_google_login_headers(request, response)
     return response
@@ -92,19 +96,27 @@ def change_role(request, pk):
         return redirect("accounts:user_list")
     form = RoleForm(request.POST)
     if form.is_valid():
-        set_role(target, form.cleaned_data["role"])
-        messages.success(request, f"{target.email} is now {form.cleaned_data['role']}.")
+        try:
+            set_role(
+                target, form.cleaned_data["role"], actor=request.user,
+                source="account_role_management", expected_version=form.cleaned_data["version"],
+                reconcile_rejected=True,
+            )
+        except ValueError as error:
+            messages.error(request, str(error))
+        except DatabaseError:
+            messages.error(request, "The role change could not be confirmed. Reload the users page before trying again.")
+        else:
+            messages.success(request, f"{target.email} is now {form.cleaned_data['role']}.")
     else:
         messages.error(request, "Invalid role.")
     return redirect("accounts:user_list")
 
 
-    """Suspend or reinstate an account without overriding membership review."""
-
 @require_POST
 @role_required(Role.ADMIN)
 def change_suspension(request, pk):
-
+    """Preserve prior activation and complete recorded review access safely."""
     target = get_object_or_404(User, pk=pk)
 
     if target == request.user or target.is_superuser:
@@ -116,34 +128,17 @@ def change_suspension(request, pk):
         messages.error(request, "Invalid suspension action.")
         return redirect("accounts:user_list")
 
-    profile, _ = Profile.objects.get_or_create(user=target)
     action = form.cleaned_data["action"]
-
-    if action == "suspend":
-        profile.is_suspended = True
-        profile.save(update_fields=["is_suspended"])
-
-        target.is_active = False
-        target.save(update_fields=["is_active"])
-
-        messages.success(request, f"{target.email or target.username} suspended.")
-
+    try:
+        apply_suspension(target, action == "suspend", expected_version=form.cleaned_data["version"])
+    except ValueError as error:
+        messages.error(request, str(error))
+    except DatabaseError:
+        messages.error(request, "The account access update could not be confirmed. Reload the users page and retry the pending action.")
     else:
-        profile.is_suspended = False
-        profile.save(update_fields=["is_suspended"])
-
-        # Only reactivate users whose membership has already been reviewed.
-        from membership.models import ApplicationStatus, MembershipApplication
-
-        has_completed_review = MembershipApplication.objects.filter(
-            user=target,
-            status__in=[ApplicationStatus.APPROVED, ApplicationStatus.REJECTED],
-        ).exists()
-
-        if has_completed_review:
-            target.is_active = True
-            target.save(update_fields=["is_active"])
-
-        messages.success(request, f"Suspension removed for {target.email or target.username}.")
+        if action == "suspend":
+            messages.success(request, f"{target.email or target.username} suspended.")
+        else:
+            messages.success(request, f"Suspension removed for {target.email or target.username}.")
 
     return redirect("accounts:user_list")
