@@ -80,3 +80,33 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.user} attended {self.event}"
+
+
+class AttendanceAction(models.TextChoices):
+    MARKED = "marked", "Marked present"
+    UNMARKED = "unmarked", "Marked absent"
+
+
+class AttendanceAuditLog(models.Model):
+    """Immutable record of attendance mark/unmark actions for FR-09 audit history."""
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="attendance_audit_log")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attendance_audit_log",
+    )
+    action = models.CharField(max_length=20, choices=AttendanceAction.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="+",
+    )
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-at"]
+
+    def __str__(self):
+        return f"{self.actor} {self.action} {self.user} for {self.event}"

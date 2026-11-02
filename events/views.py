@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Role, get_role, has_minimum_role
 
-from .models import RSVP, Attendance, Event, RSVPResponse
+from .models import RSVP, Attendance, AttendanceAction, AttendanceAuditLog, Event, RSVPResponse
 
 User = get_user_model()
 
@@ -139,10 +139,16 @@ def event_attendance(request, pk):
     for user in attended:
         if user.pk not in existing:
             Attendance.objects.create(event=event, user=user, marked_by=request.user)
+            AttendanceAuditLog.objects.create(
+                event=event, user=user, action=AttendanceAction.MARKED, actor=request.user
+            )
     attended_ids = {u.pk for u in attended}
     for user_id, record in existing.items():
         if user_id not in attended_ids:
             record.delete()
+            AttendanceAuditLog.objects.create(
+                event=event, user_id=user_id, action=AttendanceAction.UNMARKED, actor=request.user
+            )
 
     messages.success(request, f"Attendance saved: {len(attended)} attended.")
     return redirect("events:detail", pk=event.pk)

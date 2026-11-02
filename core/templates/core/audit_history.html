@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Audit History{% endblock %}
+
+{% block content %}
+
+<h1>Audit History</h1>
+
+<p class="muted">
+  Combined audit log of role changes, membership application decisions,
+  attendance recording, and task mutations. Showing the most recent 500 events.
+  Only officers and administrators can view this page.
+</p>
+
+{% if entries %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">When</th>
+        <th scope="col">Type</th>
+        <th scope="col">Actor</th>
+        <th scope="col">Event</th>
+        <th scope="col">Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td><time datetime="{{ entry.at }}">{{ entry.at }}</time></td>
+        <td><span class="badge">{{ entry.type_label }}</span></td>
+        <td>{{ entry.actor }}</td>
+        <td>{{ entry.description }}</td>
+        <td class="muted">{{ entry.detail }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted">No audit events recorded yet.</p>
+{% endif %}
+
+{% endblock %}
