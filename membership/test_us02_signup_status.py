@@ -133,6 +133,45 @@ class ApplicationStatusVisibilityTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response["Location"])
 
+    def test_pending_applicant_blocked_from_apply_page_via_normal_login(self):
+        """A newly registered applicant with an inactive account cannot reach the apply
+        page through normal login while their application is awaiting officer review.
+
+        The login page explains their status (pending) so they know to wait,
+        and they are never authenticated into the session.
+        """
+        # Register a fresh applicant through the sign-up form so the account is
+        # inactive (is_active=False) exactly as it would be for a real new user.
+        self.client.logout()
+        self.client.post(
+            reverse("accounts:register"),
+            {
+                "username": "newapplicant",
+                "email": "newapplicant@example.com",
+                "password": PASSWORD,
+                "confirm_password": PASSWORD,
+                "statement": "Eager to join the team.",
+            },
+        )
+
+        # Confirm the account exists but is inactive.
+        new_user = User.objects.get(username="newapplicant")
+        self.assertFalse(new_user.is_active)
+
+        # Normal login attempt is blocked and the applicant is told why.
+        login_response = self.client.post(
+            reverse("accounts:login"),
+            {"username": "newapplicant", "password": PASSWORD},
+        )
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertContains(login_response, "pending")
+
+        # Because they cannot log in, the apply page is inaccessible and
+        # redirects back to login — not a 200 with their application details.
+        apply_response = self.client.get(reverse("membership:apply"))
+        self.assertEqual(apply_response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), apply_response["Location"])
+
     def test_dashboard_shows_pending_status_for_applicant(self):
         """The dashboard Membership card shows the applicant's pending status."""
         response = self.client.get(reverse("core:dashboard"))
