@@ -352,7 +352,11 @@ class RosterReflectsMembershipChangesTests(TestCase):
 
     def test_rejected_applicant_does_not_appear_on_roster(self):
         self._reject()
-        self.client.force_login(self.officer)
+        # The review redirect carries a flash message that contains the
+        # applicant's email ("Application from … rejected.").  Follow the
+        # redirect to consume that message before asserting on the roster,
+        # so the assertion is only about roster rows, not flash banners.
+        self.client.get(reverse("membership:application_list"))
         response = self.client.get(self.roster_url)
         self.assertNotContains(response, self.applicant.email)
 
@@ -384,7 +388,9 @@ class RosterReflectsMembershipChangesTests(TestCase):
 
     def test_roster_role_filter_shows_only_officers(self):
         self._approve()
-        self.client.force_login(self.officer)
+        # Consume the "approved" flash message before checking the roster,
+        # otherwise the applicant's email appears in the banner, not the table.
+        self.client.get(reverse("membership:application_list"))
         response = self.client.get(self.roster_url, {"role": Role.OFFICER})
         self.assertContains(response, self.officer.email)
         self.assertNotContains(response, self.applicant.email)
