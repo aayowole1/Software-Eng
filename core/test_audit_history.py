@@ -206,7 +206,7 @@ class AttendanceAuditPartialWriteTests(TestCase):
     def test_mark_retry_after_audit_failure_creates_exactly_one_entry(self):
         """Attendance written; audit log write fails. Retry produces one audit entry."""
         with patch.object(
-            QuerySet, "get_or_create", side_effect=_fail_audit_get_or_create_once()
+            QuerySet, "get_or_create", autospec=True, side_effect=_fail_audit_get_or_create_once()
         ):
             with self.assertRaises(DatabaseError):
                 self._post_attendance([self.member.pk])
@@ -235,7 +235,7 @@ class AttendanceAuditPartialWriteTests(TestCase):
         attendance_pk = Attendance.objects.get(event=self.event, user=self.member).pk
 
         with patch.object(
-            Attendance, "delete", side_effect=_fail_attendance_delete_once()
+            Attendance, "delete", autospec=True, side_effect=_fail_attendance_delete_once()
         ):
             with self.assertRaises(DatabaseError):
                 self._post_attendance([])  # Attempt to unmark.
@@ -264,7 +264,7 @@ class AttendanceAuditPartialWriteTests(TestCase):
         self._post_attendance([self.member.pk])
 
         with patch.object(
-            QuerySet, "get_or_create", side_effect=_fail_audit_get_or_create_once()
+            QuerySet, "get_or_create", autospec=True, side_effect=_fail_audit_get_or_create_once()
         ):
             with self.assertRaises(DatabaseError):
                 self._post_attendance([])  # Attempt to unmark; audit fails.
