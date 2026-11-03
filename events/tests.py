@@ -243,3 +243,76 @@ class EventTests(TestCase):
         self.make_event(days=2, title="Members-only social")
         response = self.client.get(reverse("core:dashboard"))
         self.assertNotContains(response, "Members-only social")
+
+    # --- Event list RSVP badges -----------------------------------------------
+    def test_event_list_shows_going_badge_for_member_who_rsvped(self):
+        event = self.make_event()
+        RSVP.objects.create(event=event, user=self.member, response=RSVPResponse.GOING)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:list"))
+        self.assertContains(response, "You&#x27;re going")
+
+    def test_event_list_shows_not_going_badge_for_member_who_declined(self):
+        event = self.make_event()
+        RSVP.objects.create(event=event, user=self.member, response=RSVPResponse.NOT_GOING)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:list"))
+        self.assertContains(response, "You&#x27;re not going")
+
+    def test_event_list_no_rsvp_badge_when_member_has_not_responded(self):
+        self.make_event()
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:list"))
+        self.assertNotContains(response, "You&#x27;re going")
+        self.assertNotContains(response, "You&#x27;re not going")
+
+    def test_cancelled_event_shows_badge_in_list(self):
+        self.make_event(days=5, title="Cancelled social", cancelled=True)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:list"))
+        self.assertContains(response, "Cancelled social")
+        self.assertContains(response, "Cancelled")
+
+    # --- Event detail: past / cancelled states --------------------------------
+    def test_attended_count_shown_in_detail_for_past_event(self):
+        event = self.make_event(days=-1)
+        Attendance.objects.create(event=event, user=self.member, marked_by=self.officer)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:detail", args=[event.pk]))
+        self.assertContains(response, "1 attended")
+
+    def test_rsvp_form_replaced_by_message_for_past_event(self):
+        event = self.make_event(days=-1)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:detail", args=[event.pk]))
+        self.assertNotContains(response, 'name="response"')
+        self.assertContains(response, "RSVPs are closed")
+
+    def test_rsvp_form_replaced_by_cancelled_message(self):
+        event = self.make_event(days=5, cancelled=True)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:detail", args=[event.pk]))
+        self.assertNotContains(response, 'name="response"')
+        self.assertContains(response, "cancelled")
+
+    def test_manage_section_not_shown_to_members(self):
+        event = self.make_event()
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("events:detail", args=[event.pk]))
+        self.assertNotContains(response, "Edit event")
+        self.assertNotContains(response, "Cancel event")
+
+    # --- Officers on roster ---------------------------------------------------
+    def test_officer_appears_in_roster_for_attendance(self):
+        """Officers are roster members and must appear in the attendance form."""
+        event = self.make_event()
+        self.client.force_login(self.officer)
+        response = self.client.get(reverse("events:detail", args=[event.pk]))
+        self.assertContains(response, "officer@example.com")
+
+    def test_officer_can_rsvp_to_event(self):
+        """Officers have at least member-level access and can RSVP."""
+        event = self.make_event()
+        self.client.force_login(self.officer)
+        self.client.post(reverse("events:rsvp", args=[event.pk]), {"response": RSVPResponse.GOING})
+        self.assertTrue(RSVP.objects.filter(event=event, user=self.officer).exists())
