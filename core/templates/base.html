@@ -112,6 +112,7 @@
             <h3>Admin</h3>
             <ul>
               <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
+              <li><a href="{% url 'core:audit_history' %}">Audit history</a></li>
             </ul>
           </div>
         {% endif %}
@@ -137,7 +138,6 @@
             <ul>
               <li><a href="{% url 'membership:application_list' %}">Applications</a></li>
               <li><a href="{% url 'meetings:list' %}">Meeting drafts</a></li>
-              <li><a href="{% url 'core:audit_history' %}">Audit history</a></li>
             </ul>
           </div>
         {% endif %}

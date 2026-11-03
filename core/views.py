@@ -48,7 +48,7 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
-@role_required(Role.OFFICER)
+@role_required(Role.ADMIN)
 def audit_history(request):
     """FR-09: Unified audit history for role, membership, attendance, and task changes."""
     entries = []

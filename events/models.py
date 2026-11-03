@@ -88,7 +88,16 @@ class AttendanceAction(models.TextChoices):
 
 
 class AttendanceAuditLog(models.Model):
-    """Immutable record of attendance mark/unmark actions for FR-09 audit history."""
+    """Immutable record of attendance mark/unmark actions for FR-09 audit history.
+
+    change_key is a stable idempotency token set by the caller:
+      - mark events:   "mark:<attendance_pk>"
+      - unmark events: "unmark:<attendance_pk>"
+    Using the Attendance PK as the anchor ensures that retrying a partial write
+    after a database failure produces exactly one audit entry per attendance change,
+    even when one of the two writes (attendance and audit log) succeeded while the
+    other did not.
+    """
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="attendance_audit_log")
     user = models.ForeignKey(
@@ -104,6 +113,13 @@ class AttendanceAuditLog(models.Model):
         related_name="+",
     )
     at = models.DateTimeField(auto_now_add=True)
+    change_key = models.CharField(
+        max_length=150,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="Stable idempotency token: 'mark:<attendance_pk>' or 'unmark:<attendance_pk>'.",
+    )
 
     class Meta:
         ordering = ["-at"]

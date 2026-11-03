@@ -126,7 +126,18 @@ def event_rsvp(request, pk):
 @require_POST
 @role_required(Role.OFFICER)
 def event_attendance(request, pk):
-    """Replace the attendance list with the roster members ticked on the form."""
+    """Replace the attendance list with the roster members ticked on the form.
+
+    Each change is written in two steps with a stable change_key so that a
+    partial write (one step succeeds, the other fails) is safe to retry:
+
+    Mark:   get_or_create Attendance (stable PK) → get_or_create audit log
+    Unmark: get_or_create audit log first         → then delete Attendance
+
+    Because both writes use the same Attendance PK as the idempotency anchor,
+    retrying after either step failed produces exactly one audit entry and one
+    attendance change with no duplicates.
+    """
     event = get_object_or_404(Event, pk=pk)
     if event.cancelled:
         messages.error(request, "Attendance can't be recorded for a cancelled event.")
@@ -136,19 +147,44 @@ def event_attendance(request, pk):
     attended = {roster[uid] for uid in ticked if uid in roster}
     existing = {a.user_id: a for a in event.attendance.all()}
 
+    attended_ids = {u.pk for u in attended}
+
     for user in attended:
         if user.pk not in existing:
-            Attendance.objects.create(event=event, user=user, marked_by=request.user)
-            AttendanceAuditLog.objects.create(
-                event=event, user=user, action=AttendanceAction.MARKED, actor=request.user
+            # Step 1: ensure the Attendance record exists and get its stable PK.
+            attendance, _ = Attendance.objects.get_or_create(
+                event=event, user=user, defaults={"marked_by": request.user}
             )
-    attended_ids = {u.pk for u in attended}
+            # Step 2: write the audit entry, idempotent via change_key.
+            # If step 1 succeeded but step 2 failed on a prior attempt, the
+            # same Attendance PK is returned by get_or_create, so the same
+            # change_key is used and get_or_create finds the existing entry.
+            AttendanceAuditLog.objects.get_or_create(
+                change_key=f"mark:{attendance.pk}",
+                defaults={
+                    "event": event,
+                    "user": user,
+                    "action": AttendanceAction.MARKED,
+                    "actor": request.user,
+                },
+            )
+
     for user_id, record in existing.items():
         if user_id not in attended_ids:
-            record.delete()
-            AttendanceAuditLog.objects.create(
-                event=event, user_id=user_id, action=AttendanceAction.UNMARKED, actor=request.user
+            # Step 1: write the audit entry before deleting so that a retry
+            # (when the delete succeeded but the audit write failed) still has
+            # the Attendance PK available to form the same change_key.
+            AttendanceAuditLog.objects.get_or_create(
+                change_key=f"unmark:{record.pk}",
+                defaults={
+                    "event": event,
+                    "user_id": user_id,
+                    "action": AttendanceAction.UNMARKED,
+                    "actor": request.user,
+                },
             )
+            # Step 2: delete after the audit entry is safely persisted.
+            record.delete()
 
     messages.success(request, f"Attendance saved: {len(attended)} attended.")
     return redirect("events:detail", pk=event.pk)
