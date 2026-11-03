@@ -134,9 +134,11 @@ def event_attendance(request, pk):
     Mark:   get_or_create Attendance (stable PK) → get_or_create audit log
     Unmark: get_or_create audit log first         → then delete Attendance
 
-    Because both writes use the same Attendance PK as the idempotency anchor,
-    retrying after either step failed produces exactly one audit entry and one
-    attendance change with no duplicates.
+    The audit log is attempted for every user in the attended set, whether the
+    Attendance record was just created or already existed from a prior partial
+    write. Using the Attendance PK as the change_key anchor means the same PK
+    is available on both the first attempt and any retry, so get_or_create on
+    the audit log is idempotent regardless of which step failed previously.
     """
     event = get_object_or_404(Event, pk=pk)
     if event.cancelled:
@@ -151,23 +153,28 @@ def event_attendance(request, pk):
 
     for user in attended:
         if user.pk not in existing:
-            # Step 1: ensure the Attendance record exists and get its stable PK.
+            # Step 1: create the Attendance record and get its stable PK.
             attendance, _ = Attendance.objects.get_or_create(
                 event=event, user=user, defaults={"marked_by": request.user}
             )
-            # Step 2: write the audit entry, idempotent via change_key.
-            # If step 1 succeeded but step 2 failed on a prior attempt, the
-            # same Attendance PK is returned by get_or_create, so the same
-            # change_key is used and get_or_create finds the existing entry.
-            AttendanceAuditLog.objects.get_or_create(
-                change_key=f"mark:{attendance.pk}",
-                defaults={
-                    "event": event,
-                    "user": user,
-                    "action": AttendanceAction.MARKED,
-                    "actor": request.user,
-                },
-            )
+        else:
+            # Already attended. Use the pre-existing record's PK so that a
+            # retry after a partial write (attendance created, audit not yet
+            # written) can still reach the audit step with the same change_key.
+            attendance = existing[user.pk]
+
+        # Step 2: write the audit entry, idempotent via change_key.
+        # Runs for both newly-created and pre-existing attendance records so
+        # that a retry always has a chance to write a missing audit entry.
+        AttendanceAuditLog.objects.get_or_create(
+            change_key=f"mark:{attendance.pk}",
+            defaults={
+                "event": event,
+                "user": user,
+                "action": AttendanceAction.MARKED,
+                "actor": request.user,
+            },
+        )
 
     for user_id, record in existing.items():
         if user_id not in attended_ids:
