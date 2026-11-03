@@ -250,21 +250,22 @@ class EventTests(TestCase):
         RSVP.objects.create(event=event, user=self.member, response=RSVPResponse.GOING)
         self.client.force_login(self.member)
         response = self.client.get(reverse("events:list"))
-        self.assertContains(response, "You&#x27;re going")
+        # The badge text is a template literal, so the apostrophe is not HTML-escaped.
+        self.assertContains(response, "You're going")
 
     def test_event_list_shows_not_going_badge_for_member_who_declined(self):
         event = self.make_event()
         RSVP.objects.create(event=event, user=self.member, response=RSVPResponse.NOT_GOING)
         self.client.force_login(self.member)
         response = self.client.get(reverse("events:list"))
-        self.assertContains(response, "You&#x27;re not going")
+        self.assertContains(response, "You're not going")
 
     def test_event_list_no_rsvp_badge_when_member_has_not_responded(self):
         self.make_event()
         self.client.force_login(self.member)
         response = self.client.get(reverse("events:list"))
-        self.assertNotContains(response, "You&#x27;re going")
-        self.assertNotContains(response, "You&#x27;re not going")
+        self.assertNotContains(response, "You're going")
+        self.assertNotContains(response, "You're not going")
 
     def test_cancelled_event_shows_badge_in_list(self):
         self.make_event(days=5, title="Cancelled social", cancelled=True)
