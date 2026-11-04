@@ -107,7 +107,7 @@ class TaskServiceTests(TestCase):
         self.assertEqual(normal.assignee_id, self.member.pk)
 
     def test_invalid_fields_do_not_create_a_task(self):
-        for fields in [{"title": "   "}, {"priority": "urgent"}, {"status": "invented"}]:
+        for fields in [{"title": "   "}, {"priority": "invented"}, {"status": "invented"}]:
             values = {"title": "Valid title", **fields}
             with self.subTest(fields=fields), self.assertRaises(ValidationError):
                 create_task(self.officer, **values)

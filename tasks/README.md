@@ -1,5 +1,13 @@
 # Task mutation limits and recovery
 
+Officers and Admins manage tasks across the organization. A current committee
+Chair can create, edit and assign tasks in that committee, using its current
+eligible roster. A Chair must manage both the source and destination committee
+to move a task, and cannot create or move a task to Organization. Chair access
+does not grant committee roster/edit, meeting review/import, Officer or Admin
+authority. Members retain task claiming and their own progress updates. Account
+and Chair membership are rechecked after validation before writing a task.
+
 Tasks support Low, Medium, High and Urgent priorities, and To do, In progress,
 Under Review and Done statuses. Under Review is a progress label, with the same
 task permissions and stale-form checks as other statuses. It
@@ -22,7 +30,7 @@ capacity error without silently discarding recorded changes.
 
 Assignments must remain valid at mutation time. If an assignee becomes inactive,
 suspended, loses committee membership, or has an unfinished membership access
-update, an officer must reassign or clear the assignment before any task update,
+update, an authorized task manager must reassign or clear the assignment before any task update,
 including a status-only update. This preserves assignment validation rather than
 allowing progress updates to retain an invalid delegate.
 
