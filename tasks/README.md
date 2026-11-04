@@ -1,5 +1,12 @@
 # Task mutation limits and recovery
 
+Tasks support Low, Medium, High and Urgent priorities, and To do, In progress,
+Under Review and Done statuses. Under Review is a progress label, with the same
+task permissions and stale-form checks as other statuses. It
+does not require a separate approval before an authorized assignee marks work
+Done. The create/edit, progress, import-priority and filter forms use the model
+choices, and task history displays their labels.
+
 Task descriptions accept at most 5,000 characters. The current description is
 stored and displayed in full. New history entries abbreviate descriptions longer
 than 240 characters to a 160-character preview, original character count and
