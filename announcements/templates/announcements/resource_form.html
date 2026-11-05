@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if resource.pk %}Edit{% else %}Add{% endif %} resource{% endblock %}
+{% block content %}
+<h1>{% if resource.pk %}Edit{% else %}Add{% endif %} resource</h1>
+<p>Share a document or an external link with organization members.</p>
+{% if resource.file %}<p><a href="{% url 'resources:open' resource.pk %}">Download the current document</a></p>{% endif %}
+<form method="post" enctype="multipart/form-data" class="card">
+{% csrf_token %}{{ form.as_p }}
+<button type="submit">Save resource</button> <a href="{% url 'resources:list' %}">Cancel</a>
+</form>
+{% endblock %}

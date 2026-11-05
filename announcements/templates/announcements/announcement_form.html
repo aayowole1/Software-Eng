@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ action_title }}{% endblock %}
+{% block content %}
+<h1>{{ action_title }}</h1>
+<form method="post" enctype="multipart/form-data" class="card">
+{% csrf_token %}
+{{ form.as_p }}
+{% if existing_attachments %}<fieldset><legend>Existing attachments</legend>{% for attachment in existing_attachments %}<p><label><input type="checkbox" name="delete_attachments" value="{{ attachment.pk }}"> Remove {{ attachment.name }}</label></p>{% endfor %}</fieldset>{% endif %}
+<p><label for="attachments">Add attachments</label><input id="attachments" type="file" name="attachments" multiple aria-describedby="attachment-help"><span class="helptext" id="attachment-help">Up to 5 files, 25 MB each.</span></p>
+<button type="submit">{% if is_edit %}Save changes{% else %}Create announcement{% endif %}</button> <a href="{% url 'announcements:list' %}">Cancel</a>
+</form>
+{% endblock %}
