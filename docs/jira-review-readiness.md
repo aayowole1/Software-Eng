@@ -38,3 +38,13 @@ original authorship. Jira status changes and peer acceptance are separate.
 Reviewers should verify both member and officer flows using synthetic data,
 confirm the API contract and retention policy, and record acceptance before
 changing Jira tickets to Done.
+
+## Subsequent targeted task closeout
+
+- SCRUM-73 account-risk triage: completed, with existing merged fix ownership
+  and a fresh 82-test validation recorded in
+  [the triage report](scrum-73-account-risk-triage.md).
+- SCRUM-80 local measurement: aggregate target passed after roster pagination;
+  [the results](scrum-80-performance-results.md) retain the failed baseline,
+  successful run and the still-slow events page. This is local measurement
+  evidence, not whole-release or production acceptance.
