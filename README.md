@@ -243,6 +243,11 @@ deployment needs its own Google client configuration and live check.
 
 ## Running Tests
 
+SCRUM-83's human pilot is not yet complete: no participants are currently
+available. See the [pilot protocol and readiness evidence](docs/usability-pilot.md)
+and blank results sheet. Automated HTTP checks and unit tests do not replace
+the five-person unaided workflow/timing requirement.
+
 Tests use Django's test framework and need MongoDB running:
 
 ```bash
