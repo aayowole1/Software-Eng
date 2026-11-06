@@ -23,6 +23,7 @@ from accounts.decorators import role_required
 from accounts.models import Role
 from tasks.models import Task, TaskStatus, eligible_assignees
 from tasks.services import can_manage_tasks
+from tasks.permissions import can_manage_committee_tasks
 
 from .models import Committee, CommitteeMember, CommitteeRole
 
@@ -364,6 +365,7 @@ def _render_detail(request, committee, *, role_form=None, role_user_id=None, sta
             ),
             "add_form": AddMemberForm(committee),
             "can_manage_committee": can_manage,
+            "can_create_tasks": can_manage_committee_tasks(request.user, committee),
             "can_see_tasks": can_manage or committee.members.filter(user=request.user).exists(),
             "task_counts": {
                 "total": visible_tasks.count(),
