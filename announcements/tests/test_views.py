@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Profile, Role
 
@@ -275,6 +278,42 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         )
         self.announcement.refresh_from_db()
         self.assertEqual(self.announcement.title, "Updated title")
+
+    def test_publishing_old_draft_places_it_in_recent_announcements(self):
+        now = timezone.now()
+        old_date = now - timedelta(days=30)
+        Announcement.objects.filter(pk=self.announcement.pk).update(status="draft", published_at=old_date)
+        for days in (1, 2, 3):
+            self.make_announcement(author=self.officer, published_at=now - timedelta(days=days))
+
+        self.login(self.officer)
+        response = self.client.post(self.edit_url, {
+            "title": "Newly published draft",
+            "content": "Ready for members",
+            "status": "published",
+            "target_reach": 20,
+        })
+        self.assertRedirects(response, self.detail_url)
+        self.announcement.refresh_from_db()
+        self.assertGreater(self.announcement.published_at, now - timedelta(seconds=1))
+
+        self.login(self.member)
+        dashboard = self.client.get(reverse("core:dashboard"))
+        self.assertContains(dashboard, "Newly published draft")
+
+    def test_editing_published_announcement_preserves_publish_date(self):
+        old_date = (timezone.now() - timedelta(days=30)).replace(microsecond=0)
+        Announcement.objects.filter(pk=self.announcement.pk).update(published_at=old_date)
+        self.login(self.officer)
+        response = self.client.post(self.edit_url, {
+            "title": "Edited announcement",
+            "content": "Updated content",
+            "status": "published",
+            "target_reach": 20,
+        })
+        self.assertRedirects(response, self.detail_url)
+        self.announcement.refresh_from_db()
+        self.assertEqual(self.announcement.published_at, old_date)
 
     def test_mark_read_is_idempotent_and_redirects_to_list(self):
         self.login(self.member)

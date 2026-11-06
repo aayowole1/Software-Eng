@@ -126,6 +126,7 @@ def announcement_edit(request, pk):
         raise PermissionDenied("You do not have permission to edit this announcement.")
 
     if request.method == "POST":
+        was_published = announcement.status == "published"
         form = AnnouncementForm(request.POST, instance=announcement)
         files = request.FILES.getlist("attachments")
         delete_attachment_ids = request.POST.getlist("delete_attachments")
@@ -137,8 +138,7 @@ def announcement_edit(request, pk):
         if validate_uploads(form, files) and valid and valid_ids:
             announcement = form.save(commit=False)
 
-            # handle status switch to published
-            if announcement.status == "published" and not announcement.published_at:
+            if announcement.status == "published" and (not was_published or not announcement.published_at):
                 announcement.published_at = timezone.now()
 
             announcement.save()
