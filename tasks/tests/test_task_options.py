@@ -7,9 +7,9 @@ from accounts.models import Role
 from accounts.testing import make_user
 from committees.models import Committee, CommitteeMember
 
-from .forms import TaskImportForm
-from .models import Task, TaskPriority, TaskStatus
-from .services import create_task, update_task
+from ..forms import TaskImportForm
+from ..models import Task, TaskPriority, TaskStatus
+from ..services import create_task, update_task
 
 
 class TaskOptionsTests(TestCase):
