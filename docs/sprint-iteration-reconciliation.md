@@ -71,7 +71,7 @@ since moved to Jira Free.
 
 | Ticket | Summary | WBS | Owner | Implementation | Merge | Acceptance | Planned sprint | Actual iteration | Jira status (Oct 28) | Discrepancy |
 |--------|---------|-----|-------|---------------|-------|------------|----------------|-----------------|----------------------|-------------|
-| SCRUM-15 | Add events, RSVP and attendance | 1.5 | Ayomide | Oct 22 | Oct 27 (PR #9, I5) | Pending | Sprint 3 | I4 (impl) / I5 (merge) | In Review | Sprint assignment reflects implementation start (I4); merge to main occurred in I5 (Oct 27). Jira Done date should be Oct 27. |
+| SCRUM-15 | Add events, RSVP and attendance | 1.5 | Ayomide | Oct 22 | Oct 27 (PR #9, I5) | Pending | Sprint 3 | I4 (impl) / I5 (merge) | In Review | Sprint assignment reflects implementation start (I4); merge to main occurred in I5 (Oct 27). Record Oct 22 and Oct 27 as implementation and merge milestones; the Jira Done date stays with the actual acceptance transition. |
 | SCRUM-16 | Tasks: create, assign, delegate, progress (parent) | 1.6 | Chau | Oct 25 | Oct 30 (PR #13, I5) | Pending | Sprint 3 | I4 (impl) / I5 (merge) | In Review | Parent due Oct 28; initial delivery in I4; merge to main via PR #13 on Oct 30 (I5). Subtask closeout commits also extend into I5. |
 | SCRUM-23 | Committee data model/API | 1.6 | Chau | Oct 28 (I5) | Oct 30 (PR #13, I5) | Pending | Sprint 3 | I4 (initial) / I5 (committee edit/role flows) | In Review | Committee name/description editing and member role-update flows were added Oct 28, which is in I5. Sprint 3 (I4) assignment does not reflect the Oct 28 completion. |
 | SCRUM-24 | Task create, assign and complete endpoints | 1.6 | Chau | Oct 25 | Oct 30 (PR #13, I5) | Pending | Sprint 3 | I4 | In Review | Core HTTP/form endpoints delivered in I4; no functional discrepancy on implementation date. |
@@ -127,9 +127,9 @@ addressed in I6 and currently have no Jira tickets.
 
 | # | Ticket | Discrepancy | Recommended action |
 |---|--------|-------------|-------------------|
-| 1 | SCRUM-15 | Implementation in I4 (Oct 22); merge to main in I5 (Oct 27). Sprint assignment reflects implementation start only. | Record merge date Oct 27 as the completion date in Jira Free; update sprint to I5 or add merge milestone. |
-| 2 | SCRUM-23, SCRUM-25, SCRUM-26 | Committee edit/role flows committed Oct 28 (I5); assigned to Sprint 3 (I4). | Adjust Done date to Oct 28 (I5) on each subtask in Jira Free. |
-| 3 | SCRUM-27 | 80 % branch-coverage receipt measured Oct 28 (I5); sprint assigned to I4. Final result: 659 passed, 2 Deepgram skips, 94.78 % branch coverage. | Add Oct 28 measurement date as a Jira comment; update Done date to Oct 28. |
+| 1 | SCRUM-15 | Implementation in I4 (Oct 22); merge to main in I5 (Oct 27). Sprint assignment reflects implementation start only. | Add a Jira comment recording the implementation milestone (Oct 22, I4) and merge milestone (Oct 27, I5). Keep the actual Jira acceptance and Done dates; do not set them from the merge. |
+| 2 | SCRUM-23, SCRUM-25, SCRUM-26 | Committee edit/role flows committed Oct 28 (I5); assigned to Sprint 3 (I4). | Add a Jira comment on each subtask recording the implementation milestone (Oct 28, I5) and merge milestone (Oct 30, PR #13). Leave each subtask In Review until acceptance is recorded; do not set Done dates from commits. |
+| 3 | SCRUM-27 | 80 % branch-coverage receipt measured Oct 28 (I5); sprint assigned to I4. Final result: 659 passed, 2 Deepgram skips, 94.78 % branch coverage. | Add the Oct 28 measurement and the Oct 30 merge milestone as a Jira comment. Leave the subtask In Review until acceptance is recorded; do not set a Done date from the measurement. |
 | 4 | SCRUM-16 (parent) | Six subtasks remain **In Review**; PR #13 merge (Oct 30) does not establish human acceptance. Implementation, merge and acceptance are separate events. | Do not mark Done until affected-owner review and human acceptance are recorded. |
 | 5 | SCRUM-71 | Ticket created and completed in I5 with no prior sprint plan entry. | Add to I5 sprint on the Jira Free board retroactively. |
 | 6 | Committee creation recovery | No Jira ticket; work committed Oct 28 (I5). | File a new bug-fix ticket on the Jira Free board. |
@@ -144,8 +144,11 @@ addressed in I6 and currently have no Jira tickets.
 1. **Retain a Jira Free board export** (CSV or JSON) alongside this document
    in the repository so the team submission can reference sprint history
    without requiring board access.
-2. **Update Done dates** on SCRUM-15, SCRUM-23, SCRUM-25, SCRUM-26 and
-   SCRUM-27 to reflect actual completion commits (Oct 27–28, I5).
+2. **Record implementation and merge milestones** as Jira comments on
+   SCRUM-15, SCRUM-23, SCRUM-25, SCRUM-26 and SCRUM-27 (implementation
+   Oct 22–28; merges Oct 27 and Oct 30). Do not change Done dates from
+   commits or merges: Jira Done and acceptance dates must come from the
+   actual review and acceptance transitions.
 3. **Do not mark SCRUM-16 subtasks Done** until affected-owner reviews and
    human acceptance are recorded; In Review is the correct current status.
 4. **Confirm missing ticket numbers** for TJ's membership PRs and Jack's
