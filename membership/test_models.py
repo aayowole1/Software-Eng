@@ -7,6 +7,7 @@ purge_old_rejected_applications().
 
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
@@ -22,6 +23,8 @@ from .models import (
     next_application_allowed_at,
     purge_old_rejected_applications,
 )
+
+User = get_user_model()
 
 
 class InactiveAccountMessageTests(TestCase):
@@ -194,6 +197,3 @@ class PurgeOldRejectedApplicationsTests(TestCase):
         self.assertEqual(count, 1)
 
 
-# Bring User into scope for the user-account-stays check.
-from django.contrib.auth import get_user_model
-User = get_user_model()
