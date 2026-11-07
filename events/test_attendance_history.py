@@ -21,9 +21,18 @@ from accounts.testing import make_user
 
 from .models import Attendance, Event
 
+# How far back members are considered to have joined in most tests.
+_JOINED_DAYS_AGO = 30
+
 
 def days(n):
     return timezone.now() + timedelta(days=n)
+
+
+def _backdate_joined(user, days_ago=_JOINED_DAYS_AGO):
+    """Move a user's date_joined into the past so test events are eligible."""
+    user.date_joined = timezone.now() - timedelta(days=days_ago)
+    user.save(update_fields=["date_joined"])
 
 
 class AttendanceHistoryProfileTests(TestCase):
@@ -32,6 +41,9 @@ class AttendanceHistoryProfileTests(TestCase):
         self.member = make_user("member@example.com", Role.MEMBER)
         self.other = make_user("other@example.com", Role.MEMBER)
         self.applicant = make_user("applicant@example.com")
+        # Push date_joined back so past events (days(-1) etc.) are included.
+        _backdate_joined(self.member)
+        _backdate_joined(self.other)
 
     def make_past_event(self, title="Past event", delta_days=-1, **kwargs):
         return Event.objects.create(
@@ -63,7 +75,7 @@ class AttendanceHistoryProfileTests(TestCase):
     def test_member_sees_own_attendance_only(self):
         event = self.make_past_event("Team social")
         self.attend(self.member, event)
-        # other member attends a different event
+        # other member attends a different event — should not appear for member
         event2 = self.make_past_event("Other event")
         self.attend(self.other, event2)
 
@@ -105,10 +117,10 @@ class AttendanceHistoryProfileTests(TestCase):
         self.assertNotContains(response, "Future event")
 
     def test_events_before_joining_excluded(self):
-        # Set date_joined to now so any event before that is "before joining".
+        # Explicitly set date_joined to now so any event before that is excluded.
         self.member.date_joined = timezone.now()
-        self.member.save()
-        # Create an event whose starts_at is before date_joined.
+        self.member.save(update_fields=["date_joined"])
+        # Event starts 1 second before date_joined — must not appear.
         Event.objects.create(
             title="Pre-join event",
             location="Room 1",
@@ -122,10 +134,14 @@ class AttendanceHistoryProfileTests(TestCase):
     # --- Rate calculation -------------------------------------------------
 
     def test_no_past_events_shows_no_past_events_message(self):
+        # Member has no eligible events yet (date_joined = now, no past events created).
+        self.member.date_joined = timezone.now()
+        self.member.save(update_fields=["date_joined"])
         self.client.force_login(self.member)
         response = self.client.get(reverse("accounts:profile"))
         self.assertContains(response, "No past events yet")
-        self.assertNotContains(response, "%")
+        # The rate summary line must not appear.
+        self.assertNotContains(response, "events (")
 
     def test_rate_calculated_correctly(self):
         # 2 events, member attended 1 → 50 %
@@ -154,6 +170,8 @@ class AttendanceHistoryProfileTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(reverse("accounts:profile"))
         content = response.content.decode()
+        self.assertIn("Newer event", content)
+        self.assertIn("Older event", content)
         self.assertLess(content.index("Newer event"), content.index("Older event"))
 
 
@@ -162,6 +180,8 @@ class AttendanceDashboardSummaryTests(TestCase):
         self.officer = make_user("officer@example.com", Role.OFFICER)
         self.member = make_user("member@example.com", Role.MEMBER)
         self.applicant = make_user("applicant@example.com")
+        # Push date_joined back so past events are eligible.
+        _backdate_joined(self.member)
 
     def make_past_event(self, title="Past event", **kwargs):
         return Event.objects.create(
@@ -210,6 +230,6 @@ class AttendanceDashboardSummaryTests(TestCase):
         self.make_past_event("Cancelled event", cancelled=True)
         self.client.force_login(self.member)
         response = self.client.get(reverse("core:dashboard"))
-        # No events counted → "No past events yet"
+        # No eligible events → "No past events yet"
         self.assertContains(response, "No past events yet")
         self.assertNotContains(response, "Cancelled event")
