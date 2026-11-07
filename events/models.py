@@ -12,6 +12,37 @@ from django.db import models
 from django.utils import timezone
 
 
+class EventQuerySet(models.QuerySet):
+    def attendance_summary_for(self, user):
+        """US-13: a member's own attendance since they joined.
+
+        Counts past, non-cancelled events that started on or after the
+        account was created. Returns the events newest first, each marked
+        attended or not, plus the attended count, total and rounded rate
+        (None when there are no past events yet).
+        """
+        events = list(
+            self.filter(
+                starts_at__lt=timezone.now(),
+                cancelled=False,
+                starts_at__gte=user.date_joined,
+            ).order_by("-starts_at")
+        )
+        attended_ids = set(
+            Attendance.objects.filter(user=user, event__in=[e.pk for e in events]).values_list(
+                "event_id", flat=True
+            )
+        )
+        total = len(events)
+        attended = sum(1 for e in events if e.pk in attended_ids)
+        return {
+            "history": [{"event": e, "attended": e.pk in attended_ids} for e in events],
+            "attended": attended,
+            "total": total,
+            "rate": round(attended / total * 100) if total else None,
+        }
+
+
 class Event(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -26,6 +57,8 @@ class Event(models.Model):
         related_name="+",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = EventQuerySet.as_manager()
 
     class Meta:
         ordering = ["starts_at"]

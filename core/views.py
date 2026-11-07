@@ -9,7 +9,7 @@ from pymongo.errors import PyMongoError
 
 from accounts.models import Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
-from events.models import Attendance, Event
+from events.models import Event
 from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
@@ -27,28 +27,10 @@ def dashboard(request):
             reapply_at=next_application_allowed_at(request.user),
         )
         if has_minimum_role(role, Role.MEMBER):
-            now = timezone.now()
             # FR-08: upcoming events for signed-in members.
             context["upcoming_events"] = Event.objects.filter(
-                starts_at__gte=now, cancelled=False
+                starts_at__gte=timezone.now(), cancelled=False
             )[:3]
-            # US-13: attendance summary for the dashboard.
-            eligible_events = Event.objects.filter(
-                starts_at__lt=now,
-                cancelled=False,
-                starts_at__gte=request.user.date_joined,
-            )
-            eligible_total = eligible_events.count()
-            attended_count = Attendance.objects.filter(
-                user=request.user,
-                event__in=eligible_events,
-            ).count()
-            if eligible_total > 0:
-                context["attendance_summary"] = {
-                    "attended": attended_count,
-                    "total": eligible_total,
-                    "rate": round(attended_count / eligible_total * 100),
-                }
         if has_minimum_role(role, Role.OFFICER):
             context["pending_applications"] = MembershipApplication.objects.filter(
                 status=ApplicationStatus.PENDING
@@ -62,6 +44,10 @@ def dashboard(request):
                 "completed": assigned.filter(status=TaskStatus.DONE).count(),
                 "overdue": assigned.exclude(status=TaskStatus.DONE).filter(due_date__lt=timezone.localdate()).count(),
             }
+            # US-13: the member's own attendance summary, linking to My account.
+            attendance = Event.objects.attendance_summary_for(request.user)
+            if attendance["total"]:
+                context["attendance_summary"] = attendance
     return render(request, "core/dashboard.html", context)
 
 

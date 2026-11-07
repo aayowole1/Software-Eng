@@ -4,11 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
-from events.models import Attendance, Event
+from events.models import Event
 
 from .decorators import role_required
 from .google_auth import apply_google_login_headers, google_login_context
@@ -71,33 +70,13 @@ def profile(request):
     committees = CommitteeMember.objects.filter(user=request.user).select_related("committee")
     context = {"role": role, "committees": committees}
     if has_minimum_role(role, Role.MEMBER):
-        now = timezone.now()
-        eligible_events = list(
-            Event.objects.filter(
-                starts_at__lt=now,
-                cancelled=False,
-                starts_at__gte=request.user.date_joined,
-            ).order_by("-starts_at")
-        )
-        attended_ids = set(
-            Attendance.objects.filter(
-                user=request.user,
-                event__in=eligible_events,
-            ).values_list("event_id", flat=True)
-        )
-        attendance_history = [
-            {"event": e, "attended": e.pk in attended_ids}
-            for e in eligible_events
-        ]
-        total = len(attendance_history)
-        attended_count = len(attended_ids)
-        attendance_rate = round(attended_count / total * 100) if total > 0 else None
+        attendance = Event.objects.attendance_summary_for(request.user)
         context.update(
             show_attendance=True,
-            attendance_history=attendance_history,
-            attendance_total=total,
-            attendance_count=attended_count,
-            attendance_rate=attendance_rate,
+            attendance_history=attendance["history"],
+            attendance_total=attendance["total"],
+            attendance_count=attendance["attended"],
+            attendance_rate=attendance["rate"],
         )
     return render(request, "accounts/profile.html", context)
 
