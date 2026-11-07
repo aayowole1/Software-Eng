@@ -1,3 +1,6 @@
+from datetime import datetime, timezone as dt_timezone
+
+from django import forms
 from django.http import JsonResponse
 from django.db import DatabaseError, connections
 from django.shortcuts import render
@@ -48,13 +51,68 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
+AUDIT_TYPES = [
+    ("role", "Role change"),
+    ("membership", "Membership"),
+    ("attendance", "Attendance"),
+    ("task", "Task"),
+]
+AUDIT_DISPLAY_LIMIT = 500
+
+
+class AuditFilterForm(forms.Form):
+    """FR-09 / SCRUM-68: filter the audit history by type and date range."""
+
+    type = forms.ChoiceField(
+        label="Type", required=False, choices=[("", "All types"), *AUDIT_TYPES],
+    )
+    start = forms.DateField(
+        label="From", required=False, widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    end = forms.DateField(
+        label="To", required=False, widget=forms.DateInput(attrs={"type": "date"}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get("start"), cleaned.get("end")
+        if start and end and end < start:
+            self.add_error("end", "The end date can't be before the start date.")
+        return cleaned
+
+
+def _audit_local_date(value):
+    """Return the local calendar date of an ISO timestamp, or None if it can't be read."""
+    if not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    if timezone.is_naive(moment):
+        moment = moment.replace(tzinfo=dt_timezone.utc)
+    return timezone.localtime(moment).date()
+
+
 @role_required(Role.ADMIN)
 def audit_history(request):
-    """FR-09: Unified audit history for role, membership, attendance, and task changes."""
+    """FR-09: Unified audit history for role, membership, attendance, and task changes.
+
+    Admins can narrow the list by type and by an inclusive date range, using
+    the organization's time zone (SCRUM-68).
+    """
+    form = AuditFilterForm(request.GET or None)
+    filters = form.cleaned_data if form.is_bound and form.is_valid() else {}
+    selected_type = filters.get("type") or ""
+    start, end = filters.get("start"), filters.get("end")
+
+    def wanted(entry_type):
+        return not selected_type or selected_type == entry_type
+
     entries = []
 
     # --- Role change history (from Profile.role_history) ---
-    for profile in Profile.objects.select_related("user").order_by("user__username"):
+    for profile in Profile.objects.select_related("user").order_by("user__username") if wanted("role") else []:
         for entry in profile.role_history:
             entries.append({
                 "type": "role",
@@ -70,7 +128,8 @@ def audit_history(request):
             })
 
     # --- Membership application history ---
-    for app in MembershipApplication.objects.select_related("user").order_by("-submitted_at"):
+    applications = MembershipApplication.objects.select_related("user").order_by("-submitted_at")
+    for app in applications if wanted("membership") else []:
         for entry in app.history:
             action = entry.get("action", "")
             entries.append({
@@ -87,9 +146,10 @@ def audit_history(request):
 
     # --- Attendance audit log ---
     # Pending removals have not happened yet, so only completed changes are shown.
-    for log in AttendanceAuditLog.objects.filter(status=AttendanceAuditStatus.COMPLETED).select_related(
+    attendance_logs = AttendanceAuditLog.objects.filter(status=AttendanceAuditStatus.COMPLETED).select_related(
         "event", "user", "actor"
-    ).order_by("-at"):
+    ).order_by("-at")
+    for log in attendance_logs if wanted("attendance") else []:
         entries.append({
             "type": "attendance",
             "type_label": "Attendance",
@@ -104,7 +164,7 @@ def audit_history(request):
         })
 
     # --- Task history ---
-    for task in Task.objects.select_related("committee").order_by("-created_at"):
+    for task in Task.objects.select_related("committee").order_by("-created_at") if wanted("task") else []:
         for entry in task.history:
             action = entry.get("action", "updated")
             changes = entry.get("changes", {})
@@ -121,10 +181,28 @@ def audit_history(request):
                 "detail": "",
             })
 
+    if start or end:
+        dated = [(entry, _audit_local_date(entry["at"])) for entry in entries]
+        entries = [
+            entry for entry, day in dated
+            if day is not None and (not start or day >= start) and (not end or day <= end)
+        ]
+
     # Sort all entries by timestamp descending (newest first).
     entries.sort(key=lambda e: e["at"], reverse=True)
 
-    return render(request, "core/audit_history.html", {"entries": entries[:500]})
+    return render(
+        request,
+        "core/audit_history.html",
+        {
+            "entries": entries[:AUDIT_DISPLAY_LIMIT],
+            "total_matching": len(entries),
+            "display_limit": AUDIT_DISPLAY_LIMIT,
+            "filter_form": form,
+            "is_filtered": bool(selected_type or start or end),
+        },
+        status=400 if form.is_bound and not form.is_valid() else 200,
+    )
 
 
 def _role_source_label(source):

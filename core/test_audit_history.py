@@ -1,6 +1,6 @@
 """Tests for the FR-09 unified audit history view and audit producers."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.db import DatabaseError
@@ -577,3 +577,102 @@ class AuditHistoryViewTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(reverse("core:dashboard"))
         self.assertNotContains(response, reverse("core:audit_history"))
+
+
+# ---------------------------------------------------------------------------
+# Audit history view — type and date filters (SCRUM-68)
+# ---------------------------------------------------------------------------
+
+class AuditHistoryFilterTests(TestCase):
+    """Admins can filter the audit history by type and an inclusive local date range."""
+
+    def setUp(self):
+        self.admin = make_user("filter-admin@example.com", Role.ADMIN)
+        self.officer = make_user("filter-officer@example.com", Role.OFFICER)
+        self.member = make_user("filter-member@example.com", Role.MEMBER)
+        self.event = Event.objects.create(
+            title="Filter Event", location="Room 1", starts_at=in_days(1), created_by=self.officer,
+        )
+        self.client.force_login(self.admin)
+
+    def _local(self, year, month, day, hour=12, minute=0):
+        return timezone.make_aware(datetime(year, month, day, hour, minute))
+
+    def _attendance_log(self, user, at, action=AttendanceAction.MARKED):
+        return AttendanceAuditLog.objects.create(
+            event=self.event, user=user, action=action, actor=self.officer, at=at,
+        )
+
+    def _get(self, **params):
+        return self.client.get(reverse("core:audit_history"), params)
+
+    def test_page_shows_filter_form_and_count(self):
+        self._attendance_log(self.member, self._local(2026, 10, 10))
+        response = self._get(type="attendance")
+        self.assertContains(response, 'name="type"')
+        self.assertContains(response, 'name="start"')
+        self.assertContains(response, 'name="end"')
+        self.assertEqual(response.context["total_matching"], 1)
+
+    def test_filter_by_type_shows_only_that_type(self):
+        self._attendance_log(self.member, timezone.now())
+        set_role(self.member, Role.OFFICER, actor=self.admin)
+
+        attendance_only = self._get(type="attendance")
+        self.assertEqual(attendance_only.status_code, 200)
+        self.assertEqual({e["type"] for e in attendance_only.context["entries"]}, {"attendance"})
+
+        roles_only = self._get(type="role")
+        self.assertTrue(roles_only.context["entries"])
+        self.assertEqual({e["type"] for e in roles_only.context["entries"]}, {"role"})
+
+    def test_date_range_is_inclusive_and_excludes_outside_days(self):
+        self._attendance_log(self.member, self._local(2026, 10, 9))     # before
+        inside_start = self._attendance_log(self.officer, self._local(2026, 10, 10, 0, 5))
+        inside_end = self._attendance_log(self.admin, self._local(2026, 10, 12, 23, 55))
+        self._attendance_log(self.member, self._local(2026, 10, 13))    # after
+
+        response = self._get(type="attendance", start="2026-10-10", end="2026-10-12")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_matching"], 2)
+        actors_and_users = {e["description"].split(" ")[0] for e in response.context["entries"]}
+        self.assertEqual(
+            actors_and_users,
+            {inside_start.user.get_username(), inside_end.user.get_username()},
+        )
+
+    def test_late_evening_entry_uses_the_local_date(self):
+        # 11:30 PM local on Oct 10 is already Oct 11 in UTC; it belongs to Oct 10.
+        self._attendance_log(self.member, self._local(2026, 10, 10, 23, 30))
+        on_the_day = self._get(type="attendance", start="2026-10-10", end="2026-10-10")
+        next_day = self._get(type="attendance", start="2026-10-11", end="2026-10-11")
+        self.assertEqual(on_the_day.context["total_matching"], 1)
+        self.assertEqual(next_day.context["total_matching"], 0)
+
+    def test_open_ended_ranges(self):
+        self._attendance_log(self.member, self._local(2026, 10, 1))
+        self._attendance_log(self.member, self._local(2026, 10, 20))
+        # Creating the test users also records role changes dated today, so
+        # limit these checks to attendance entries.
+        later = self._get(type="attendance", start="2026-10-15")
+        earlier = self._get(type="attendance", end="2026-10-15")
+        self.assertEqual(later.context["total_matching"], 1)
+        self.assertEqual(earlier.context["total_matching"], 1)
+
+    def test_end_before_start_is_rejected_with_message(self):
+        response = self._get(start="2026-10-12", end="2026-10-10")
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "The end date can&#x27;t be before the start date.", status_code=400)
+
+    def test_invalid_type_and_date_are_rejected(self):
+        self.assertEqual(self._get(type="invented").status_code, 400)
+        self.assertEqual(self._get(start="not-a-date").status_code, 400)
+
+    def test_no_matches_shows_empty_message(self):
+        self._attendance_log(self.member, self._local(2026, 10, 10))
+        response = self._get(start="2027-01-01")
+        self.assertContains(response, "No audit events match these filters.")
+
+    def test_filters_do_not_open_the_page_to_officers(self):
+        self.client.force_login(self.officer)
+        self.assertEqual(self._get(type="attendance").status_code, 403)

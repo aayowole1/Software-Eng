@@ -8,8 +8,33 @@
 
 <p class="muted">
   Combined audit log of role changes, membership application decisions,
-  attendance recording, and task mutations. Showing the most recent 500 events.
-  Only administrators can view this page.
+  attendance recording, and task mutations. Only administrators can view this page.
+</p>
+
+<form method="get" class="card" role="search" aria-label="Filter audit history">
+  {{ filter_form.non_field_errors }}
+  <div>
+    <label for="{{ filter_form.type.id_for_label }}">{{ filter_form.type.label }}</label>
+    {{ filter_form.type }}
+    {{ filter_form.type.errors }}
+  </div>
+  <div>
+    <label for="{{ filter_form.start.id_for_label }}">{{ filter_form.start.label }}</label>
+    {{ filter_form.start }}
+    {{ filter_form.start.errors }}
+  </div>
+  <div>
+    <label for="{{ filter_form.end.id_for_label }}">{{ filter_form.end.label }}</label>
+    {{ filter_form.end }}
+    {{ filter_form.end.errors }}
+  </div>
+  <button type="submit">Apply filters</button>
+  {% if is_filtered or filter_form.errors %}<a href="{% url 'core:audit_history' %}">Clear filters</a>{% endif %}
+</form>
+
+<p class="muted" role="status">
+  {{ total_matching }} matching entr{{ total_matching|pluralize:"y,ies" }}{% if total_matching > display_limit %}; showing the most recent {{ display_limit }}{% endif %}.
+  Dates use the organization's time zone and include both the start and end day.
 </p>
 
 {% if entries %}
@@ -38,7 +63,7 @@
   </table>
 </div>
 {% else %}
-<p class="muted">No audit events recorded yet.</p>
+<p class="muted">{% if is_filtered %}No audit events match these filters.{% else %}No audit events recorded yet.{% endif %}</p>
 {% endif %}
 
 {% endblock %}
