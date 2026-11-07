@@ -26,6 +26,8 @@ import time
 from pathlib import Path
 from typing import Any, Iterable
 
+from tqdm.auto import tqdm
+
 try:
     from ..ai import MeetingSummary, summarize_meeting
     from ..stt import DeepgramTranscriber
@@ -283,7 +285,7 @@ def main() -> None:
     manifest = load_audio_manifest(manifest_path)
     results = []
 
-    for test in tests:
+    for test in tqdm(tests, desc="Benchmarking"):
         test_id = test.get("test_id", "<unknown>")
         started = time.perf_counter()
         result: dict[str, Any] = {"test_id": test_id, "topic": test.get("topic")}
