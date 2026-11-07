@@ -11,7 +11,9 @@ from django.utils import timezone
 
 from accounts.models import Role, set_role
 from accounts.testing import make_user
-from events.models import Attendance, AttendanceAction, AttendanceAuditLog, Event
+from events.models import (
+    Attendance, AttendanceAction, AttendanceAuditLog, AttendanceAuditStatus, Event,
+)
 from membership.models import ApplicationStatus, MembershipApplication
 
 
@@ -285,6 +287,196 @@ class AttendanceAuditPartialWriteTests(TestCase):
                 event=self.event, user=self.member, action=AttendanceAction.UNMARKED
             ).count(), 1,
         )
+
+
+def _fail_audit_status_update_once():
+    """Return a side_effect that fails the first status-only AttendanceAuditLog save.
+
+    get_or_create also calls save() to insert, so only saves that pass
+    update_fields (the pending -> completed step) are failed.
+    """
+    original = AttendanceAuditLog.save
+    calls = [0]
+
+    def side_effect(self_log, *args, **kwargs):
+        if kwargs.get("update_fields"):
+            calls[0] += 1
+            if calls[0] == 1:
+                raise DatabaseError("Injected status update failure")
+        return original(self_log, *args, **kwargs)
+
+    return side_effect
+
+
+class AttendanceAuditPendingAndActorTests(TestCase):
+    """Pending removals stay separate from completed changes; repairs keep the original actor."""
+
+    def setUp(self):
+        self.officer = make_user("pa-officer@example.com", Role.OFFICER)
+        self.other_officer = make_user("pa-other-officer@example.com", Role.OFFICER)
+        self.admin = make_user("pa-admin@example.com", Role.ADMIN)
+        self.member = make_user("pa-member@example.com", Role.MEMBER)
+        self.event = Event.objects.create(
+            title="Pending Audit Event",
+            location="Hall",
+            starts_at=in_days(1),
+            created_by=self.officer,
+        )
+
+    def _post_attendance(self, user_pks, as_user=None):
+        self.client.force_login(as_user or self.officer)
+        data = {"attended": [str(pk) for pk in user_pks]}
+        return self.client.post(reverse("events:attendance", args=[self.event.pk]), data)
+
+    def _removals(self, **filters):
+        return AttendanceAuditLog.objects.filter(
+            event=self.event, user=self.member, action=AttendanceAction.UNMARKED, **filters
+        )
+
+    def _audit_page(self):
+        self.client.force_login(self.admin)
+        return self.client.get(reverse("core:audit_history"))
+
+    # --- Failed delete: the removal stays pending, not completed -------------
+
+    def test_failed_delete_leaves_pending_removal_hidden_from_history(self):
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            Attendance, "delete", autospec=True, side_effect=_fail_attendance_delete_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+
+        self.assertTrue(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        self.assertEqual(self._removals(status=AttendanceAuditStatus.PENDING).count(), 1)
+        self.assertFalse(self._removals(status=AttendanceAuditStatus.COMPLETED).exists())
+        self.assertNotContains(self._audit_page(), "marked absent")
+
+    def test_failed_delete_then_member_kept_records_no_removal(self):
+        """Chau's case: the next save keeps the member present, so no removal is recorded."""
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            Attendance, "delete", autospec=True, side_effect=_fail_attendance_delete_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+
+        self._post_attendance([self.member.pk])  # Next save keeps the member present.
+
+        self.assertTrue(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        self.assertFalse(self._removals().exists())
+        self.assertEqual(
+            AttendanceAuditLog.objects.filter(
+                event=self.event, user=self.member, action=AttendanceAction.MARKED
+            ).count(), 1,
+        )
+        self.assertNotContains(self._audit_page(), "marked absent")
+
+    def test_failed_delete_then_retried_removal_is_completed_once(self):
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            Attendance, "delete", autospec=True, side_effect=_fail_attendance_delete_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+
+        self._post_attendance([])  # Retry the removal.
+
+        self.assertFalse(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        self.assertEqual(self._removals().count(), 1)
+        self.assertEqual(self._removals().get().status, AttendanceAuditStatus.COMPLETED)
+        self.assertContains(self._audit_page(), "marked absent")
+
+    def test_kept_member_can_be_removed_later_with_one_completed_entry(self):
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            Attendance, "delete", autospec=True, side_effect=_fail_attendance_delete_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+        self._post_attendance([self.member.pk])  # Pending removal discarded.
+
+        self._post_attendance([])  # A later, successful removal.
+
+        self.assertFalse(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        self.assertEqual(self._removals().count(), 1)
+        self.assertEqual(self._removals().get().status, AttendanceAuditStatus.COMPLETED)
+
+    # --- Delete succeeded but completing the entry failed --------------------
+
+    def test_status_update_failure_after_delete_is_completed_on_next_save(self):
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            AttendanceAuditLog, "save", autospec=True, side_effect=_fail_audit_status_update_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+
+        # The member was removed, but the entry is still pending.
+        self.assertFalse(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        self.assertEqual(self._removals(status=AttendanceAuditStatus.PENDING).count(), 1)
+
+        self._post_attendance([])  # Any later save resolves it.
+
+        self.assertEqual(self._removals().count(), 1)
+        self.assertEqual(self._removals().get().status, AttendanceAuditStatus.COMPLETED)
+
+    def test_status_update_failure_then_member_marked_again_keeps_both_changes(self):
+        self._post_attendance([self.member.pk])
+        with patch.object(
+            AttendanceAuditLog, "save", autospec=True, side_effect=_fail_audit_status_update_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([])
+
+        self._post_attendance([self.member.pk])  # Member marked present again.
+
+        # The earlier removal did happen, so it is completed, then a new mark follows.
+        self.assertEqual(self._removals().get().status, AttendanceAuditStatus.COMPLETED)
+        self.assertEqual(
+            AttendanceAuditLog.objects.filter(
+                event=self.event, user=self.member, action=AttendanceAction.MARKED
+            ).count(), 2,
+        )
+        self.assertTrue(Attendance.objects.filter(event=self.event, user=self.member).exists())
+
+    # --- Repaired mark entries keep the original actor and time --------------
+
+    def test_repaired_mark_entry_credits_original_officer(self):
+        """Chau's case: another officer's retry repairs the entry for the original marker."""
+        with patch.object(
+            QuerySet, "get_or_create", autospec=True, side_effect=_fail_audit_get_or_create_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([self.member.pk], as_user=self.officer)
+
+        self._post_attendance([self.member.pk], as_user=self.other_officer)
+
+        attendance = Attendance.objects.get(event=self.event, user=self.member)
+        log = AttendanceAuditLog.objects.get(
+            event=self.event, user=self.member, action=AttendanceAction.MARKED
+        )
+        self.assertEqual(attendance.marked_by, self.officer)
+        self.assertEqual(log.actor, self.officer)
+        self.assertEqual(log.at, attendance.marked_at)
+        self.assertEqual(log.status, AttendanceAuditStatus.COMPLETED)
+
+    def test_attendance_without_audit_entry_is_backfilled_with_original_marker(self):
+        """Attendance saved before audit history existed is credited to whoever marked it."""
+        attendance = Attendance.objects.create(
+            event=self.event, user=self.member, marked_by=self.officer
+        )
+        self._post_attendance([self.member.pk], as_user=self.other_officer)
+
+        attendance.refresh_from_db()  # MongoDB stores times to the millisecond.
+        log = AttendanceAuditLog.objects.get(change_key=f"mark:{attendance.pk}")
+        self.assertEqual(log.actor, self.officer)
+        self.assertEqual(log.at, attendance.marked_at)
+
+    def test_removal_credits_officer_who_removed(self):
+        self._post_attendance([self.member.pk], as_user=self.officer)
+        self._post_attendance([], as_user=self.other_officer)
+        self.assertEqual(self._removals().get().actor, self.other_officer)
 
 
 # ---------------------------------------------------------------------------

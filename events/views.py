@@ -8,7 +8,9 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Role, get_role, has_minimum_role
 
-from .models import RSVP, Attendance, AttendanceAction, AttendanceAuditLog, Event, RSVPResponse
+from .models import (
+    RSVP, Attendance, AttendanceAction, AttendanceAuditLog, AttendanceAuditStatus, Event, RSVPResponse,
+)
 
 User = get_user_model()
 
@@ -128,17 +130,22 @@ def event_rsvp(request, pk):
 def event_attendance(request, pk):
     """Replace the attendance list with the roster members ticked on the form.
 
-    Each change is written in two steps with a stable change_key so that a
-    partial write (one step succeeds, the other fails) is safe to retry:
+    Attendance and its audit entries are separate MongoDB documents, so each
+    change is written in steps that are safe to retry after a partial write.
+    A stable change_key anchored to the Attendance PK keeps retries from
+    duplicating entries:
 
-    Mark:   get_or_create Attendance (stable PK) → get_or_create audit log
-    Unmark: get_or_create audit log first         → then delete Attendance
+    Mark:   get_or_create Attendance (stable PK), then get_or_create the
+            completed audit entry. A repaired entry credits the original
+            Attendance.marked_by at Attendance.marked_at, not the officer
+            who retried.
+    Unmark: get_or_create a *pending* audit entry, delete the Attendance
+            record, then mark the entry completed.
 
-    The audit log is attempted for every user in the attended set, whether the
-    Attendance record was just created or already existed from a prior partial
-    write. Using the Attendance PK as the change_key anchor means the same PK
-    is available on both the first attempt and any retry, so get_or_create on
-    the audit log is idempotent regardless of which step failed previously.
+    Pending removals left by an interrupted save are resolved first: if the
+    Attendance record is gone, the delete happened and the entry is completed;
+    if the record still exists and the member is now ticked again, the removal
+    never happened and the pending entry is discarded.
     """
     event = get_object_or_404(Event, pk=pk)
     if event.cancelled:
@@ -147,51 +154,61 @@ def event_attendance(request, pk):
     ticked = set(request.POST.getlist("attended"))
     roster = {str(u.pk): u for u in roster_users()}
     attended = {roster[uid] for uid in ticked if uid in roster}
-    existing = {a.user_id: a for a in event.attendance.all()}
-
     attended_ids = {u.pk for u in attended}
+    existing = {a.user_id: a for a in event.attendance.all()}
+    existing_pks = {str(a.pk) for a in existing.values()}
+
+    # Resolve pending removals from an earlier save that did not finish.
+    pending_removals = AttendanceAuditLog.objects.filter(
+        event=event, action=AttendanceAction.UNMARKED, status=AttendanceAuditStatus.PENDING,
+    )
+    for log in pending_removals:
+        attendance_pk = (log.change_key or "").partition(":")[2]
+        if attendance_pk not in existing_pks:
+            # The Attendance record was deleted; only the status update failed.
+            log.status = AttendanceAuditStatus.COMPLETED
+            log.save(update_fields=["status"])
+        elif log.user_id in attended_ids:
+            # The delete never happened and the member is being kept present.
+            log.delete()
+        # Otherwise the member is still being removed; the loop below finishes it.
 
     for user in attended:
-        if user.pk not in existing:
-            # Step 1: create the Attendance record and get its stable PK.
+        attendance = existing.get(user.pk)
+        if attendance is None:
             attendance, _ = Attendance.objects.get_or_create(
                 event=event, user=user, defaults={"marked_by": request.user}
             )
-        else:
-            # Already attended. Use the pre-existing record's PK so that a
-            # retry after a partial write (attendance created, audit not yet
-            # written) can still reach the audit step with the same change_key.
-            attendance = existing[user.pk]
-
-        # Step 2: write the audit entry, idempotent via change_key.
-        # Runs for both newly-created and pre-existing attendance records so
-        # that a retry always has a chance to write a missing audit entry.
+        # Runs for existing records too, so a retry can repair a missing entry.
         AttendanceAuditLog.objects.get_or_create(
             change_key=f"mark:{attendance.pk}",
             defaults={
                 "event": event,
                 "user": user,
                 "action": AttendanceAction.MARKED,
-                "actor": request.user,
+                "actor_id": attendance.marked_by_id,
+                "at": attendance.marked_at,
+                "status": AttendanceAuditStatus.COMPLETED,
             },
         )
 
     for user_id, record in existing.items():
-        if user_id not in attended_ids:
-            # Step 1: write the audit entry before deleting so that a retry
-            # (when the delete succeeded but the audit write failed) still has
-            # the Attendance PK available to form the same change_key.
-            AttendanceAuditLog.objects.get_or_create(
-                change_key=f"unmark:{record.pk}",
-                defaults={
-                    "event": event,
-                    "user_id": user_id,
-                    "action": AttendanceAction.UNMARKED,
-                    "actor": request.user,
-                },
-            )
-            # Step 2: delete after the audit entry is safely persisted.
-            record.delete()
+        if user_id in attended_ids:
+            continue
+        log, _ = AttendanceAuditLog.objects.get_or_create(
+            change_key=f"unmark:{record.pk}",
+            defaults={
+                "event": event,
+                "user_id": user_id,
+                "action": AttendanceAction.UNMARKED,
+                "actor": request.user,
+                "status": AttendanceAuditStatus.PENDING,
+            },
+        )
+        record.delete()
+        if log.status != AttendanceAuditStatus.COMPLETED:
+            log.status = AttendanceAuditStatus.COMPLETED
+            log.save(update_fields=["status"])
 
     messages.success(request, f"Attendance saved: {len(attended)} attended.")
     return redirect("events:detail", pk=event.pk)

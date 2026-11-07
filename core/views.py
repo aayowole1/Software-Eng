@@ -10,7 +10,7 @@ from pymongo.errors import PyMongoError
 from accounts.decorators import role_required
 from accounts.models import Profile, Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
-from events.models import AttendanceAuditLog, Event
+from events.models import AttendanceAuditLog, AttendanceAuditStatus, Event
 from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
@@ -86,7 +86,10 @@ def audit_history(request):
             })
 
     # --- Attendance audit log ---
-    for log in AttendanceAuditLog.objects.select_related("event", "user", "actor").order_by("-at"):
+    # Pending removals have not happened yet, so only completed changes are shown.
+    for log in AttendanceAuditLog.objects.filter(status=AttendanceAuditStatus.COMPLETED).select_related(
+        "event", "user", "actor"
+    ).order_by("-at"):
         entries.append({
             "type": "attendance",
             "type_label": "Attendance",

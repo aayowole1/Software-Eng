@@ -87,6 +87,14 @@ class AttendanceAction(models.TextChoices):
     UNMARKED = "unmarked", "Marked absent"
 
 
+class AttendanceAuditStatus(models.TextChoices):
+    # A removal is logged as pending before the Attendance record is deleted
+    # and only becomes completed once the delete is confirmed. Marks are
+    # written after their Attendance record exists, so they are always completed.
+    PENDING = "pending", "Pending"
+    COMPLETED = "completed", "Completed"
+
+
 class AttendanceAuditLog(models.Model):
     """Immutable record of attendance mark/unmark actions for FR-09 audit history.
 
@@ -97,6 +105,11 @@ class AttendanceAuditLog(models.Model):
     after a database failure produces exactly one audit entry per attendance change,
     even when one of the two writes (attendance and audit log) succeeded while the
     other did not.
+
+    status separates a removal that has been requested (pending) from one that
+    has happened (completed). The audit history shows only completed entries.
+    actor and at describe the original change: a mark entry repaired on a later
+    request still credits Attendance.marked_by at Attendance.marked_at.
     """
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="attendance_audit_log")
@@ -112,7 +125,12 @@ class AttendanceAuditLog(models.Model):
         null=True,
         related_name="+",
     )
-    at = models.DateTimeField(auto_now_add=True)
+    at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(
+        max_length=20,
+        choices=AttendanceAuditStatus.choices,
+        default=AttendanceAuditStatus.COMPLETED,
+    )
     change_key = models.CharField(
         max_length=150,
         unique=True,
