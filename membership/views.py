@@ -9,6 +9,7 @@ from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
 
+from .emails import send_application_approved, send_application_rejected
 from .models import (
     REJECTED_RETENTION,
     ApplicationStatus,
@@ -188,12 +189,14 @@ def review_application(request, pk):
                 request,
                 f"Application from {application.user.email} approved.",
             )
+            send_application_approved(application)
         else:
             messages.success(
                 request,
                 f"Application from {application.user.email} rejected. "
                 "They can sign in to see your reason and apply again.",
             )
+            send_application_rejected(application)
 
     return redirect("membership:application_list")
 

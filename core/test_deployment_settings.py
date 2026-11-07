@@ -73,3 +73,49 @@ print(json.dumps({"debug":s.DEBUG,"secure_session":s.SESSION_COOKIE_SECURE,"secu
         result = self.load({'DJANGO_TRUST_PROXY_HEADERS': 'true'})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)['proxy'], ['HTTP_X_FORWARDED_PROTO', 'https'])
+
+    # --- SMTP validation tests (SCRUM-79) ---
+
+    _VALID_SMTP = {
+        'DJANGO_EMAIL_POLICY': 'smtp',
+        'EMAIL_HOST': 'smtp.example.invalid',
+        'DEFAULT_FROM_EMAIL': 'OrgFlow <no-reply@example.invalid>',
+    }
+
+    def test_valid_smtp_policy_accepted(self):
+        result = self.load(self._VALID_SMTP)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['email'], 'django.core.mail.backends.smtp.EmailBackend')
+
+    def test_smtp_missing_host_rejected(self):
+        self.rejected({'DJANGO_EMAIL_POLICY': 'smtp', 'DEFAULT_FROM_EMAIL': 'OrgFlow <no-reply@example.invalid>'})
+
+    def test_smtp_missing_sender_rejected(self):
+        self.rejected({'DJANGO_EMAIL_POLICY': 'smtp', 'EMAIL_HOST': 'smtp.example.invalid'})
+
+    def test_smtp_invalid_sender_address_rejected(self):
+        self.rejected({**self._VALID_SMTP, 'DEFAULT_FROM_EMAIL': 'not-an-email-address'})
+
+    def test_smtp_credentials_must_be_paired_user_without_password(self):
+        self.rejected({**self._VALID_SMTP, 'EMAIL_HOST_USER': 'user@example.invalid'})
+
+    def test_smtp_credentials_must_be_paired_password_without_user(self):
+        self.rejected({**self._VALID_SMTP, 'EMAIL_HOST_PASSWORD': 'secret'})
+
+    def test_smtp_tls_and_ssl_conflict_rejected(self):
+        self.rejected({**self._VALID_SMTP, 'EMAIL_USE_TLS': 'true', 'EMAIL_USE_SSL': 'true'})
+
+    def test_smtp_ssl_without_tls_accepted(self):
+        result = self.load({**self._VALID_SMTP, 'EMAIL_USE_TLS': 'false', 'EMAIL_USE_SSL': 'true'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_smtp_with_credentials_accepted(self):
+        result = self.load({
+            **self._VALID_SMTP,
+            'EMAIL_HOST_USER': 'user@example.invalid',
+            'EMAIL_HOST_PASSWORD': 'secret',
+        })
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_unknown_email_policy_rejected(self):
+        self.rejected({'DJANGO_EMAIL_POLICY': 'console'})
