@@ -1,0 +1,135 @@
+{
+  "base_url": "http://127.0.0.1:8001",
+  "git_head": "9c61b102d85d9e959f7e6cab757eefc465eed71d",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "configured_duration_seconds": 600,
+  "measured_elapsed_seconds": 601.453,
+  "virtual_users": 25,
+  "think_seconds": 1.0,
+  "workload": "Authenticated HTML GET pages; closed loop; no assets/browser rendering/provider calls/writes",
+  "aggregate": {
+    "requests": 7335,
+    "successful": 7335,
+    "errors": 0,
+    "successful_under_3s_percent": 95.869,
+    "p50_seconds": 0.7398,
+    "p95_seconds": 2.8632,
+    "max_seconds": 7.7021,
+    "meets_95_percent_under_3s": true
+  },
+  "login_post_setup_only": {
+    "requests": 25,
+    "successful": 25,
+    "errors": 0,
+    "successful_under_3s_percent": 100.0,
+    "p50_seconds": 1.6752,
+    "p95_seconds": 2.3054,
+    "max_seconds": 2.7982,
+    "meets_95_percent_under_3s": true
+  },
+  "per_path": {
+    "/accounts/me/": {
+      "requests": 879,
+      "successful": 879,
+      "errors": 0,
+      "successful_under_3s_percent": 100.0,
+      "p50_seconds": 0.3078,
+      "p95_seconds": 0.8829,
+      "max_seconds": 1.9114,
+      "meets_95_percent_under_3s": true
+    },
+    "/announcements/": {
+      "requests": 882,
+      "successful": 882,
+      "errors": 0,
+      "successful_under_3s_percent": 97.392,
+      "p50_seconds": 1.2528,
+      "p95_seconds": 2.8086,
+      "max_seconds": 5.1205,
+      "meets_95_percent_under_3s": true
+    },
+    "/committees/": {
+      "requests": 880,
+      "successful": 880,
+      "errors": 0,
+      "successful_under_3s_percent": 100.0,
+      "p50_seconds": 0.3679,
+      "p95_seconds": 1.179,
+      "max_seconds": 2.1033,
+      "meets_95_percent_under_3s": true
+    },
+    "/dashboard/": {
+      "requests": 880,
+      "successful": 880,
+      "errors": 0,
+      "successful_under_3s_percent": 99.432,
+      "p50_seconds": 0.8938,
+      "p95_seconds": 2.2499,
+      "max_seconds": 3.3144,
+      "meets_95_percent_under_3s": true
+    },
+    "/events/": {
+      "requests": 881,
+      "successful": 881,
+      "errors": 0,
+      "successful_under_3s_percent": 75.369,
+      "p50_seconds": 1.703,
+      "p95_seconds": 4.5055,
+      "max_seconds": 7.7021,
+      "meets_95_percent_under_3s": false
+    },
+    "/meetings/": {
+      "requests": 143,
+      "successful": 143,
+      "errors": 0,
+      "successful_under_3s_percent": 100.0,
+      "p50_seconds": 0.9685,
+      "p95_seconds": 1.9657,
+      "max_seconds": 2.7162,
+      "meets_95_percent_under_3s": true
+    },
+    "/membership/applications/": {
+      "requests": 143,
+      "successful": 143,
+      "errors": 0,
+      "successful_under_3s_percent": 100.0,
+      "p50_seconds": 0.4981,
+      "p95_seconds": 1.0826,
+      "max_seconds": 1.6621,
+      "meets_95_percent_under_3s": true
+    },
+    "/membership/roster/": {
+      "requests": 880,
+      "successful": 880,
+      "errors": 0,
+      "successful_under_3s_percent": 99.205,
+      "p50_seconds": 0.8078,
+      "p95_seconds": 2.2869,
+      "max_seconds": 3.7488,
+      "meets_95_percent_under_3s": true
+    },
+    "/resources/": {
+      "requests": 884,
+      "successful": 884,
+      "errors": 0,
+      "successful_under_3s_percent": 97.285,
+      "p50_seconds": 0.8906,
+      "p95_seconds": 2.5095,
+      "max_seconds": 4.3989,
+      "meets_95_percent_under_3s": true
+    },
+    "/tasks/": {
+      "requests": 883,
+      "successful": 883,
+      "errors": 0,
+      "successful_under_3s_percent": 96.942,
+      "p50_seconds": 1.3267,
+      "p95_seconds": 2.87,
+      "max_seconds": 3.9823,
+      "meets_95_percent_under_3s": true
+    }
+  },
+  "error_statuses": {},
+  "error_types": {}
+}

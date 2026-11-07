@@ -1,0 +1,19 @@
+{
+  "mode": "automated_http_readiness",
+  "human_participants": 0,
+  "counts_towards_scrum83": false,
+  "human_acceptance": "NOT EVALUATED",
+  "git_head": "fb2bc80d74704110b0bb9892986f1a90bca7a719",
+  "checks": {
+    "member_login_and_dashboard": true,
+    "find_event_and_save_rsvp": true,
+    "search_resource_and_download": true,
+    "member_updates_assigned_task": true,
+    "officer_publishes_member_reads_notice": true
+  },
+  "all_checks_passed": true,
+  "limitations": [
+    "No human timing or unaided completion measured",
+    "No visual/browser/accessibility inspection"
+  ]
+}

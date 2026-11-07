@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Prefetch
@@ -259,10 +260,18 @@ def roster(request):
             "user__committee_memberships",
             queryset=committee_memberships,
         )
-    ).order_by("user__username")
+    ).order_by("user__username", "pk")
+
+    # Filter and paginate before fetching profiles/committee memberships. Large
+    # rosters should not render every member on each request (SCRUM-80).
+    page = Paginator(members, 25).get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
 
     context = {
-        "members": members,
+        "members": page.object_list,
+        "page_obj": page,
+        "query_string": params.urlencode(),
         "search_query": search_query,
         "selected_role": selected_role,
         "role_choices": [
