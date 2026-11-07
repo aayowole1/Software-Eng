@@ -28,7 +28,7 @@ cd Software-Eng
 
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
-Build and start the containers (takes approx. 157 seconds):
+Build and start the containers:
 
 ```bash
 docker compose up -d --build
