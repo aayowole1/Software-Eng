@@ -73,16 +73,19 @@ class AttendanceHistoryProfileTests(TestCase):
     # --- Own records only -------------------------------------------------
 
     def test_member_sees_own_attendance_only(self):
+        # Both member and other attend the same event.  The view must show one
+        # row for the event (not two) with the logged-in member's own status.
         event = self.make_past_event("Team social")
         self.attend(self.member, event)
-        # other member attends a different event — should not appear for member
-        event2 = self.make_past_event("Other event")
-        self.attend(self.other, event2)
+        self.attend(self.other, event)
 
         self.client.force_login(self.member)
         response = self.client.get(reverse("accounts:profile"))
         self.assertContains(response, "Team social")
-        self.assertNotContains(response, "Other event")
+        # Exactly one "Attended" badge — not two (one per member who attended)
+        self.assertEqual(response.content.decode().count(">Attended<"), 1)
+        # Rate shown as 1/1 for the member's own view
+        self.assertContains(response, "1 of 1")
 
     def test_attended_badge_shown_for_attended_event(self):
         event = self.make_past_event("Attended event")
