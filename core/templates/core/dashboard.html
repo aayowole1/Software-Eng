@@ -77,6 +77,14 @@
       {% endfor %}
       <p><a href="{% url 'events:list' %}">All events</a></p>
     </div>
+    <div class="card">
+      <h2>My attendance</h2>
+      {% if attendance_summary %}
+        <p><a href="{% url 'accounts:profile' %}#attendance">Attended {{ attendance_summary.attended }} of {{ attendance_summary.total }} event{{ attendance_summary.total|pluralize }} ({{ attendance_summary.rate }}%)</a></p>
+      {% else %}
+        <p class="muted">No past events yet. <a href="{% url 'accounts:profile' %}#attendance">View my attendance</a></p>
+      {% endif %}
+    </div>
   {% endif %}
 
   {% if is_member %}

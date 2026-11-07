@@ -1,0 +1,215 @@
+"""
+Tests for US-13: Members can view their own attendance history.
+
+Covers:
+- Only own records shown (not other members').
+- Cancelled and future events excluded.
+- Events before joining excluded.
+- Attendance rate calculation including zero events.
+- Dashboard summary.
+- Access for applicants and signed-out users.
+"""
+
+from datetime import timedelta
+
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from accounts.models import Role
+from accounts.testing import make_user
+
+from .models import Attendance, Event
+
+
+def days(n):
+    return timezone.now() + timedelta(days=n)
+
+
+class AttendanceHistoryProfileTests(TestCase):
+    def setUp(self):
+        self.officer = make_user("officer@example.com", Role.OFFICER)
+        self.member = make_user("member@example.com", Role.MEMBER)
+        self.other = make_user("other@example.com", Role.MEMBER)
+        self.applicant = make_user("applicant@example.com")
+
+    def make_past_event(self, title="Past event", delta_days=-1, **kwargs):
+        return Event.objects.create(
+            title=title,
+            location="Room 1",
+            starts_at=days(delta_days),
+            created_by=self.officer,
+            **kwargs,
+        )
+
+    def attend(self, user, event):
+        return Attendance.objects.create(event=event, user=user, marked_by=self.officer)
+
+    # --- Access control ---------------------------------------------------
+
+    def test_signed_out_redirects_to_login(self):
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertRedirects(response, f"/accounts/login/?next=/accounts/me/")
+
+    def test_applicant_sees_no_attendance_section(self):
+        self.client.force_login(self.applicant)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "My attendance")
+        self.assertNotIn("attendance_history", response.context)
+
+    # --- Own records only -------------------------------------------------
+
+    def test_member_sees_own_attendance_only(self):
+        event = self.make_past_event("Team social")
+        self.attend(self.member, event)
+        # other member attends a different event
+        event2 = self.make_past_event("Other event")
+        self.attend(self.other, event2)
+
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "Team social")
+        self.assertNotContains(response, "Other event")
+
+    def test_attended_badge_shown_for_attended_event(self):
+        event = self.make_past_event("Attended event")
+        self.attend(self.member, event)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "Attended")
+
+    def test_not_recorded_shown_for_missed_event(self):
+        self.make_past_event("Missed event")
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "Not recorded")
+
+    # --- Exclusions -------------------------------------------------------
+
+    def test_cancelled_events_excluded(self):
+        self.make_past_event("Cancelled meetup", cancelled=True)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertNotContains(response, "Cancelled meetup")
+
+    def test_future_events_excluded(self):
+        Event.objects.create(
+            title="Future event",
+            location="Room 1",
+            starts_at=days(7),
+            created_by=self.officer,
+        )
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertNotContains(response, "Future event")
+
+    def test_events_before_joining_excluded(self):
+        # Set date_joined to now so any event before that is "before joining".
+        self.member.date_joined = timezone.now()
+        self.member.save()
+        # Create an event whose starts_at is before date_joined.
+        Event.objects.create(
+            title="Pre-join event",
+            location="Room 1",
+            starts_at=timezone.now() - timedelta(seconds=1),
+            created_by=self.officer,
+        )
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertNotContains(response, "Pre-join event")
+
+    # --- Rate calculation -------------------------------------------------
+
+    def test_no_past_events_shows_no_past_events_message(self):
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "No past events yet")
+        self.assertNotContains(response, "%")
+
+    def test_rate_calculated_correctly(self):
+        # 2 events, member attended 1 → 50 %
+        event1 = self.make_past_event("Event A")
+        self.make_past_event("Event B")
+        self.attend(self.member, event1)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "1 of 2")
+        self.assertContains(response, "50%")
+
+    def test_full_attendance_rate(self):
+        event1 = self.make_past_event("Event A")
+        event2 = self.make_past_event("Event B")
+        self.attend(self.member, event1)
+        self.attend(self.member, event2)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        self.assertContains(response, "100%")
+
+    # --- Newest first ordering --------------------------------------------
+
+    def test_events_ordered_newest_first(self):
+        self.make_past_event("Older event", delta_days=-5)
+        self.make_past_event("Newer event", delta_days=-1)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("accounts:profile"))
+        content = response.content.decode()
+        self.assertLess(content.index("Newer event"), content.index("Older event"))
+
+
+class AttendanceDashboardSummaryTests(TestCase):
+    def setUp(self):
+        self.officer = make_user("officer@example.com", Role.OFFICER)
+        self.member = make_user("member@example.com", Role.MEMBER)
+        self.applicant = make_user("applicant@example.com")
+
+    def make_past_event(self, title="Past event", **kwargs):
+        return Event.objects.create(
+            title=title,
+            location="Room 1",
+            starts_at=timezone.now() - timedelta(days=1),
+            created_by=self.officer,
+            **kwargs,
+        )
+
+    def attend(self, user, event):
+        return Attendance.objects.create(event=event, user=user, marked_by=self.officer)
+
+    def test_dashboard_shows_no_past_events_when_none(self):
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, "My attendance")
+        self.assertContains(response, "No past events yet")
+
+    def test_dashboard_shows_attendance_summary(self):
+        event1 = self.make_past_event("Event A")
+        self.make_past_event("Event B")
+        self.attend(self.member, event1)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, "Attended 1 of 2 events (50%)")
+
+    def test_dashboard_summary_links_to_profile_attendance_section(self):
+        self.make_past_event("Event A")
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'href="/accounts/me/#attendance"')
+
+    def test_dashboard_no_attendance_section_for_applicant(self):
+        self.make_past_event("Event A")
+        self.client.force_login(self.applicant)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertNotContains(response, "My attendance")
+
+    def test_dashboard_no_attendance_section_for_anonymous(self):
+        self.make_past_event("Event A")
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertNotContains(response, "My attendance")
+
+    def test_cancelled_events_excluded_from_dashboard_summary(self):
+        self.make_past_event("Cancelled event", cancelled=True)
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("core:dashboard"))
+        # No events counted → "No past events yet"
+        self.assertContains(response, "No past events yet")
+        self.assertNotContains(response, "Cancelled event")

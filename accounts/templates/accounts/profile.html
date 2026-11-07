@@ -13,4 +13,23 @@
   {% empty %}
     <p class="muted">You're not on any committees.</p>
   {% endfor %}
+  {% if show_attendance %}
+    <h2 id="attendance">My attendance</h2>
+    <div class="card">
+      {% if attendance_total == 0 %}
+        <p>No past events yet.</p>
+      {% else %}
+        <p>Attended {{ attendance_count }} of {{ attendance_total }} event{{ attendance_total|pluralize }} ({{ attendance_rate }}%)</p>
+        <ul>
+          {% for row in attendance_history %}
+            <li>
+              <span class="muted">{{ row.event.starts_at|date:"M j, Y" }}</span>
+              <a href="{% url 'events:detail' row.event.pk %}">{{ row.event.title }}</a>
+              {% if row.attended %}<span class="badge">Attended</span>{% else %}<span class="muted">Not recorded</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endif %}
 {% endblock %}
