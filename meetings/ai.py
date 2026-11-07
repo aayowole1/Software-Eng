@@ -89,7 +89,7 @@ def summarize_meeting(transcript: str, officer_notes: str = "") -> MeetingSummar
             timeout=30.0,
             max_retries=2,
         ).chat.completions.create(
-            model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+            model=os.getenv("OPENROUTER_MODEL"),
             temperature=0.2,
             response_format={"type": "json_object"},
             messages=messages,
