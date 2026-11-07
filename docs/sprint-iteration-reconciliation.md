@@ -2,7 +2,7 @@
 
 **Action item:** R-05 from OrgFlow Progress Report (Oct 23, 2026), Sections 3, 7 and 8  
 **Ticket:** SCRUM-82  
-**Prepared:** November 2, 2026; updated November 3, 2026  
+**Prepared:** November 2, 2026; updated November 3 and November 6, 2026  
 **Scope:** Jira sprint assignments reconciled against calendar iterations I4–I7
 
 ---
@@ -38,7 +38,7 @@ implementation, integration and submission.
 | I3 | Oct 5 | Oct 18 | Django port from Node.js prototype; Accounts 1.3 (WBS 1.3); Membership sign-up and approval flows (WBS 1.4) |
 | I4 | Oct 19 | Oct 25 | Events dev (WBS 1.5); Tasks/committees initial delivery (WBS 1.6); Meeting recording dev (WBS 1.9); TJ membership/roster enhancements (WBS 1.4) |
 | I5 | Oct 26 | Nov 1 | Events merge to main (SCRUM-71); SCRUM-16 subtask closeout commits; committee creation recovery; CI runner fix; PR #13 merge |
-| I6 | Nov 2 | Nov 8 | Remaining open gates (VM, providers, performance, usability) |
+| I6 | Nov 2 | Nov 8 | User-story verification PRs (#15–#21); audit history; SMTP; Chair task permissions and task options (SCRUM-85–88); announcements/resources and roster performance (PR #23); remaining open gates |
 | I7 | Nov 9 | Nov 10 | Course submission deadline |
 
 ---
@@ -98,19 +98,43 @@ since moved to Jira Free.
 
 ### I6 items (Nov 2–8)
 
-No implementation commits have been recorded in the repository for this period
-at the time of this document. The following open gates are expected to be
-addressed in I6 and currently have no Jira tickets.
+Status as of November 6. Jira statuses are from the Jira Free board; review
+states are from GitHub. Approval and merge are not acceptance: tickets stay
+In Review until acceptance is recorded.
 
-| Item | Owner | Type | Notes |
-|------|-------|------|-------|
-| VM operator: live deployment verification | VM operator | Gate | Actual team VM address/access and Docker Compose check; HTTPS/origin/TLS |
-| Google sign-in live check at intended origin | Chau / configuration owner | Gate | Client ID allowlist for production host |
-| OpenAI summarization live check | Jack / AI owner | Gate | Requires private provider key; no paid API call made to date |
-| Deepgram transcription live check | Jack / STT owner | Gate | Requires DEEPGRAM_API_KEY; two CI tests currently skipped |
-| SMTP real-delivery check | SMTP owner | Gate | Internal capture only; real mailbox check pending |
-| Performance benchmark | Team | Gate | 25-user, 10-minute host benchmark not yet run |
-| Usability study (5 users) | Team | Gate | Required human acceptance; not yet scheduled |
+| Ticket | Summary | WBS | Owner | Work dates | PR | PR state (Nov 6) | Jira status (Nov 6) |
+|--------|---------|-----|-------|-----------|----|------------------|---------------------|
+| SCRUM-59 | US-01: Secure sign-in with role-based access | 1.3 | Ayomide | Nov 3 | #21 | Merged Nov 6 (`e9e9a44`) | Done |
+| SCRUM-60 | US-02: Submit membership application and view status | 1.4 | Ayomide | Nov 2–3 | #18 | Open; approved | In Review |
+| SCRUM-61 | US-03: Officer approves/rejects applications and manages roster | 1.4 | Ayomide | Nov 3 | #19 | Open; approved | In Review |
+| SCRUM-62 | US-04: Member RSVPs to events and attendance is recorded | 1.5 | Ayomide | Nov 3 | #20 | Open; approved | In Review |
+| SCRUM-77 | Audit history for role, membership, attendance and task changes (FR-09) | — | Ayomide | Nov 2–6 | #16 | Open; review fixes pushed Nov 3 and Nov 6 | In Review |
+| SCRUM-79 | SMTP email delivery for password reset and notifications | — | Ayomide | Nov 2 | #17 | Open; approved | In Review |
+| SCRUM-82 | Sprint–iteration reconciliation (this document) | — | Ayomide | Nov 2–6 | #15 | Open; review fixes pushed | In Review |
+| SCRUM-85 | Chairs manage tasks in their own committee (blocks SCRUM-26) | 1.6 | Chau | Nov 3–6 | #22 | Open; approved | In Review |
+| SCRUM-86 | Urgent task priority | 1.6 | Chau | Nov 3 | #22 | Open; approved | In Review |
+| SCRUM-87 | Under Review task status | 1.6 | Chau | Nov 3 | #22 | Open; approved | In Review |
+| SCRUM-88 | SRS update for the agreed task change (FR-4.2/FR-4.3) | 1.1 | Ayomide | Nov 6 | — (SRS v1.1/v1.2 shared with the team) | — | In Review |
+| SCRUM-29–34 | Announcements and resource library (SCRUM-17 subtasks) | 1.7 | Tasin / Jack | Nov 4–5 | #23 | Open; approved | See SCRUM-17 |
+| SCRUM-73 | Triage accounts risk R-03 | 1.3 | Tasin | Nov 4 | #23 | Open; approved | Done |
+| SCRUM-80 | Measure page response times (25 users, 10 minutes, local) | — | Tasin | Nov 4 | #23 | Open; approved | Done |
+| SCRUM-83 | Pilot usability test with 5 users | — | Team | Nov 4 | #23 (protocol only) | Open; approved | In Progress |
+| SCRUM-89 | UI refresh | — | Tasin | Nov 5 | — | — | In Review |
+
+SCRUM-85 to SCRUM-88 were created on November 3 for the Chair task change
+agreed in Teams. SCRUM-23 to SCRUM-28 stay In Review; none were reopened.
+
+#### Remaining I6 gates
+
+| Item | Owner | Type | Status (Nov 6) |
+|------|-------|------|----------------|
+| VM operator: live deployment verification | VM operator | Gate | Not started. Actual team VM address/access and Docker Compose check; HTTPS/origin/TLS |
+| Google sign-in live check at intended origin | Chau / configuration owner | Gate | Pending. Client ID allowlist for production host |
+| OpenAI summarization live check | Jack / AI owner | Gate | Pending. Requires private provider key; no paid API call made to date |
+| Deepgram transcription live check | Jack / STT owner | Gate | Pending. Requires DEEPGRAM_API_KEY; two CI tests currently skipped |
+| SMTP real-delivery check | Ayomide (SCRUM-79) | Gate | Pending. PR #17 approved; internal capture only, real mailbox check not done |
+| Performance benchmark | Tasin (SCRUM-80) | Gate | Local 25-user, 10-minute run done (SCRUM-80 Done; results in PR #23). Events list still below target; production-host run not done |
+| Usability study (5 users) | Team (SCRUM-83) | Gate | In Progress. Protocol and observation sheet prepared in PR #23; no participants observed yet |
 
 ---
 
@@ -135,7 +159,8 @@ addressed in I6 and currently have no Jira tickets.
 | 6 | Committee creation recovery | No Jira ticket; work committed Oct 28 (I5). | File a new bug-fix ticket on the Jira Free board. |
 | 7 | TJ's PRs #10 and #11 (membership enhancements) | No Jira ticket numbers visible in repository docs; work merged Oct 25 (I4). | Confirm ticket numbers from the Jira Free board; verify sprint assignment is I4. |
 | 8 | Meeting recording (Jack, WBS 1.9) | No Jira ticket number visible in repository docs; work in I4. | Confirm ticket number from the Jira Free board; verify sprint assignment is I4. |
-| 9 | I6 / I7 gates | Multiple open gates (VM, providers, usability) have no Jira tickets. | Create tickets on the Jira Free board, or capture in team report if board is no longer maintained. |
+| 9 | I6 / I7 gates | SMTP (SCRUM-79), performance (SCRUM-80) and usability (SCRUM-83) now have tickets; the VM deployment and live provider checks (Google, OpenAI, Deepgram) still do not. | Create tickets for the VM and provider checks on the Jira Free board, or capture them in the team report. |
+| 10 | SCRUM-85 to SCRUM-88 | Created Nov 3 (I6) for the agreed Chair task change; SCRUM-85 blocks SCRUM-26. | Keep SCRUM-26 In Review until SCRUM-85 is accepted; record the PR #22 merge as a milestone, not a Done date. |
 
 ---
 
@@ -153,8 +178,9 @@ addressed in I6 and currently have no Jira tickets.
    human acceptance are recorded; In Review is the correct current status.
 4. **Confirm missing ticket numbers** for TJ's membership PRs and Jack's
    meeting recording by querying the Jira Free board.
-5. **Create or close I6 gate tickets** (VM deployment, providers, performance,
-   usability) on the Jira Free board.
+5. **Create tickets for the remaining I6 gates** that have none (VM
+   deployment and live Google, OpenAI and Deepgram checks), and keep
+   SCRUM-79, SCRUM-80 and SCRUM-83 current on the Jira Free board.
 
 ---
 
@@ -162,7 +188,9 @@ addressed in I6 and currently have no Jira tickets.
 
 | Source | Date / commit | Location |
 |--------|--------------|----------|
-| Git commit history | `main` at `e404ce4` | `git log --format="%ai %s"` |
+| Git commit history (I1–I5) | `main` at `e404ce4` | `git log --format="%ai %s"` |
+| I6 pull requests and merges | Nov 2–6; `main` at `e9e9a44` | GitHub PRs #15–#23 |
+| I6 Jira statuses | Nov 6 | Jira Free board (SCRUM project) |
 | Committee creation recovery (test counts and coverage) | Oct 28, `de676e2` | [docs/chau-creation-recovery-20261028.md](chau-creation-recovery-20261028.md) |
 | SCRUM-16 closeout | Oct 28 | [docs/chau-closeout-20261028.md](chau-closeout-20261028.md) |
 | Integration handoff | Oct 25 | [docs/integration-handoff.md](integration-handoff.md) |
