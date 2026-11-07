@@ -9,16 +9,17 @@ python -m meetings.benchmark.run_benchmark --mode e2e --audio-dir meetings/bench
 ```
 
 The script reads `meetings/benchmark_data/student_org_meeting_benchmark.json`
-by default and prints JSON results to the screen. Use `--test-id ORG001` or
-`--limit 1` for a smaller run.
+by default, writes complete timestamped JSON results to
+`meetings/benchmark/results/`, and prints only aggregate results to the screen.
+Use `--test-id ORG001` or `--limit 1` for a smaller run. Change the output
+directory with `--output-dir`.
 
-STT reports WER, CER, and token precision/recall/F1. Summarization reports
-summary-text precision/recall/F1, ROUGE-1/2/L, and METEOR, plus item-level
-precision/recall/F1 for action items. ROUGE-L is the most useful single
-summary metric here because it rewards overlap while preserving sentence
-sequence; ROUGE-1/2 and METEOR provide complementary coverage and fluency
-signals. METEOR is implemented with normalized exact-token matches and does
-not use synonym resources.
+STT reports WER, CER, and token precision/recall/F1. Summarization uses a
+second LLM call as a binary judge: `1` means the summary and action items are
+accurate and materially complete, while `0` means they are not. The result
+records both the summarization model (`OPENROUTER_MODEL`) and judge model
+(`OPENROUTER_JUDGE_MODEL`, defaulting to the summarization model), along with
+item-level precision/recall/F1 for action items.
 
 STT and end-to-end modes decode audio through `pydub` and require FFmpeg for
 compressed files, as well as `DEEPGRAM_API_KEY`. Summarization and end-to-end

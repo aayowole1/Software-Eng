@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from datetime import datetime, timezone
 import json
+import os
 import re
 import sys
 import time
@@ -65,75 +67,6 @@ def overlap_scores(reference: str, candidate: str) -> dict[str, float]:
 
 def _f1(precision: float, recall: float) -> float:
     return 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-
-
-def _lcs_length(first: list[str], second: list[str]) -> int:
-    previous = [0] * (len(second) + 1)
-    for first_token in first:
-        current = [0]
-        for index, second_token in enumerate(second, start=1):
-            current.append(
-                previous[index - 1] + 1
-                if first_token == second_token
-                else max(previous[index], current[index - 1])
-            )
-        previous = current
-    return previous[-1]
-
-
-def rouge_scores(reference: str, candidate: str) -> dict[str, float]:
-    """Calculate ROUGE-1, ROUGE-2, and ROUGE-L F1 scores."""
-    reference_tokens = tokens(reference)
-    candidate_tokens = tokens(candidate)
-    scores: dict[str, float] = {}
-    for name, size in (("rouge1", 1), ("rouge2", 2)):
-        reference_ngrams = Counter(
-            tuple(reference_tokens[index : index + size])
-            for index in range(len(reference_tokens) - size + 1)
-        )
-        candidate_ngrams = Counter(
-            tuple(candidate_tokens[index : index + size])
-            for index in range(len(candidate_tokens) - size + 1)
-        )
-        matches = sum((reference_ngrams & candidate_ngrams).values())
-        precision = matches / sum(candidate_ngrams.values()) if candidate_ngrams else 0.0
-        recall = matches / sum(reference_ngrams.values()) if reference_ngrams else 0.0
-        scores[name] = _f1(precision, recall)
-
-    lcs = _lcs_length(reference_tokens, candidate_tokens)
-    precision = lcs / len(candidate_tokens) if candidate_tokens else 0.0
-    recall = lcs / len(reference_tokens) if reference_tokens else 0.0
-    scores["rougeL"] = _f1(precision, recall)
-    return scores
-
-
-def meteor_score(reference: str, candidate: str) -> float:
-    """Calculate a dependency-free unigram METEOR approximation.
-
-    This uses exact normalized-token matches and the standard METEOR
-    harmonic-mean and chunk penalty. It intentionally does not claim synonym
-    matching, which would require a language resource or model.
-    """
-    reference_tokens = tokens(reference)
-    candidate_tokens = tokens(candidate)
-    remaining = Counter(reference_tokens)
-    matched_candidate_indices: list[int] = []
-    for index, token in enumerate(candidate_tokens):
-        if remaining[token]:
-            remaining[token] -= 1
-            matched_candidate_indices.append(index)
-    matches = len(matched_candidate_indices)
-    if not matches or not reference_tokens or not candidate_tokens:
-        return 0.0
-
-    precision = matches / len(candidate_tokens)
-    recall = matches / len(reference_tokens)
-    harmonic = (10 * precision * recall) / (recall + 9 * precision)
-    chunks = 1
-    for previous, current in zip(matched_candidate_indices, matched_candidate_indices[1:]):
-        if current != previous + 1:
-            chunks += 1
-    return harmonic * (1 - 0.5 * (chunks / matches) ** 3)
 
 
 def action_item_scores(
@@ -227,21 +160,82 @@ def stt_scores(reference: str, candidate: str) -> dict[str, float]:
     return scores
 
 
-def summarize_scores(reference: dict[str, Any], result: MeetingSummary) -> dict[str, Any]:
-    summary_reference = reference["reference_summary"]
+def judge_summary(reference: dict[str, Any], result: MeetingSummary) -> dict[str, Any]:
+    """Ask an LLM whether the generated summary accurately covers the meeting."""
+    model = os.getenv("OPENROUTER_JUDGE_MODEL", os.getenv(
+        "OPENROUTER_MODEL", "openai/gpt-4o-mini"
+    ))
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is not configured.")
+
+    reference_actions = json.dumps(
+        reference.get("reference_action_items", []), ensure_ascii=False
+    )
+    prompt = (
+        "Evaluate the candidate meeting summary against the reference summary and "
+        "reference action items. Return JSON with exactly one field, "
+        '"score": 1 if the candidate is accurate, covers the material decisions '
+        "and constraints, and does not invent material facts; otherwise return "
+        '"score": 0. Treat wording differences as acceptable. The action items '
+        "must also be materially consistent with the reference.\n\n"
+        f"Reference summary:\n{reference['reference_summary']}\n\n"
+        f"Reference action items:\n{reference_actions}\n\n"
+        f"Candidate summary:\n{result.summary}\n\n"
+        f"Candidate action items:\n{json.dumps(result.action_items, ensure_ascii=False)}"
+    )
+    try:
+        from openai import OpenAI, OpenAIError
+
+        response = OpenAI(
+            api_key=api_key,
+            base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            default_headers={
+                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", ""),
+                "X-Title": os.getenv("OPENROUTER_APP_NAME", "OrgFlow"),
+            },
+            timeout=30.0,
+            max_retries=2,
+        ).chat.completions.create(
+            model=model,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a strict binary evaluator of meeting summaries.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+        content = response.choices[0].message.content
+    except ImportError as error:
+        raise RuntimeError(f"LLM judging is unavailable: {error}") from error
+    except (OpenAIError, OSError, TimeoutError) as error:
+        raise RuntimeError(f"LLM judging failed: {error}") from error
+
+    try:
+        payload = json.loads(content or "")
+        score = payload["score"]
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise RuntimeError("LLM judge returned invalid JSON.") from error
+    if isinstance(score, bool) or not isinstance(score, int) or score not in (0, 1):
+        raise RuntimeError("LLM judge returned a score other than 0 or 1.")
+    return {"score": score, "model": model}
+
+
+def summarize_scores(
+    reference: dict[str, Any], result: MeetingSummary
+) -> dict[str, Any]:
     return {
-        "summary": {
-            **overlap_scores(summary_reference, result.summary),
-            **rouge_scores(summary_reference, result.summary),
-            "meteor": meteor_score(summary_reference, result.summary),
-        },
+        "judge": judge_summary(reference, result),
         "action_items": action_item_scores(
             reference.get("reference_action_items", []), result.action_items
         ),
     }
 
 
-def print_results(mode: str, results: list[dict[str, Any]]) -> None:
+def build_averages(results: list[dict[str, Any]]) -> dict[str, float]:
     completed = [result for result in results if "error" not in result]
     numeric_values: dict[str, list[float]] = {}
 
@@ -261,14 +255,7 @@ def print_results(mode: str, results: list[dict[str, Any]]) -> None:
         for key, values in numeric_values.items()
         if key != "elapsed_seconds"
     }
-    print(
-        json.dumps(
-            {"mode": mode, "averages": averages, "cases": results},
-            indent=2,
-            ensure_ascii=False,
-        )
-    )
-    print(f"\nCompleted {len(completed)}/{len(results)} benchmark cases.")
+    return averages
 
 
 def main() -> None:
@@ -277,6 +264,12 @@ def main() -> None:
     parser.add_argument("--dataset", type=Path, default=DATA_PATH)
     parser.add_argument("--audio-dir", type=Path, default=DATA_PATH.parent / "audio")
     parser.add_argument("--audio-manifest", type=Path)
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path(__file__).resolve().parent / "results",
+        help="Directory for timestamped JSON benchmark results.",
+    )
     parser.add_argument("--test-id", action="append", dest="test_ids")
     parser.add_argument("--limit", type=int, default=0)
     args = parser.parse_args()
@@ -301,15 +294,46 @@ def main() -> None:
                 transcript = transcribe(find_audio(test_id, args.audio_dir, manifest))
                 result["stt"] = stt_scores(reference_transcript, transcript)
             if args.mode in ("summarization", "e2e"):
+                result["summarization_model"] = os.getenv(
+                    "OPENROUTER_MODEL", "openai/gpt-4o-mini"
+                )
                 summary = summarize_meeting(transcript)
                 result["summarization"] = summarize_scores(test["version_b"], summary)
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
         except (KeyError, FileNotFoundError, RuntimeError, ValueError) as error:
             result["error"] = str(error)
         results.append(result)
-        print(f"Completed {test_id}.", file=sys.stderr)
 
-    print_results(args.mode, results)
+    completed = [result for result in results if "error" not in result]
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    output_path = args.output_dir / f"benchmark_{args.mode}_{timestamp}.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "mode": args.mode,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "dataset": str(args.dataset),
+        "averages": build_averages(results),
+        "completed_cases": len(completed),
+        "total_cases": len(results),
+        "cases": results,
+    }
+    output_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(
+        json.dumps(
+            {
+                "mode": args.mode,
+                "overall_score": payload["averages"],
+                "completed_cases": len(completed),
+                "total_cases": len(results),
+                "results_file": str(output_path),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":
