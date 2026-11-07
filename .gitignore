@@ -38,3 +38,6 @@ Thumbs.db
 
 # Regeneratable Data
 meetings/benchmark_data/audio
+
+# Benchmark Artifacts
+meetings/benchmark/results
