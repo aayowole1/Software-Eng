@@ -53,6 +53,8 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "async function finalizeRecording()")
         self.assertContains(response, 'X-Recording-Final')
         self.assertContains(response, "let allowSubmit = false;")
+        self.assertContains(response, 'id="meeting-processing"')
+        self.assertContains(response, "Transcribing audio and preparing the summary and action items.")
         self.assertNotContains(response, 'class="meeting-transcript"')
 
     def test_review_submission_saves_officer_notes(self):

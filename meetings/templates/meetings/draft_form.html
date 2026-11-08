@@ -37,6 +37,13 @@
   <p id="recording-status" class="muted" role="status">
     Click Start Meeting and allow microphone access to begin transcription.
   </p>
+  <div id="meeting-processing" class="meeting-processing" hidden aria-live="polite">
+    <div class="meeting-processing-card">
+      <div class="meeting-spinner" aria-hidden="true"></div>
+      <h2>Processing meeting</h2>
+      <p>Transcribing audio and preparing the summary and action items. Please wait.</p>
+    </div>
+  </div>
   <script>
     (() => {
       const form = document.getElementById("meeting-form");
@@ -47,6 +54,7 @@
       const submitButton = document.getElementById("submit-meeting");
       const status = document.getElementById("recording-status");
       const transcript = document.getElementById("id_transcript");
+      const processing = document.getElementById("meeting-processing");
       const transcribeUrl = "{% url 'meetings:transcribe' %}";
       const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
       let audioContext;
@@ -60,6 +68,7 @@
       let isPaused = false;
       let isStopping = false;
       let allowSubmit = false;
+      let isProcessing = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
       let committedTranscript = transcript.value.trim();
@@ -229,9 +238,28 @@
           allowSubmit = false;
           return;
         }
+        const showProcessing = () => {
+          isProcessing = true;
+          processing.hidden = false;
+          form.setAttribute("aria-busy", "true");
+          startButton.disabled = true;
+          stopButton.disabled = true;
+          submitButton.disabled = true;
+          title.readOnly = true;
+          notes.readOnly = true;
+        };
+        const hideProcessing = () => {
+          isProcessing = false;
+          processing.hidden = true;
+          form.removeAttribute("aria-busy");
+          startButton.disabled = false;
+          submitButton.disabled = false;
+          title.readOnly = false;
+          notes.readOnly = false;
+        };
         if (isRecording || isPaused) {
           event.preventDefault();
-          submitButton.disabled = true;
+          showProcessing();
           status.textContent = "Submitting meeting and finalizing transcript…";
           finalizeRecording().then(() => {
             if (!notes.value.trim() && !transcript.value.trim()) {
@@ -240,7 +268,7 @@
             allowSubmit = true;
             form.requestSubmit();
           }).catch((error) => {
-            submitButton.disabled = false;
+            hideProcessing();
             status.textContent = error.message;
           });
           return;
@@ -248,7 +276,9 @@
         if (!notes.value.trim() && !transcript.value.trim()) {
           event.preventDefault();
           status.textContent = "Add officer notes or record part of the meeting before submitting.";
+          return;
         }
+        if (!isProcessing) showProcessing();
       });
     })();
   </script>
