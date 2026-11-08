@@ -12,20 +12,44 @@ from django.db import models
 from django.utils import timezone
 
 
+def member_since(user):
+    """When the user's current membership started (US-13).
+
+    This is the most recent approval of their membership application, so
+    events held while the account was still pending, or before a later
+    re-approval, don't count. Accounts never approved through an application
+    (for example the createsuperuser admin, or members whose role was set
+    directly) fall back to the account's creation date.
+    """
+    # Imported here because membership imports account models at load time.
+    from membership.models import ApplicationStatus, MembershipApplication
+
+    approved_at = (
+        MembershipApplication.objects.filter(
+            user=user, status=ApplicationStatus.APPROVED, reviewed_at__isnull=False,
+        )
+        .order_by("-reviewed_at")
+        .values_list("reviewed_at", flat=True)
+        .first()
+    )
+    return approved_at or user.date_joined
+
+
 class EventQuerySet(models.QuerySet):
     def attendance_summary_for(self, user):
-        """US-13: a member's own attendance since they joined.
+        """US-13: a member's own attendance since their membership was approved.
 
-        Counts past, non-cancelled events that started on or after the
-        account was created. Returns the events newest first, each marked
-        attended or not, plus the attended count, total and rounded rate
-        (None when there are no past events yet).
+        Counts past, non-cancelled events that started on or after
+        member_since(user). Returns the events newest first, each marked
+        attended or not, plus the attended count, total, rounded rate
+        (None when there are no past events yet) and the start date used.
         """
+        since = member_since(user)
         events = list(
             self.filter(
                 starts_at__lt=timezone.now(),
                 cancelled=False,
-                starts_at__gte=user.date_joined,
+                starts_at__gte=since,
             ).order_by("-starts_at")
         )
         attended_ids = set(
@@ -40,6 +64,7 @@ class EventQuerySet(models.QuerySet):
             "attended": attended,
             "total": total,
             "rate": round(attended / total * 100) if total else None,
+            "since": since,
         }
 
 

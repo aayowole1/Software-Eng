@@ -16,6 +16,7 @@
   {% if show_attendance %}
     <h2 id="attendance">My attendance</h2>
     <div class="card">
+      <p class="muted">Counting events since your membership started on {{ attendance_since|date:"M j, Y" }}.</p>
       {% if attendance_total == 0 %}
         <p>No past events yet.</p>
       {% else %}

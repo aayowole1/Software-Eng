@@ -236,3 +236,109 @@ class AttendanceDashboardSummaryTests(TestCase):
         # No eligible events → "No past events yet"
         self.assertContains(response, "No past events yet")
         self.assertNotContains(response, "Cancelled event")
+
+
+class AttendanceCountsFromApprovalTests(TestCase):
+    """Review fix: attendance counts from membership approval, not account sign-up."""
+
+    def setUp(self):
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        self.ApplicationStatus = ApplicationStatus
+        self.MembershipApplication = MembershipApplication
+        self.officer = make_user("approval-officer@example.com", Role.OFFICER)
+        self.member = make_user("approval-member@example.com", Role.MEMBER)
+        _backdate_joined(self.member, days_ago=30)  # signed up 30 days ago
+
+    def approve(self, days_ago, user=None):
+        return self.MembershipApplication.objects.create(
+            user=user or self.member,
+            statement="I'd like to join.",
+            status=self.ApplicationStatus.APPROVED,
+            reviewed_by=self.officer,
+            reviewed_at=timezone.now() - timedelta(days=days_ago),
+        )
+
+    def reject(self, days_ago):
+        return self.MembershipApplication.objects.create(
+            user=self.member,
+            statement="Please reconsider.",
+            status=self.ApplicationStatus.REJECTED,
+            reviewed_by=self.officer,
+            reviewed_at=timezone.now() - timedelta(days=days_ago),
+            review_note="Not yet.",
+        )
+
+    def event(self, title, delta_days):
+        return Event.objects.create(
+            title=title, location="Room 1", starts_at=days(delta_days), created_by=self.officer,
+        )
+
+    def summary(self):
+        return Event.objects.attendance_summary_for(self.member)
+
+    def test_events_while_pending_are_not_counted(self):
+        """Chau's case: events between sign-up and approval don't lower the rate."""
+        self.approve(days_ago=10)
+        self.event("While pending", -20)
+        attended = self.event("After approval", -5)
+        Attendance.objects.create(event=attended, user=self.member, marked_by=self.officer)
+
+        summary = self.summary()
+
+        self.assertEqual([row["event"].title for row in summary["history"]], ["After approval"])
+        self.assertEqual((summary["attended"], summary["total"], summary["rate"]), (1, 1, 100))
+
+    def test_profile_and_dashboard_use_the_approval_date(self):
+        self.approve(days_ago=10)
+        self.event("While pending", -20)
+        attended = self.event("After approval", -5)
+        Attendance.objects.create(event=attended, user=self.member, marked_by=self.officer)
+        self.client.force_login(self.member)
+
+        profile = self.client.get(reverse("accounts:profile"))
+        self.assertNotContains(profile, "While pending")
+        self.assertContains(profile, "Attended 1 of 1 event (100%)")
+        approved_on = timezone.localtime(timezone.now() - timedelta(days=10)).strftime("%b %-d, %Y")
+        self.assertContains(profile, f"Counting events since your membership started on {approved_on}.")
+
+        dashboard = self.client.get(reverse("core:dashboard"))
+        self.assertEqual(dashboard.context["attendance_summary"]["total"], 1)
+        self.assertEqual(dashboard.context["attendance_summary"]["rate"], 100)
+
+    def test_counts_from_the_most_recent_approval(self):
+        self.approve(days_ago=25)
+        self.reject(days_ago=15)
+        self.approve(days_ago=5)
+        self.event("Earlier membership", -20)
+        self.event("Current membership", -2)
+
+        titles = [row["event"].title for row in self.summary()["history"]]
+
+        self.assertEqual(titles, ["Current membership"])
+
+    def test_rejected_or_pending_applications_do_not_set_the_start(self):
+        self.reject(days_ago=10)
+        self.MembershipApplication.objects.create(
+            user=self.member, statement="Trying again.", status=self.ApplicationStatus.PENDING,
+        )
+        self.event("After sign-up", -20)
+
+        # No approval on record, so the sign-up date is used.
+        self.assertEqual(self.summary()["total"], 1)
+
+    def test_accounts_never_approved_through_an_application_use_sign_up_date(self):
+        self.event("After sign-up", -20)
+        self.event("Before sign-up", -40)
+
+        summary = self.summary()
+
+        self.assertEqual([row["event"].title for row in summary["history"]], ["After sign-up"])
+        self.assertEqual(summary["since"], self.member.date_joined)
+
+    def test_other_members_approvals_do_not_affect_this_member(self):
+        other = make_user("approval-other@example.com", Role.MEMBER)
+        self.approve(days_ago=1, user=other)
+        self.event("After sign-up", -20)
+
+        self.assertEqual(self.summary()["total"], 1)

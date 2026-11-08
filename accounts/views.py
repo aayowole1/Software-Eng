@@ -77,6 +77,7 @@ def profile(request):
             attendance_total=attendance["total"],
             attendance_count=attendance["attended"],
             attendance_rate=attendance["rate"],
+            attendance_since=attendance["since"],
         )
     return render(request, "accounts/profile.html", context)
 
