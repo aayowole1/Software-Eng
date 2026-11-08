@@ -252,8 +252,9 @@ accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 
 Announcements are integrated in this working branch; see the
 [integration notes](docs/announcements-integration.md) for access rules, private
-file storage and remaining committee-targeting/notification work. Reports (1.8)
-remain separate team work. Task change history is included;
+file storage and remaining committee-targeting/notification work. Participation
+reports (1.8) are available to officers and admins; charts (SCRUM-37) are not
+included yet. Task change history is included;
 an organization-wide audit system remains separate. Live OpenAI summarization and
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
