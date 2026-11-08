@@ -30,6 +30,24 @@
     gap: 16px;
 }
 
+.meeting-review-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.meeting-review-columns textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+    .meeting-review-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
 .meeting-recording-actions {
     display: flex;
     gap: 8px;

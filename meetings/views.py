@@ -41,7 +41,14 @@ class MeetingNotesForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["title"].required = False
         self.initial["expected_generation"] = self.instance.generation_token or ""
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("notes", "").strip() and not cleaned_data.get("transcript", "").strip():
+            raise forms.ValidationError("Add officer notes or record part of the meeting before submitting.")
+        return cleaned_data
 
 
 class ReviewForm(forms.Form):
@@ -156,6 +163,16 @@ def draft_detail(request, pk):
             "can_finish_review": draft.review_update_pending,
         },
     )
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def draft_save_notes(request, pk):
+    draft = get_object_or_404(MeetingDraft, pk=pk)
+    draft.notes = request.POST.get("notes", "")
+    draft.save(update_fields=["notes"])
+    messages.success(request, "Officer notes saved.")
+    return redirect("meetings:detail", pk=draft.pk)
 
 
 @require_POST

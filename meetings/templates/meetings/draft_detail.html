@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ draft.title }}{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
+{% endblock %}
 {% block content %}
   <h1>{{ draft.title }}</h1>
   <p><span class="badge">{{ draft.get_status_display }}</span>
@@ -18,41 +22,38 @@
     </div>
   {% endif %}
 
-  <div class="card">
-    <h2>AI summary</h2>
-    <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
-    <p class="muted">AI output can omit, misread or invent details. Check it against the notes below.</p>
-  </div>
-
-  {% if can_review %}
-    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="card">
+  <div class="meeting-review-columns">
+    <form method="post" action="{% url 'meetings:save_notes' draft.pk %}" class="card">
       {% csrf_token %}
-      <h2>Proposed action items</h2>
-      <p class="muted">Edit any item, untick the ones that are wrong, or add missing ones.</p>
-      {% for item in items %}
-        <div class="action-item">
-          <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
-          <label for="item-{{ item.pk }}-accepted" class="visually-hidden">Keep this item</label>
-          <label for="item-{{ item.pk }}-description" class="visually-hidden">Action item text</label>
-          <input type="text" name="item-{{ item.pk }}-description" id="item-{{ item.pk }}-description" value="{{ item.description }}">
-        </div>
-      {% empty %}
-        <p class="muted">The AI didn't find any action items.</p>
-      {% endfor %}
-      {{ review_form.as_p }}
-      <button type="submit">Submit review</button>
+      <h2>Officer notes</h2>
+      <textarea name="notes" rows="14">{{ draft.notes }}</textarea>
+      <button type="submit">Save notes</button>
     </form>
-  {% else %}
     <div class="card">
+      <h2>AI summary</h2>
+      <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
       <h2>Action items</h2>
       <ul>
         {% for item in items %}
-          <li>{% if item.accepted %}{{ item.description }}{% else %}<s>{{ item.description }}</s> <span class="muted">(rejected by reviewer)</span>{% endif %}</li>
+          <li>
+            {% if can_review %}<input type="checkbox" name="item-{{ item.pk }}-accepted" form="review-form" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>{% endif %}
+            <label for="item-{{ item.pk }}-accepted">{{ item.description }}</label>
+          </li>
         {% empty %}
           <li class="muted">None.</li>
         {% endfor %}
       </ul>
+      <p class="muted">AI output is read-only. Add anything you want to keep to your officer notes.</p>
     </div>
+  </div>
+
+  {% if can_review %}
+    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="card" id="review-form">
+      {% csrf_token %}
+      <h2>Review meeting</h2>
+      {{ review_form.as_p }}
+      <button type="submit">Submit review</button>
+    </form>
   {% endif %}
 
   {% if can_revise %}
@@ -63,12 +64,9 @@
     <p><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
   {% endif %}
 
-  <h2>Original notes</h2>
+  <h2>Transcript</h2>
   <div class="card">
-    <h3>Transcript</h3>
     <p>{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
-    <h3>Officer notes</h3>
-    <p>{{ draft.notes|default:"(No officer notes provided.)"|linebreaksbr }}</p>
   </div>
 
   {% if is_admin %}

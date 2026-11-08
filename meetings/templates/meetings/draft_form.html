@@ -8,6 +8,7 @@
   <h1>{{ heading }}</h1>
   <form method="post" class="card" novalidate id="meeting-form">
     {% csrf_token %}
+    {{ form.transcript }}
     {{ form.expected_generation }}
     {{ form.expected_generation.errors }}
     <p>
@@ -40,6 +41,7 @@
     (() => {
       const form = document.getElementById("meeting-form");
       const title = document.getElementById("id_title");
+      const notes = document.getElementById("id_notes");
       const startButton = document.getElementById("start-recording");
       const stopButton = document.getElementById("stop-recording");
       const submitButton = document.getElementById("submit-meeting");
@@ -55,6 +57,7 @@
       let recordingId;
       let pendingUploads = Promise.resolve();
       let isRecording = false;
+      let isPaused = false;
       let isStopping = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
@@ -102,7 +105,7 @@
       }
 
       function upload(audio, isFinal = false) {
-        pendingUploads = pendingUploads.then(async () => {
+        const request = pendingUploads.catch(() => {}).then(async () => {
           const response = await fetch(transcribeUrl, {
             method: "POST",
             headers: {
@@ -119,16 +122,18 @@
             setTranscript(data.transcript);
           }
         });
-        return pendingUploads;
+        pendingUploads = request;
+        return request;
       }
 
       async function stopRecording() {
         if (!isRecording || isStopping) return;
         isRecording = false;
+        isPaused = true;
         isStopping = true;
-        submitButton.disabled = true;
         stopButton.disabled = true;
-        status.textContent = "Stopping meeting and finalizing transcript…";
+        submitButton.disabled = true;
+        status.textContent = "Pausing meeting…";
         processor.disconnect();
         muteGain.disconnect();
         source.disconnect();
@@ -136,12 +141,11 @@
         try {
           await flushAudioBuffer();
           await pendingUploads;
-          await upload(new ArrayBuffer(0), true);
           committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
           currentSegment = "";
           audioBuffer = [];
           bufferedSamples = 0;
-          status.textContent = "Meeting stopped. Transcript finalized.";
+          status.textContent = "Meeting paused. Start Meeting to resume or Submit Meeting to finish.";
         } finally {
           await audioContext.close();
           startButton.disabled = false;
@@ -150,8 +154,9 @@
         }
       }
 
-      startButton.addEventListener("click", async () => {
+      async function startRecording() {
         if (isRecording || isStopping) return;
+        const wasPaused = isPaused;
         if (!title.value.trim()) {
           const date = new Date().toLocaleDateString(undefined, {
             day: "2-digit",
@@ -168,10 +173,8 @@
           processor = audioContext.createScriptProcessor(4096, 1, 1);
           muteGain = audioContext.createGain();
           muteGain.gain.value = 0;
-          recordingId = crypto.randomUUID();
+          recordingId = recordingId || crypto.randomUUID();
           currentSegment = "";
-          isStopping = false;
-          pendingUploads = Promise.resolve();
           processor.onaudioprocess = (event) => {
             if (!isRecording) return;
             const samples = downsample(
@@ -192,15 +195,28 @@
           processor.connect(muteGain);
           muteGain.connect(audioContext.destination);
           isRecording = true;
+          isPaused = false;
           startButton.disabled = true;
           stopButton.disabled = false;
-          status.textContent = "Recording and transcribing…";
+          status.textContent = wasPaused ? "Recording resumed…" : "Recording and transcribing…";
         } catch (error) {
           stream?.getTracks().forEach((track) => track.stop());
           status.textContent = error.message || "Microphone access is required.";
         }
-      });
+      }
 
+      async function finalizeRecording() {
+        if (isRecording) await stopRecording();
+        if (!recordingId) return;
+        await pendingUploads;
+        await upload(new ArrayBuffer(0), true);
+        recordingId = null;
+        isPaused = false;
+      }
+
+      startButton.addEventListener("click", () => startRecording().catch((error) => {
+        status.textContent = error.message;
+      }));
       stopButton.addEventListener("click", () => stopRecording().catch((error) => {
         status.textContent = error.message;
         startButton.disabled = false;
@@ -208,13 +224,24 @@
         isStopping = false;
       }));
       form.addEventListener("submit", (event) => {
-        if (isRecording) {
+        if (isRecording || isPaused) {
           event.preventDefault();
           submitButton.disabled = true;
-          stopRecording().then(() => form.requestSubmit()).catch((error) => {
+          status.textContent = "Submitting meeting and finalizing transcript…";
+          finalizeRecording().then(() => {
+            if (!notes.value.trim() && !transcript.value.trim()) {
+              throw new Error("Add officer notes or record part of the meeting before submitting.");
+            }
+            form.requestSubmit();
+          }).catch((error) => {
             submitButton.disabled = false;
             status.textContent = error.message;
           });
+          return;
+        }
+        if (!notes.value.trim() && !transcript.value.trim()) {
+          event.preventDefault();
+          status.textContent = "Add officer notes or record part of the meeting before submitting.";
         }
       });
     })();
