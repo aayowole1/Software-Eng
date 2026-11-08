@@ -16,17 +16,9 @@
       {{ form.title.errors }}
     </p>
     <p>
-      {{ form.transcript.label_tag }}
-      {{ form.transcript }}
-      {{ form.transcript.errors }}
-    </p>
-    <p>
       {{ form.notes.label_tag }}
       {{ form.notes }}
       {{ form.notes.errors }}
-    </p>
-    <p>
-      {{ form.transcript.errors }}
     </p>
     <p class="muted">Add your own notes below. They will be sent to the summarizer with the transcript.</p>
     <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
@@ -135,23 +127,27 @@
         isRecording = false;
         isStopping = true;
         submitButton.disabled = true;
+        stopButton.disabled = true;
+        status.textContent = "Stopping meeting and finalizing transcript…";
         processor.disconnect();
         muteGain.disconnect();
         source.disconnect();
         stream.getTracks().forEach((track) => track.stop());
-        await flushAudioBuffer();
-        await pendingUploads;
-        await upload(new ArrayBuffer(0), true);
-        committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
-        currentSegment = "";
-        audioBuffer = [];
-        bufferedSamples = 0;
-        await audioContext.close();
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        submitButton.disabled = false;
-        isStopping = false;
-        status.textContent = "Recording stopped. Transcript finalized in the background.";
+        try {
+          await flushAudioBuffer();
+          await pendingUploads;
+          await upload(new ArrayBuffer(0), true);
+          committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
+          currentSegment = "";
+          audioBuffer = [];
+          bufferedSamples = 0;
+          status.textContent = "Meeting stopped. Transcript finalized.";
+        } finally {
+          await audioContext.close();
+          startButton.disabled = false;
+          submitButton.disabled = false;
+          isStopping = false;
+        }
       }
 
       startButton.addEventListener("click", async () => {
@@ -207,11 +203,18 @@
 
       stopButton.addEventListener("click", () => stopRecording().catch((error) => {
         status.textContent = error.message;
+        startButton.disabled = false;
+        submitButton.disabled = false;
+        isStopping = false;
       }));
       form.addEventListener("submit", (event) => {
         if (isRecording) {
           event.preventDefault();
-          stopRecording().then(() => form.requestSubmit());
+          submitButton.disabled = true;
+          stopRecording().then(() => form.requestSubmit()).catch((error) => {
+            submitButton.disabled = false;
+            status.textContent = error.message;
+          });
         }
       });
     })();

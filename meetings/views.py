@@ -35,7 +35,7 @@ class MeetingNotesForm(forms.ModelForm):
         }
         widgets = {
             "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
-            "transcript": forms.Textarea(attrs={"rows": 8, "readonly": True, "class": "meeting-transcript"}),
+            "transcript": forms.HiddenInput(),
             "notes": forms.Textarea(attrs={"rows": 6}),
         }
 
