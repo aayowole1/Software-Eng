@@ -104,6 +104,8 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
 | `tasks` | Officer task creation and delegation; committee work, member claiming and progress, due dates, priorities, scoped counts and audit history | FR-04, FR-09; WBS 1.6 |
 | `events` | Officers create, edit and cancel events; members RSVP; officers record attendance; upcoming events on the dashboard | FR-03, FR-08 (partial) |
+| `announcements` | Published member feed, officer authoring, category/search filters, private attachment downloads and read receipts | FR-05 (partial), WBS 1.7 |
+| Resource library (in `announcements`) | Member search/downloads and external links; Officer/Admin add/edit/remove | FR-07, WBS 1.7; [user guide](docs/resources-guide.md) |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
@@ -230,7 +232,9 @@ accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 
 ### Not yet implemented
 
-On this integration preview, announcements and resources (1.7) and reports (1.8)
+Announcements are integrated in this working branch; see the
+[integration notes](docs/announcements-integration.md) for access rules, private
+file storage and remaining committee-targeting/notification work. Reports (1.8)
 remain separate team work. Task change history is included;
 an organization-wide audit system remains separate. Live OpenAI summarization and
 Deepgram transcription still need configured credentials and provider checks.
@@ -238,6 +242,11 @@ Existing local Google checks are recorded in the Accounts checkpoint; a fresh
 deployment needs its own Google client configuration and live check.
 
 ## Running Tests
+
+SCRUM-83's human pilot is not yet complete: no participants are currently
+available. See the [pilot protocol and readiness evidence](docs/usability-pilot.md)
+and blank results sheet. Automated HTTP checks and unit tests do not replace
+the five-person unaided workflow/timing requirement.
 
 Tests use Django's test framework and need MongoDB running:
 

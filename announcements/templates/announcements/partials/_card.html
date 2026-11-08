@@ -1,0 +1,5 @@
+<article class="card">
+  <h2><a href="{% url 'announcements:detail' announcement.pk %}">{{ announcement.title }}</a></h2>
+  <p>{{ announcement.content|truncatechars:240 }}</p>
+  {% if can_publish %}<p class="muted">{{ announcement.get_status_display }}</p>{% endif %}
+</article>
