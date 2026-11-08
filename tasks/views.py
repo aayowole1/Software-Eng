@@ -21,6 +21,7 @@ from meetings.models import DraftStatus, MeetingDraft
 
 from .forms import TaskForm, TaskImportForm, TaskStatusForm
 from .models import Task, TaskPriority, TaskStatus, active_role, eligible_assignees
+from .permissions import can_create_tasks, can_manage_committee_tasks, can_manage_task_details, manageable_committees
 from .services import (
     TaskConflict, can_claim_task, can_manage_tasks, can_update_task,
     accepted_actions_for_import, claim_task, create_task, import_action_items, update_task,
@@ -40,6 +41,11 @@ def task_access(view):
 def _require_manager(user):
     if not can_manage_tasks(user):
         raise PermissionDenied("Only officers and administrators can manage tasks.")
+
+
+def _require_task_creator(user):
+    if not can_create_tasks(user):
+        raise PermissionDenied("Only officers, administrators, and committee Chairs can create tasks.")
 
 
 def _task(user, pk):
@@ -79,13 +85,15 @@ class TaskFilterForm(forms.Form):
 @never_cache
 def assignees(request):
     """Return the same eligible member choices used by the server-side forms."""
-    _require_manager(request.user)
+    _require_task_creator(request.user)
     committee = None
     committee_pk = request.GET.get("committee", "")
     if committee_pk:
         if not ObjectId.is_valid(committee_pk):
             raise Http404("Unknown committee.")
-        committee = get_object_or_404(Committee, pk=committee_pk)
+        committee = get_object_or_404(manageable_committees(request.user), pk=committee_pk)
+    if not can_manage_committee_tasks(request.user, committee):
+        raise PermissionDenied("Choose a committee whose tasks you can manage.")
     return JsonResponse({"assignees": [
         {"id": str(user.pk), "label": user.email or user.username}
         for user in eligible_assignees(committee)
@@ -122,7 +130,7 @@ def task_list(request):
     params.pop("page", None)
     return render(request, "tasks/task_list.html", {
         "filter_form": form, "page_obj": page, "counts": counts,
-        "can_manage": can_manage_tasks(request.user), "query_string": params.urlencode(),
+        "can_manage": can_create_tasks(request.user), "query_string": params.urlencode(),
     }, status=200 if valid else 400)
 
 
@@ -164,7 +172,7 @@ def _display_history(task):
 
 def _detail(request, task, *, status_form=None, claim_error=None, response_status=200):
     return render(request, "tasks/task_detail.html", {
-        "task": task, "can_manage": can_manage_tasks(request.user),
+        "task": task, "can_manage": can_manage_task_details(request.user, task),
         "can_update": can_update_task(request.user, task), "can_claim": can_claim_task(request.user, task),
         "status_form": status_form if status_form is not None else TaskStatusForm(initial={"status": task.status, "version": task.version}),
         "claim_error": claim_error, "history_entries": _display_history(task),
@@ -180,13 +188,13 @@ def task_detail(request, pk):
 @require_http_methods(["GET", "POST"])
 @task_access
 def task_create(request):
-    _require_manager(request.user)
+    _require_task_creator(request.user)
     initial = {}
     if request.method == "GET" and request.GET.get("committee"):
         committee_pk = request.GET["committee"]
         if not ObjectId.is_valid(committee_pk):
             raise Http404("Unknown committee.")
-        initial["committee"] = get_object_or_404(Committee, pk=committee_pk)
+        initial["committee"] = get_object_or_404(manageable_committees(request.user), pk=committee_pk)
     form = TaskForm(request.user, request.POST if request.method == "POST" else None, initial=initial)
     if request.method == "POST" and form.is_valid():
         data = dict(form.cleaned_data)
@@ -204,8 +212,9 @@ def task_create(request):
 @require_http_methods(["GET", "POST"])
 @task_access
 def task_edit(request, pk):
-    _require_manager(request.user)
     task = _task(request.user, pk)
+    if not can_manage_task_details(request.user, task):
+        raise PermissionDenied("You cannot manage this task's details.")
     form = TaskForm(request.user, request.POST if request.method == "POST" else None, instance=task)
     response_status = 200
     if request.method == "POST" and form.is_valid():
@@ -230,7 +239,7 @@ def task_edit(request, pk):
 def task_update_status(request, pk):
     task = _task(request.user, pk)
     if not can_update_task(request.user, task):
-        raise PermissionDenied("Only the assignee or an officer can update this task.")
+        raise PermissionDenied("Only the assignee or a task manager can update this task.")
     form = TaskStatusForm(request.POST)
     response_status = 400
     if form.is_valid():

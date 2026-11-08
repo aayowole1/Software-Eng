@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ announcement.title }}{% endblock %}
+{% block content %}
+<p><a href="{% url 'announcements:list' %}">Back to announcements</a></p>
+<article class="card">
+<h1>{{ announcement.title }}</h1>
+<p class="muted">{{ announcement.author.get_full_name|default:announcement.author.username }} · {{ announcement.author_role }} · {{ announcement.published_at|date:"M j, Y" }}</p>
+<p>{{ announcement.category|default:"General" }}{% if can_publish %} · {{ announcement.get_status_display }}{% endif %}</p>
+{{ announcement.content|linebreaks }}
+{% if announcement.meeting_location %}<p>Location: {{ announcement.meeting_location }}</p>{% endif %}
+{% if announcement.meeting_virtual_url %}<p><a href="{{ announcement.meeting_virtual_url }}" rel="noopener noreferrer">Join meeting</a></p>{% endif %}
+{% if announcement.attachments.all %}<h2>Attachments</h2><ul>{% for attachment in announcement.attachments.all %}<li><a href="{% url 'announcements:attachment_download' attachment.pk %}">{{ attachment.name }}</a> ({{ attachment.size_label }})</li>{% endfor %}</ul>{% endif %}
+{% if can_edit %}<p><a class="button" href="{% url 'announcements:edit' announcement.pk %}">Edit announcement</a> <a href="{% url 'announcements:delete' announcement.pk %}">Delete announcement</a></p>{% endif %}
+{% if is_read_by_user %}<p class="muted">Read</p>{% endif %}
+</article>
+{% if related_announcements %}<h2>Related announcements</h2><ul>{% for item in related_announcements %}<li><a href="{% url 'announcements:detail' item.pk %}">{{ item.title }}</a></li>{% endfor %}</ul>{% endif %}
+{% endblock %}

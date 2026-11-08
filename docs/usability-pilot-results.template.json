@@ -1,0 +1,13 @@
+{
+  "protocol": "SCRUM-83-member-login-rsvp-v1",
+  "source_revision": null,
+  "environment": null,
+  "event_title": null,
+  "observations": [
+    {"participant_id": "P01", "human_confirmed": null, "observed": null, "elapsed_seconds": null, "completed": null, "assisted": null, "notes": ""},
+    {"participant_id": "P02", "human_confirmed": null, "observed": null, "elapsed_seconds": null, "completed": null, "assisted": null, "notes": ""},
+    {"participant_id": "P03", "human_confirmed": null, "observed": null, "elapsed_seconds": null, "completed": null, "assisted": null, "notes": ""},
+    {"participant_id": "P04", "human_confirmed": null, "observed": null, "elapsed_seconds": null, "completed": null, "assisted": null, "notes": ""},
+    {"participant_id": "P05", "human_confirmed": null, "observed": null, "elapsed_seconds": null, "completed": null, "assisted": null, "notes": ""}
+  ]
+}

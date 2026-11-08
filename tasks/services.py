@@ -10,8 +10,9 @@ from django.utils import timezone
 from meetings.models import DraftStatus, MeetingDraft
 
 from .models import (
-    Task, TaskStatus, can_claim_task, can_manage_tasks, can_update_task,
+    Task, TaskStatus, can_claim_task, can_manage_tasks,
 )
+from .permissions import can_manage_committee_tasks, can_update_task
 
 
 class TaskConflict(Exception):
@@ -76,9 +77,9 @@ def _validate_fields(fields):
 
 
 def _create(actor, fields, *, origin_key=None, source_action_item=None, action="created"):
-    if not can_manage_tasks(actor):
-        raise PermissionDenied("Only officers and admins can create or delegate tasks.")
     fields = dict(fields)
+    if not can_manage_committee_tasks(actor, fields.get("committee")):
+        raise PermissionDenied("Only officers, admins, or this committee's Chair can create or delegate tasks.")
     version = fields.pop("version", None)
     if version not in (None, 0):
         raise ValidationError("A new task cannot have an existing version.")
@@ -89,6 +90,10 @@ def _create(actor, fields, *, origin_key=None, source_action_item=None, action="
     task.full_clean(validate_unique=False, validate_constraints=False)
     task.history = [_entry(actor, action, {}, _snapshot(task))]
     _validate_history_capacity(task.history)
+    # Form/session state is not authority: recheck the current account and Chair
+    # membership after validation, immediately before the task write.
+    if not can_manage_committee_tasks(actor, task.committee_id):
+        raise PermissionDenied("Your permission to manage this committee's tasks has changed.")
     task.save(force_insert=True)
     return task
 
@@ -109,12 +114,14 @@ def _current(actor, task, expected_version):
     return current
 
 
-def _persist(actor, task, changes, expected_version, action):
+def _persist(actor, task, changes, expected_version, action, *, authorize=None):
     before = _snapshot(task)
     for name, value in changes.items():
         setattr(task, name, value)
     task.full_clean(validate_unique=False, validate_constraints=False)
     after = _snapshot(task)
+    if authorize is not None:
+        authorize()
     if before == after:
         return task
     entry = _entry(actor, action, before, after)
@@ -143,11 +150,18 @@ def update_task(actor, task, changes, expected_version):
     changes = dict(changes)
     _validate_fields(changes)
     current = _current(actor, task, expected_version)
-    if not can_update_task(actor, current):
-        raise PermissionDenied("You cannot update this task.")
-    if not can_manage_tasks(actor) and set(changes) - {"status"}:
-        raise PermissionDenied("Assignees can update progress; officers manage task details and delegation.")
-    return _persist(actor, current, changes, expected_version, "updated")
+    source_committee_id = current.committee_id
+
+    def authorize():
+        if can_manage_committee_tasks(actor, source_committee_id):
+            destination = changes.get("committee", source_committee_id)
+            if not can_manage_committee_tasks(actor, destination):
+                raise PermissionDenied("You must manage both committees to move this task.")
+        elif set(changes) - {"status"} or not can_update_task(actor, current):
+            raise PermissionDenied("Assignees can update progress; task managers control details and delegation.")
+
+    authorize()
+    return _persist(actor, current, changes, expected_version, "updated", authorize=authorize)
 
 
 def claim_task(actor, task, expected_version):

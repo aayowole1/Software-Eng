@@ -101,7 +101,7 @@ class TaskViewTests(TestCase):
 
     def test_invalid_filters_show_feedback(self):
         self.client.force_login(self.member)
-        for filters in ({"committee": "bad-id"}, {"committee": str(self.other_committee.pk)}, {"status": "invented"}, {"priority": "urgent"}, {"mine": "invalid"}):
+        for filters in ({"committee": "bad-id"}, {"committee": str(self.other_committee.pk)}, {"status": "invented"}, {"priority": "invented"}, {"mine": "invalid"}):
             response = self.client.get(reverse("tasks:list"), filters)
             self.assertEqual(response.status_code, 400)
             self.assertTrue(response.context["filter_form"].errors)

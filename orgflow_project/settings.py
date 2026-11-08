@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "meetings.apps.MeetingsConfig",
     "tasks.apps.TasksConfig",
     "events.apps.EventsConfig",
+    "announcements.apps.AnnouncementsConfig",
 ]
 
 MIDDLEWARE = [
@@ -70,6 +71,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'orgflow_project.urls'
+
+# Private files are served only by the authorized attachment download view.
+MEDIA_ROOT = os.environ.get("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media"))
 
 TEMPLATES = [
     {

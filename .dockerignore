@@ -1,4 +1,6 @@
 .venv
+.validation/
+media/
 .git
 .gitignore
 __pycache__
