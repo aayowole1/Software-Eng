@@ -29,11 +29,21 @@ from typing import Any, Iterable
 from tqdm.auto import tqdm
 
 try:
-    from ..ai import MeetingSummary, summarize_meeting
+    from ..ai import (
+        MeetingSummary,
+        build_judge_messages,
+        get_summary_model,
+        summarize_meeting,
+    )
     from ..stt import DeepgramTranscriber
 except ImportError:  # Allows running this file directly from the repository root.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-    from meetings.ai import MeetingSummary, summarize_meeting
+    from meetings.ai import (
+        MeetingSummary,
+        build_judge_messages,
+        get_summary_model,
+        summarize_meeting,
+    )
     from meetings.stt import DeepgramTranscriber
 
 
@@ -82,7 +92,13 @@ def action_item_scores(
         )
         for item in reference_items
     ]
-    candidates = [re.sub(r"^(Action:|TODO:|- \[ \])\s*", "", item).strip() for item in candidate_items]
+    candidates = []
+    for item in candidate_items:
+        candidate = re.sub(r"^(Action:|TODO:|- \[ \])\s*", "", item).strip()
+        candidate = re.sub(
+            r"\b(?:Owner|Task|Due|Priority)\s*=\s*", "", candidate, flags=re.IGNORECASE
+        )
+        candidates.append(candidate.replace(";", " "))
     unmatched = set(range(len(references)))
     matches = 0
     for candidate in candidates:
@@ -163,29 +179,12 @@ def stt_scores(reference: str, candidate: str) -> dict[str, float]:
 
 
 def judge_summary(reference: dict[str, Any], result: MeetingSummary) -> dict[str, Any]:
-    """Ask an LLM whether the generated summary accurately covers the meeting."""
-    model = os.getenv("OPENROUTER_JUDGE_MODEL", os.getenv(
-        "OPENROUTER_MODEL", "openai/gpt-4o-mini"
-    ))
+    """Ask an LLM to score the generated summary from one to five."""
+    model = os.getenv("OPENROUTER_JUDGE_MODEL", get_summary_model())
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not configured.")
 
-    reference_actions = json.dumps(
-        reference.get("reference_action_items", []), ensure_ascii=False
-    )
-    prompt = (
-        "Evaluate the candidate meeting summary against the reference summary and "
-        "reference action items. Return JSON with exactly one field, "
-        '"score": 1 if the candidate is accurate, covers the material decisions '
-        "and constraints, and does not invent material facts; otherwise return "
-        '"score": 0. Treat wording differences as acceptable. The action items '
-        "must also be materially consistent with the reference.\n\n"
-        f"Reference summary:\n{reference['reference_summary']}\n\n"
-        f"Reference action items:\n{reference_actions}\n\n"
-        f"Candidate summary:\n{result.summary}\n\n"
-        f"Candidate action items:\n{json.dumps(result.action_items, ensure_ascii=False)}"
-    )
     try:
         from openai import OpenAI, OpenAIError
 
@@ -202,13 +201,12 @@ def judge_summary(reference: dict[str, Any], result: MeetingSummary) -> dict[str
             model=model,
             temperature=0,
             response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a strict binary evaluator of meeting summaries.",
-                },
-                {"role": "user", "content": prompt},
-            ],
+            messages=build_judge_messages(
+                reference["reference_summary"],
+                reference.get("reference_action_items", []),
+                result.summary,
+                result.action_items,
+            ),
         )
         content = response.choices[0].message.content
     except ImportError as error:
@@ -221,8 +219,8 @@ def judge_summary(reference: dict[str, Any], result: MeetingSummary) -> dict[str
         score = payload["score"]
     except (json.JSONDecodeError, KeyError, TypeError) as error:
         raise RuntimeError("LLM judge returned invalid JSON.") from error
-    if isinstance(score, bool) or not isinstance(score, int) or score not in (0, 1):
-        raise RuntimeError("LLM judge returned a score other than 0 or 1.")
+    if isinstance(score, bool) or not isinstance(score, int) or score not in range(1, 6):
+        raise RuntimeError("LLM judge returned a score outside the range 1-5.")
     return {"score": score, "model": model}
 
 
@@ -239,7 +237,7 @@ def summarize_scores(
             "action_items": reference.get("reference_action_items", []),
         },
         "judge": judge_summary(reference, result),
-        "action_items": action_item_scores(
+        "action_item_metrics": action_item_scores(
             reference.get("reference_action_items", []), result.action_items
         ),
     }
@@ -304,9 +302,7 @@ def main() -> None:
                 transcript = transcribe(find_audio(test_id, args.audio_dir, manifest))
                 result["stt"] = stt_scores(reference_transcript, transcript)
             if args.mode in ("summarization", "e2e"):
-                result["summarization_model"] = os.getenv(
-                    "OPENROUTER_MODEL", "openai/gpt-4o-mini"
-                )
+                result["summarization_model"] = get_summary_model()
                 summary = summarize_meeting(transcript)
                 result["summarization"] = summarize_scores(test["version_b"], summary)
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
