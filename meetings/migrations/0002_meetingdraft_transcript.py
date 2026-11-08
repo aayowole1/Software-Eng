@@ -13,7 +13,7 @@ def _move_legacy_notes(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("meetings", "0001_initial"),
+        ("meetings", "0003_generation_publication"),
     ]
 
     operations = [

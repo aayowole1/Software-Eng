@@ -16,6 +16,11 @@
       {{ form.title.errors }}
     </p>
     <p>
+      {{ form.transcript.label_tag }}
+      {{ form.transcript }}
+      {{ form.transcript.errors }}
+    </p>
+    <p>
       {{ form.notes.label_tag }}
       {{ form.notes }}
       {{ form.notes.errors }}
@@ -27,17 +32,17 @@
     <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
-        <button type="button" id="start-recording">Start Recording</button>
+        <button type="button" id="start-recording">Start Meeting</button>
         <button type="button" id="stop-recording" class="stop-meeting" disabled>
           <span aria-hidden="true">■</span>
-          Stop Recording
+          Stop Meeting
         </button>
       </div>
       <button type="submit" id="submit-meeting">Submit Meeting</button>
     </div>
   </form>
   <p id="recording-status" class="muted" role="status">
-    Click Start Recording and allow microphone access to begin transcription.
+    Click Start Meeting and allow microphone access to begin transcription.
   </p>
   <script>
     (() => {
@@ -157,7 +162,7 @@
             month: "long",
             year: "numeric",
           });
-          title.value = `${date} - Untitled Transcript`;
+          title.value = `${date} - Untitled Meeting`;
         }
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });

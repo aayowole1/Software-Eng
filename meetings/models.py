@@ -85,14 +85,117 @@ class MeetingDraft(models.Model):
     def __str__(self):
         return self.title
 
-    def generate(self):
-        """Run the AI over the transcript and officer notes."""
-        result = summarize_meeting(self.transcript, self.notes)
-        self.summary = result.summary
-        self.save()
-        self.action_items.all().delete()
-        for position, text in enumerate(result.action_items):
-            ActionItem.objects.create(draft=self, description=text, position=position)
+    @property
+    def current_action_items(self):
+        return self.action_items.filter(generation_filter(self.generation_token))
+
+    def cleanup_unpublished_generation(self):
+        """Delete only this attempt's uncommitted stage, never a published draft."""
+        token = getattr(self, "_staged_generation", None)
+        if token is None:
+            return True
+        if getattr(self, "_publication_uncertain", False):
+            return False
+        try:
+            if type(self).objects.filter(pk=self.pk, generation_token=token).exists():
+                return False
+            staged = ActionItem.objects.filter(draft_id=self.pk, generation_token=token)
+            staged.delete()
+            return not staged.exists()
+        except Exception:
+            logger.error("Unpublished meeting actions could not be cleaned up; operator recovery is required.")
+            return False
+
+    def _publish_generation(self, transcript, notes, title, *, new, expected_generation=""):
+        self._staged_generation = None
+        self._publication_uncertain = False
+        result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
+        self.pk = self.pk or ObjectId()
+        token = uuid4().hex
+        self._staged_generation = token
+        publishing = False
+        try:
+            for position, text in enumerate(result.action_items):
+                ActionItem.objects.create(
+                    draft_id=self.pk, generation_token=token, description=text, position=position,
+                )
+            publishing = True
+            self._publication_uncertain = True
+            if new:
+                self.summary = result.summary
+                self.generation_token = token
+                self.status = DraftStatus.PENDING_REVIEW
+                self.save(force_insert=True)
+            else:
+                changed = type(self).objects.filter(
+                    generation_filter(expected_generation), pk=self.pk,
+                    status=DraftStatus.REVISION_REQUESTED,
+                ).exclude(review_update_pending=True).update(
+                    title=title, transcript=transcript, notes=notes, summary=result.summary,
+                    generation_token=token, status=DraftStatus.PENDING_REVIEW,
+                    reviewed_by=None, reviewed_at=None, review_note="",
+                    review_item_intent=None, review_update_pending=False,
+                )
+                if changed != 1:
+                    publishing = False
+                    self._publication_uncertain = False
+                    raise MeetingReviewConflict(
+                        "This meeting changed during generation. Reload the meeting before trying again."
+                    )
+        except DatabaseError as error:
+            if publishing and not isinstance(error, IntegrityError):
+                self._publication_uncertain = True
+                try:
+                    if type(self).objects.filter(pk=self.pk, generation_token=token).exists():
+                        self.refresh_from_db()
+                        return self
+                except DatabaseError:
+                    pass
+            else:
+                self._publication_uncertain = False
+                self.cleanup_unpublished_generation()
+            raise
+        except Exception:
+            self.cleanup_unpublished_generation()
+            raise
+        self.refresh_from_db()
+        return self
+
+    def generate(self, *, force_insert=False):
+        """Generate a new draft, or safely revise an existing revision request."""
+        if self._state.adding:
+            return self._publish_generation(self.transcript, self.notes, self.title, new=True)
+        if force_insert:
+            raise ValueError("Only a new meeting draft can be inserted.")
+        return self.revise(self.notes, transcript=self.transcript, title=self.title)
+
+    def _normalize_review_items(self, items):
+        if not isinstance(items, list):
+            raise ValueError("The action-item review must be a list.")
+        normalized = []
+        seen = set()
+        for position, item in enumerate(items):
+            if not isinstance(item, dict) or not ObjectId.is_valid(str(item.get("id", ""))):
+                raise ValueError("The action-item review contains an invalid identifier.")
+            item_id = str(ObjectId(str(item["id"])))
+            if item_id in seen:
+                raise ValueError("The action-item review contains duplicate identifiers.")
+            description = item.get("description")
+            if not isinstance(description, str) or not description.strip() or len(description.strip()) > 500:
+                raise ValueError("Action items must contain between 1 and 500 characters.")
+            if type(item.get("accepted")) is not bool:
+                raise ValueError("Choose whether each action item is accepted.")
+            normalized.append({
+                "id": item_id,
+                "description": description.strip(),
+                "accepted": item["accepted"],
+                "position": position,
+            })
+            seen.add(item_id)
+        for item in ActionItem.objects.filter(pk__in=list(seen)):
+            if item.draft_id != self.pk or (item.generation_token or "") != (self.generation_token or ""):
+                raise ValueError("An action item belongs to a different meeting draft or generation.")
+        return normalized
 
     def review(self, reviewer, decision, note="", *, item_intent=None, expected_generation=None):
         if decision not in REVIEW_DECISIONS:
@@ -151,7 +254,7 @@ class MeetingDraft(models.Model):
             raise ValueError("The review could not be finalized. Its saved action updates remain unfinished.")
         return self
 
-    def revise(self, notes, *, title=None, expected_generation=None):
+    def revise(self, notes, *, transcript=None, title=None, expected_generation=None):
         """Resubmit after a revision request: new notes, fresh AI output, back to review."""
         expected_generation = self.generation_token if expected_generation is None else expected_generation
         current = type(self).objects.get(pk=self.pk)
@@ -160,7 +263,8 @@ class MeetingDraft(models.Model):
         if current.review_update_pending:
             raise ValueError("Finish the recorded action-item review before revising notes.")
         return self._publish_generation(
-            notes, self.title if title is None else title, new=False, expected_generation=expected_generation,
+            current.transcript if transcript is None else transcript, notes,
+            self.title if title is None else title, new=False, expected_generation=expected_generation,
         )
 
 

@@ -35,7 +35,7 @@ class MeetingNotesForm(forms.ModelForm):
         }
         widgets = {
             "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
-            "transcript": forms.HiddenInput(),
+            "transcript": forms.Textarea(attrs={"rows": 8, "readonly": True, "class": "meeting-transcript"}),
             "notes": forms.Textarea(attrs={"rows": 6}),
         }
 
@@ -75,7 +75,7 @@ def draft_create(request):
         draft.pk = ObjectId()
 
         if not draft.title:
-            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
+            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Meeting"
 
         try:
             draft.generate(force_insert=True)
@@ -239,7 +239,8 @@ def draft_revise(request, pk):
     if request.method == "POST" and form.is_valid():
         try:
             draft.revise(
-                form.cleaned_data["notes"], title=form.cleaned_data["title"],
+                form.cleaned_data["notes"], transcript=form.cleaned_data["transcript"],
+                title=form.cleaned_data["title"],
                 expected_generation=form.cleaned_data["expected_generation"],
             )
         except MeetingReviewConflict:
