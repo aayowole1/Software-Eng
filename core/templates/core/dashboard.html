@@ -43,7 +43,7 @@
 
   {% if is_officer %}
     {# FR-6.1: summary cards for officers and admins #}
-    <div class="summary-cards" aria-label="Organisation summary">
+    <section class="summary-cards" aria-label="Organization summary">
       <div class="card summary-card">
         <strong>{{ summary_active_members }}</strong>
         <a href="{% url 'membership:roster' %}">Active members</a>
@@ -62,7 +62,7 @@
           (<a href="{% url 'membership:application_list' %}">applications</a>
           / <a href="{% url 'meetings:list' %}">drafts</a>)</span>
       </div>
-    </div>
+    </section>
     <div class="card">
       <h2>Needs your attention</h2>
       <ul>

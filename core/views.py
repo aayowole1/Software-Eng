@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET
 from pymongo import timeout
 from pymongo.errors import PyMongoError
 
-from accounts.models import Profile, Role, ROSTER_ROLES, get_role, has_minimum_role
+from accounts.models import Role, get_role, has_minimum_role
 from committees.models import Committee, CommitteeMember
 from events.models import Event
 from meetings.models import DraftStatus, MeetingDraft
@@ -36,7 +36,10 @@ def dashboard(request):
                 status=ApplicationStatus.PENDING
             ).count()
             context["pending_drafts"] = MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
-            # FR-6.1: summary cards for officers and admins.
+            # FR-6.1: summary cards for officers and admins. Imported here so
+            # this change doesn't touch the module import lines other PRs edit.
+            from accounts.models import ROSTER_ROLES, Profile
+
             context["summary_active_members"] = Profile.objects.filter(
                 role__in=ROSTER_ROLES,
                 is_suspended=False,
@@ -48,8 +51,7 @@ def dashboard(request):
             ).count()
             context["summary_open_tasks"] = Task.objects.exclude(status=TaskStatus.DONE).count()
             context["summary_pending_approvals"] = (
-                MembershipApplication.objects.filter(status=ApplicationStatus.PENDING).count()
-                + MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
+                context["pending_applications"] + context["pending_drafts"]
             )
         if has_minimum_role(role, Role.MEMBER):
             assigned = Task.objects.visible_to(request.user).filter(assignee=request.user)
