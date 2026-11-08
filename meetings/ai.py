@@ -5,10 +5,17 @@ import os
 from dataclasses import dataclass, field
 
 
+DEFAULT_SUMMARY_MODEL = "openrouter/free"
+
+
 @dataclass
 class MeetingSummary:
     summary: str
     action_items: list[str] = field(default_factory=list)
+
+
+def get_summary_model() -> str:
+    return os.getenv("OPENROUTER_MODEL", DEFAULT_SUMMARY_MODEL)
 
 
 def build_summary_messages(transcript: str, officer_notes: str = "") -> list[dict[str, str]]:
@@ -21,12 +28,20 @@ def build_summary_messages(transcript: str, officer_notes: str = "") -> list[dic
         {
             "role": "system",
             "content": (
-                "You summarize meeting transcripts and officer notes. Return only "
-                'valid JSON with exactly two fields: "summary" (a concise string '
-                'describing what was discussed) and "action_items" (an array of '
-                "strings). Each action item must start with exactly "
-                '"Action:", "TODO:", or "- [ ]". Do not invent actions unsupported '
-                "by the transcript or officer notes."
+                "You produce a faithful meeting record from the transcript and "
+                "officer notes. Return only valid JSON with exactly two fields: "
+                '"summary" (a concise but complete string) and "action_items" '
+                "(an array of strings). The summary must cover each material "
+                "decision, proposal, constraint, date, time, amount, deadline, "
+                "and unresolved condition. Preserve names, numbers, dates, "
+                "negations, and conditional language exactly; do not invent facts. "
+                "For every action item, preserve the responsible owner, concrete "
+                "task, due date or timing, and priority when stated. Format every "
+                "action item exactly as: "
+                '"Action: Owner=<owner>; Task=<task>; Due=<due>; '
+                'Priority=<priority>". Use "Not specified" only when the source '
+                "does not state that field. Include decisions and follow-up "
+                "actions, but do not turn ordinary discussion into an action."
             ),
         },
         {
@@ -89,7 +104,7 @@ def summarize_meeting(transcript: str, officer_notes: str = "") -> MeetingSummar
             timeout=30.0,
             max_retries=2,
         ).chat.completions.create(
-            model=os.getenv("OPENROUTER_MODEL"),
+            model=get_summary_model(),
             temperature=0.2,
             response_format={"type": "json_object"},
             messages=messages,
@@ -101,3 +116,41 @@ def summarize_meeting(transcript: str, officer_notes: str = "") -> MeetingSummar
         raise RuntimeError(f"OpenRouter summarization failed: {error}") from error
 
     return parse_summary_response(content)
+
+
+def build_judge_messages(
+    reference_summary: str,
+    reference_action_items: list[dict],
+    candidate_summary: str,
+    candidate_action_items: list[str],
+) -> list[dict[str, str]]:
+    """Build the shared rubric prompt used to evaluate benchmark summaries."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a calibrated meeting-summary evaluator. Compare the "
+                "candidate with the reference and score it from 1 to 5. Return "
+                'only valid JSON with exactly one integer field: "score". '
+                "Use this rubric: 5 = faithful, complete, and precise; 4 = "
+                "mostly complete with only minor omissions or wording issues; "
+                "3 = useful but has several omissions or one moderate factual "
+                "error; 2 = major omissions or factual errors; 1 = unusable, "
+                "mostly unsupported, or missing. Judge meaning rather than "
+                "requiring identical wording. Penalize invented facts, changed "
+                "numbers/dates, lost negations, and incorrect owners or deadlines. "
+                "Evaluate both the prose summary and the action items."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Reference summary:\n{reference_summary}\n\n"
+                f"Reference action items:\n"
+                f"{json.dumps(reference_action_items, ensure_ascii=False)}\n\n"
+                f"Candidate summary:\n{candidate_summary}\n\n"
+                f"Candidate action items:\n"
+                f"{json.dumps(candidate_action_items, ensure_ascii=False)}"
+            ),
+        },
+    ]
