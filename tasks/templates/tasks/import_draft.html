@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Create tasks from meeting{% endblock %}
+{% block content %}
+  <h1>Create tasks from {{ draft.title }}</h1>
+  <p><a href="{% url 'meetings:detail' draft.pk %}">Return to meeting draft</a></p>
+  <p>Only accepted actions from an approved draft become tasks. Existing tasks are kept when you retry.</p>
+  {% if draft_error %}<p class="errorlist" role="alert">{{ draft_error }}</p>{% endif %}
+  <h2>Accepted actions</h2>
+  <ul>{% for item in items %}<li>{{ item.description }}</li>{% empty %}<li>No accepted actions.</li>{% endfor %}</ul>
+  <form method="post" class="card" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}{{ form.as_p }}
+    {% include "tasks/assignment_feedback.html" %}
+    {% if approved %}<button type="submit">Confirm and create tasks</button>{% endif %}
+  </form>
+  <script src="{% static 'tasks/assignment.js' %}" defer></script>
+{% endblock %}

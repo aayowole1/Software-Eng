@@ -1,0 +1,63 @@
+Application checkpoint: bf6ad6d62ec37fae45ca631c1f13f6f76136c2a1
+Project: primary
+Separate local MongoDB; external keys empty; in-memory MD5 override only for these tests.
+Creating test database for alias 'default'...
+
+.................Signup attempt 6adec75099eb5a1e283f9519 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec75099eb5a1e283f9519 requires operator recovery.
+..Signup attempt 6adec75199eb5a1e283f95ba cleanup skipped: recoverable intent could not be confirmed.
+.................................Signup attempt 6adec75799eb5a1e283f9fd9 cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec75799eb5a1e283fa02b cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec75799eb5a1e283fa07d cleanup skipped: recoverable intent could not be confirmed.
+.......Signup attempt 6adec75899eb5a1e283fa298 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec75899eb5a1e283fa298 requires operator recovery.
+.Signup attempt 6adec75999eb5a1e283fa2ea preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec75999eb5a1e283fa2ea requires operator recovery.
+.Signup attempt 6adec75999eb5a1e283fa33a preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec75999eb5a1e283fa33a requires operator recovery.
+.Incomplete signup attempt 6adec75999eb5a1e283fa38a requires operator recovery.
+....Signup attempt 6adec75a99eb5a1e283fa4cf cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6adec75b99eb5a1e283fa524 cleanup skipped: recoverable intent could not be confirmed.
+......Signup attempt 6adec75c99eb5a1e283fa708 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec75c99eb5a1e283fa708 requires operator recovery.
+.Incomplete signup attempt 6adec75c99eb5a1e283fa759 requires operator recovery.
+.....Signup attempt 6adec75d99eb5a1e283fa8f4 cleanup skipped: recoverable intent could not be confirmed.
+...............................Signup attempt 6adec76699eb5a1e283fb2e8 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec76699eb5a1e283fb2e8 requires operator recovery.
+Signup attempt 6adec76699eb5a1e283fb2ec preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec76699eb5a1e283fb2ec requires operator recovery.
+.Signup attempt 6adec76699eb5a1e283fb33c preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec76699eb5a1e283fb33c requires operator recovery.
+Signup attempt 6adec76699eb5a1e283fb340 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec76699eb5a1e283fb340 requires operator recovery.
+..Signup attempt 6adec76799eb5a1e283fb3df cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76799eb5a1e283fb3df requires operator recovery.
+Signup attempt 6adec76799eb5a1e283fb3e3 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76799eb5a1e283fb3e3 requires operator recovery.
+..An incomplete password signup could not be cleaned up; operator recovery is required.
+.......Signup attempt 6adec76b99eb5a1e283fb6b1 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6adec76b99eb5a1e283fb6b1 requires operator recovery.
+........Signup attempt 6adec76d99eb5a1e283fb931 cleanup skipped: recoverable intent could not be confirmed.
+Signup attempt 6adec76d99eb5a1e283fb937 cleanup skipped: recoverable intent could not be confirmed.
+....Signup attempt 6adec76e99eb5a1e283fba78 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76e99eb5a1e283fba78 requires operator recovery.
+Signup attempt 6adec76e99eb5a1e283fba7c cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76e99eb5a1e283fba7c requires operator recovery.
+Signup attempt 6adec76e99eb5a1e283fba80 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76e99eb5a1e283fba80 requires operator recovery.
+Signup attempt 6adec76e99eb5a1e283fba85 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6adec76e99eb5a1e283fba85 requires operator recovery.
+.........................................................................................................Unpublished meeting actions could not be cleaned up; operator recovery is required.
+Unpublished meeting actions could not be cleaned up; operator recovery is required.
+......Meeting creation cleanup could not be confirmed; operator recovery is required.
+.............................................................................................................................................................
+----------------------------------------------------------------------
+Ran 404 tests in 112.265s
+
+OK
+Destroying test database for alias 'default'...
+
+System check identified no issues (0 silenced).
+No changes detected
+Found 404 test(s).
+System check identified no issues (0 silenced).

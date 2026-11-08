@@ -1,0 +1,28 @@
+Application checkpoint 812d9e6cc22cdbbd1c4005d735c84ab4aa44bc4e
+Coverage.py 7.17.0
+Outcome passed
+Scope Accounts and Tasks Python, including custom admin and management commands.
+Excluded tests, migrations, initializers, apps and testing helpers.
+Name                                            Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------------------------
+accounts\admin.py                                  15      0      0      0   100%
+accounts\backends.py                               28      2     10      2    89%   16, 46
+accounts\context_processors.py                      4      0      0      0   100%
+accounts\decorators.py                             13      0      2      0   100%
+accounts\forms.py                                  93      4     18      0    95%   132-135
+accounts\google_auth.py                           225      7     72      7    95%   114, 141, 202, 213, 220->223, 242-243, 320
+accounts\lifecycle.py                              79      4     36      4    93%   33, 47, 78, 119
+accounts\management\commands\repair_signup.py      32      2      4      0    94%   25-26
+accounts\models.py                                106      5     42      5    93%   72, 76->exit, 116->121, 172, 177, 184, 231
+accounts\provisioning.py                          124     11     54      6    90%   57, 72, 76->81, 95-96, 143, 180-182, 211-212, 218-219
+accounts\signals.py                                 9      0      2      0   100%
+accounts\signup_attempts.py                        22      1      0      0    95%   34
+accounts\urls.py                                    7      0      0      0   100%
+accounts\views.py                                  98      6     20      4    92%   21, 45, 123-124, 128-129
+tasks\forms.py                                     61      1     14      1    97%   61
+tasks\models.py                                   105      2     30      1    98%   58, 170
+tasks\services.py                                 129      7     46      3    93%   75, 188, 203, 210-213
+tasks\urls.py                                       4      0      0      0   100%
+tasks\views.py                                    223     12     64      1    95%   196-197, 220-221, 236->247, 264-265, 288-293
+-------------------------------------------------------------------------------------------
+TOTAL                                            1377     64    414     34    94%

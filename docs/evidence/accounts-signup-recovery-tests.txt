@@ -1,0 +1,66 @@
+Signup attempt crash recovery — October 25, 2026 (America/Chicago)
+Final source: 8c58a07, following journal introduction b0b4510.
+Parent source before journal introduction: 9a38735; later journal protocol repair
+is based on b0b4510. New accounts migration0008 depends on
+0007_suspension_activation_snapshot. No team/production/demo database migrated.
+
+Environment:
+  Existing OrgFlow-Chau virtualenv; application dependencies/settings unchanged.
+  Standalone MongoDB localhost:27029; disposable test_orgflow_signup_attempt_review.
+  MD5 password hasher override in test process only.
+  GOOGLE_CLIENT_ID, OPENAI_API_KEY and DEEPGRAM_API_KEY explicitly empty.
+
+Final executed label: accounts (all Accounts tests, including 27 journal cases).
+
+Observed final output:
+  Ran 220 tests in 59.242s
+  OK
+  System check identified no issues (0 silenced).
+  makemigrations --check --dry-run: No changes detected.
+  git diff --check: no errors.
+
+Meaningful cases include abrupt process exits before local application insert,
+Google profile signal and after GoogleIdentity insert; journal-before-User
+failure; failed cleanup with an opaque operator reference; repeat/parallel repair;
+profile/link/application/completion-stamp failures; original application timestamp
+preservation; original Google subject preservation; never-used inactive Applicant
+boundary; active/staff/superuser/role/history/suspension/past-login refusal;
+group/permissions/domain records; conflicting or reviewed applications; no
+email auto-link; unmarked/missing/compensated records; dry-run immutability and
+maintenance confirmation; no password/token journal fields; real username/email
+index races retain neutral conflict feedback and do not remove the winner.
+The final checks reproduce completion-persisted/lost-ack with a partial child
+cleanup trap for both signup paths. Once application insertion is attempted,
+request cleanup never invokes deletion. Officer approval between completion
+persistence and acknowledgement failure preserves the active Member and Approved
+review, actor/note/time and original key. Early cleanup requires an observed
+untouched account and confirmed Pending intent; before/after-write intent
+acknowledgement failures skip deletion and preserve the reserved account.
+
+Raw final output retained outside the repository at:
+C:/Users/chaun/Desktop/UTA/CSE6324-Advanced_Topic_SWE/tmp/orgflow_tasks_runtime/signup-nondestructive-final-accounts.txt
+
+Independent read-only local-agent replay:
+  All 8 scenarios passed in a separate disposable orgflow_journal_independent_audit
+  database: password/Google x partial-cleanup prevention, legitimate approval
+  preservation, insert-failed-before-write and insert-then-ack failure recovery.
+  Repair created/reused exactly one original Pending application, kept inactive
+  access for unreviewed applicants and preserved reviewed active accounts.
+  Raw: tmp/orgflow_claude_review_20261025/independent-journal-final-probes.txt.
+  This is local agent evidence, not Claude or human peer approval.
+
+The earlier independent-journal-lostack-reproducer.txt and
+independent-journal-reviewed-compensation-reproducer.txt are retained in the same
+review folder as the failing b0b4510 observations, superseded by final source.
+
+Intermediate intent-only guard: 59 passed in 27.940s, before the final non-destructive
+application-phase rule. Raw: tmp/orgflow_tasks_runtime/signup-compensation-intent.txt.
+
+Previous targeted run before compensation-intent repair: 45 tests, 14.865s, OK.
+Raw: tmp/orgflow_tasks_runtime/signup-final-targeted.txt in workspace.
+
+Earlier Accounts regression (before the final three refinements):
+  Ran 212 tests in 53.235s; OK.
+  Raw: tmp/orgflow_tasks_runtime/signup-recovery-accounts.txt in workspace.
+This is intermediate evidence, not a claim that final whole-system regression,
+CI, live providers, deployment, peer approval or performance gates were executed.

@@ -1,0 +1,42 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Committee setup · OrgFlow</title>
+  <link rel="stylesheet" href="{% static 'core/site.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
+    <nav aria-label="Committee setup"><a href="{% url 'committees:list' %}">Committees</a></nav>
+  </header>
+  <main id="main" tabindex="-1">
+    <h1>Committee setup</h1>
+    {% if invalid_ticket %}
+      <p role="alert">This creation form expired, is invalid, or belongs to another account. This request did not continue setup. Review the committee list or open a new form before trying again.</p>
+      <p><a href="{% url 'committees:create' %}">Open a new committee form</a></p>
+    {% else %}
+      {% if name_conflict %}
+        <p role="alert">A committee with this name already exists. Choose another name or review the committee list. Existing records were preserved.</p>
+      {% else %}
+        <p role="alert">The database did not confirm committee setup. Some changes may already have saved. No saved committee or membership was removed.</p>
+        <p><a href="{{ recovery_url }}">Check this committee and review Chair setup</a></p>
+      {% endif %}
+      {% if recovery_only %}
+        <p>Check the saved committee again when the database is available. This continuation will not create a missing committee.</p>
+      {% else %}
+        <form method="post" action="{% url 'committees:create' %}" class="card">
+          {% csrf_token %}
+          <input type="hidden" name="creation_intent" value="{{ creation_intent }}">
+          <p><label for="retry-name">Name</label><input id="retry-name" name="name" maxlength="100" value="{{ name }}" required></p>
+          <p><label for="retry-description">Description</label><textarea id="retry-description" name="description">{{ description }}</textarea></p>
+          <p>Retry checks this attempt's saved committee first. An existing committee requires review before a missing Chair membership can be added.</p>
+          <button type="submit">Check or retry this creation attempt</button>
+        </form>
+      {% endif %}
+    {% endif %}
+  </main>
+</body>
+</html>

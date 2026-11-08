@@ -1,0 +1,63 @@
+Source: 00000da830696466b47ade192e429dd8f5e9d7b0
+Coverage scope: committees and tasks Python implementation, including admin; excludes tests, migrations, initializers, apps and test helpers; not whole-project coverage
+Synthetic database: test_orgflow_completion_creation_primary_20261028_00000da
+Provider credentials blank; dotenv loader disabled; no private .env loaded.
+System check identified no issues (0 silenced).
+No changes detected
+Found 682 test(s).
+Creating test database for alias 'default'...
+
+System check identified no issues (0 silenced).
+.................................................Signup attempt 6ae21ff212c0b64fe163f06a preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae21ff212c0b64fe163f06a requires operator recovery.
+..Signup attempt 6ae21ff212c0b64fe163f129 cleanup skipped: recoverable intent could not be confirmed.
+..............................................Signup attempt 6ae21ffb12c0b64fe16401ef cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6ae21ffc12c0b64fe1640250 cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6ae21ffc12c0b64fe16402b1 cleanup skipped: recoverable intent could not be confirmed.
+.................................Signup attempt 6ae2200212c0b64fe1640e77 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200212c0b64fe1640e77 requires operator recovery.
+.Signup attempt 6ae2200212c0b64fe1640ed8 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200212c0b64fe1640ed8 requires operator recovery.
+.Signup attempt 6ae2200312c0b64fe1640f37 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200312c0b64fe1640f37 requires operator recovery.
+.Incomplete signup attempt 6ae2200312c0b64fe1640f96 requires operator recovery.
+....Signup attempt 6ae2200412c0b64fe1641117 cleanup skipped: recoverable intent could not be confirmed.
+.Signup attempt 6ae2200412c0b64fe164117b cleanup skipped: recoverable intent could not be confirmed.
+......Signup attempt 6ae2200512c0b64fe16413b9 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200512c0b64fe16413b9 requires operator recovery.
+.Incomplete signup attempt 6ae2200612c0b64fe1641419 requires operator recovery.
+.....Signup attempt 6ae2200712c0b64fe16415ff cleanup skipped: recoverable intent could not be confirmed.
+...............................Signup attempt 6ae2200d12c0b64fe16421c4 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200d12c0b64fe16421c4 requires operator recovery.
+Signup attempt 6ae2200d12c0b64fe16421c8 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200d12c0b64fe16421c8 requires operator recovery.
+.Signup attempt 6ae2200d12c0b64fe1642227 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200d12c0b64fe1642227 requires operator recovery.
+Signup attempt 6ae2200d12c0b64fe164222b preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2200d12c0b64fe164222b requires operator recovery.
+..Signup attempt 6ae2200e12c0b64fe16422e8 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2200e12c0b64fe16422e8 requires operator recovery.
+Signup attempt 6ae2200e12c0b64fe16422ec cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2200e12c0b64fe16422ec requires operator recovery.
+..An incomplete password signup could not be cleaned up; operator recovery is required.
+.......Signup attempt 6ae2201012c0b64fe1642641 preserved after application insertion was attempted; inspect its recorded outcome.
+Incomplete signup attempt 6ae2201012c0b64fe1642641 requires operator recovery.
+........Signup attempt 6ae2201212c0b64fe1642939 cleanup skipped: recoverable intent could not be confirmed.
+Signup attempt 6ae2201212c0b64fe164293f cleanup skipped: recoverable intent could not be confirmed.
+....Signup attempt 6ae2201312c0b64fe1642abc cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2201312c0b64fe1642abc requires operator recovery.
+Signup attempt 6ae2201312c0b64fe1642ac0 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2201312c0b64fe1642ac0 requires operator recovery.
+Signup attempt 6ae2201312c0b64fe1642ac4 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2201312c0b64fe1642ac4 requires operator recovery.
+Signup attempt 6ae2201312c0b64fe1642ac9 cleanup skipped: recoverable intent could not be confirmed.
+Incomplete signup attempt 6ae2201312c0b64fe1642ac9 requires operator recovery.
+.............................................................................................................................................................................Unpublished meeting actions could not be cleaned up; operator recovery is required.
+Unpublished meeting actions could not be cleaned up; operator recovery is required.
+......Meeting creation cleanup could not be confirmed; operator recovery is required.
+........................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 682 tests in 167.521s
+
+OK
+Destroying test database for alias 'default'...

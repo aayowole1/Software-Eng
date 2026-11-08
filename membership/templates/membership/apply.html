@@ -7,6 +7,9 @@
       <div class="card">
         <p><span class="badge">Not approved</span> <span class="muted">reviewed {{ latest.reviewed_at|date:"M j, Y" }}</span></p>
         <p><strong>Reason:</strong> {{ latest.review_note }}</p>
+        {% if wait_until %}
+          <p>You can apply again after <strong>{{ wait_until|date:"M j, Y, g:i A" }}</strong> ({{ wait_until|timeuntil }} from now).</p>
+        {% endif %}
       </div>
     {% endif %}
   {% endwith %}
@@ -20,7 +23,7 @@
   {% elif is_member %}
     <p>You're already a member.</p>
   {% elif wait_until %}
-    <p>You can apply again after <strong>{{ wait_until|date:"M j, Y, g:i A" }}</strong> ({{ wait_until|timeuntil }} from now).</p>
+    {# Reapply time is shown in the rejection card above; this branch keeps the action area consistent. #}
   {% else %}
     <p>Your application is waiting for an officer to review it.</p>
   {% endif %}

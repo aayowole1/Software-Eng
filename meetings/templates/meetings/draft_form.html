@@ -8,6 +8,8 @@
   <h1>{{ heading }}</h1>
   <form method="post" class="card" novalidate id="meeting-form">
     {% csrf_token %}
+    {{ form.expected_generation }}
+    {{ form.expected_generation.errors }}
     <p>
       {{ form.title.label_tag }}
       {{ form.title }}

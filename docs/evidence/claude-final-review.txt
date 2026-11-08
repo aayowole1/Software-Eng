@@ -1,0 +1,104 @@
+Observed Claude Opus 5.5 Medium static review in https://claude.ai/chat/b5ed74cb-09ef-479c-a573-7346b4972227
+Assistant-only accessibility transcript. Supplied source primary8c58a07/combined812d9e6; reported executed evidence primarybf6ad6d404PASS, combined417(415PASS+2skips), coverage95.35%/90.82%.
+1797 article Message 6 of 6
+																		1948 heading Claude responded: I found no remaining blocking defect in Chau's Accounts/Tasks code or at the approved-import boundary in this static read.
+																		1807 group Cross-checking documentation claims against logged evidence. Description: Cross-checking documentation claims against logged evidence.
+																			1818 text Cross-checking documentation claims against logged evidence
+																			1812 button Cross-checking documentation claims against logged evidence
+																		1810 status
+																			1811 text Cross-checking documentation claims against logged evidence
+																		1831 text I found no remaining blocking defect in Chau’s Accounts/Tasks code or at the approved-import boundary in this static read. I did not run anything; the test and coverage figures are Codex’s.
+																		1830 heading Closed (by source review against your executed evidence)
+																		1832 table
+																			1833 row
+																				1834 column header Finding
+																				1835 column header Disposition
+																			1836 row
+																				1837 item 1. Meeting review race
+																				1838 item Closed. The decision and item intent are recorded in one conditional update, the review is tied to the expected generation, and conversion waits for a finished review.
+																			1839 row
+																				1840 item 2. Backend bypass
+																				1841 item Closed earlier. Only the custom backend is configured.
+																			1842 row
+																				1843 item 3 / C. Signup orphans
+																				1844 item Closed. The attempt journal is written before the User. Early cleanup re-verifies the account is untouched (_untouched_signup_account). Once the application insert has started, cleanup never deletes, which covers both the lost-acknowledgement and the approved-in-between cases. Operator repair is dry-run by default, uses the reserved keys, and never creates or deletes a User or grants access.
+																			1845 row
+																				1846 item 4. Reinstatement
+																				1847 item Closed. The pre-suspension activation snapshot and restore intent are saved, recorded reviews complete under their original reviewer, and access stays blocked until the final stamp.
+																			1848 row
+																				1849 item 5. Role audit / stale writes / pending elevation
+																				1850 item Closed. Role, version and history change in one Profile write. Unfinished reviews block ordinary role changes, and the rejected-elevated repair path is audited. Profile admin is read-only.
+																			1852 row
+																				1853 item 6. Identifier uniqueness
+																				1854 item Closed. Case-insensitive unique indexes, a migration preflight that never auto-deletes, and is_identifier_conflict keeps race feedback separate from retryable failures (follow-up D).
+																			1855 row
+																				1856 item 7. History growth
+																				1857 item Closed. 5,000-character description cap, compact audit entries for long values, and an 8 MiB guard checked before any write.
+																			1858 row
+																				1859 item 8. Dangling committee
+																				1860 item Closed. Task.clean names the missing committee and an officer must repair it; member visibility is not widened.
+																			1861 row
+																				1862 item 10. Task wrapper access
+																				1863 item Closed. It now uses active_role.
+																			1864 row
+																				1865 item 11. Committee add choices
+																				1866 item Closed per the named test. The committee view source wasn’t in the packet.
+																			1867 row
+																				1868 item A. Mixed or incomplete generations
+																				1869 item Closed. Items are staged under a fresh token before the draft is inserted, or before the conditional switch from revision-requested. Display, review and import all filter to the published generation. An uncertain publish keeps its data.
+																			1870 row
+																				1871 item B. Import preview mismatch
+																				1872 item Closed. The page and the service share accepted_actions_for_import.
+																			1873 row
+																				1874 item Q4. Approval writers
+																				1875 item Closed. Meeting admin is read-only, so review() is the only path to Approved.
+																		1882 text Intentional, not defects:
+																		1877 list
+																			1878 list item Finding 9: an officer must reassign an invalid assignee before any task update.
+																			1879 list item Batch import is retryable rather than atomic.
+																			1880 list item Drafts approved before recorded intent existed import from their accepted items.
+																			1881 list item Unpublished generations are retained, with no background cleanup.
+																		1883 heading Low, non-blocking observations
+																		1884 list
+																			1885 list item Previously active reapplicants stay off after reinstatement (accounts/lifecycle.py 56–57). Any pending application makes reinstatement return inactive. A rejected applicant who was active and then reapplied therefore stays locked out until an officer reviews the new application. This is fail-closed and resolves itself at review, but it departs from “restore saved prior activation.” Either confirm it as policy or restore restore_active when the snapshot was active.
+																				1895 text Previously active reapplicants stay off after reinstatement
+																				1896 text accounts/lifecycle.py
+																				1897 text restore_active
+																			1889 list item Retry message after a lost completion acknowledgement (accounts/forms.py 127–130). The user is told to resubmit, but the signup and application already exist, so resubmitting fails as “username taken.” The data is safe. Wording such as “your application may have been received; sign in later or contact an officer” would avoid the dead end.
+																				1898 text Retry message after a lost completion acknowledgement
+																				1899 text accounts/forms.py
+																			1892 list item Uncovered branches. The coverage report shows the generic-exception compensation informs.py 132–135 and several lifecycle and provisioning conflict branches as untested. None of these is a correctness finding.
+																				1900 text Uncovered branches.
+																				1901 text forms.py
+																		1902 heading Evidence and doc items before final submission
+																		1903 list
+																			1904 list item Primary log. The packet’s primary log is truncated. Attach the complete 404-test primary log for8c58a07/bf6ad6d so the record matches the combined log, which does show OK (skipped=2).
+																				1915 text Primary log.
+																				1916 text 8c58a07
+																				1917 text bf6ad6d
+																				1918 text OK (skipped=2)
+																			1909 list item docs/chau-claude-review.md still lists follow-ups A–D and the journal correction as pending, and every gate in its “final validation” table as PENDING. Update these to the final revisions and results.
+																				1919 text docs/chau-claude-review.md
+																			1911 list item Stale counts in other docs. diagrams/README.md cites the 340/105-test runs, and accounts-suspension-recovery.md still marks the full suite as pending. Replace them with the 417-test combined run, the primary run, and the 95.35% statement / 90.82% branch coverage at812d9e6.
+																				1920 text Stale counts in other docs.
+																				1921 text diagrams/README.md
+																				1922 text accounts-suspension-recovery.md
+																				1923 text 812d9e6
+																			1924 list item CI. Final GitHub CI runs for both heads are not in the packet.
+																				1925 text CI.
+																		1926 heading Gates that remain outside code acceptance
+																		1927 list
+																			1928 list item Team policy:◦ President versus Officer authority for creating committees.◦ Whether local accounts need mailbox verification.◦ Who owns the organization-wide audit, reports and export.◦ Who may run signup repair, and how long the signup journal is retained.◦ Whether finding 9’s assignment policy and observation 1 above are accepted.
+																				1949 text Team policy:
+																				1930 list
+																					1931 list item President versus Officer authority for creating committees.
+																					1932 list item Whether local accounts need mailbox verification.
+																					1933 list item Who owns the organization-wide audit, reports and export.
+																					1934 list item Who may run signup repair, and how long the signup journal is retained.
+																					1935 list item Whether finding 9’s assignment policy and observation 1 above are accepted.
+																			1936 list item Human acceptance: Chau’s explanation and demo, peer review by the owners of the affected shared code, and the team’s submission agreement. Neither of my reviews is human sign-off.
+																				1950 text Human acceptance:
+																			1938 list item Live, provider and deployment: the October 13 Google proof is historical; live OpenAI and Deepgram quality is unverified; the process-local recording store only works with a single worker; hosting, Docker, backup and restore, performance, and production security settings (DEBUG=Trueand default cookie flags are development-only); and the accessibility work is axe page-state checks, not WCAG certification or a screen-reader evaluation.
+																				1951 text Live, provider and deployment:
+																				1952 text DEBUG=True
+																		1953 text Ready to re-check the reconciled docs and CI links if you send them. The code side has no open blocker from me.

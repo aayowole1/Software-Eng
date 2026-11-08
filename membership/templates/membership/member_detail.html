@@ -1,0 +1,71 @@
+
+{% extends "base.html" %}
+
+{% block title %}Member Details{% endblock %}
+
+{% block content %}
+
+<p>
+  <a href="{% url 'membership:roster' %}">
+    Back to member roster
+  </a>
+</p>
+
+<h1>{{ member.user.username }}</h1>
+
+<div class="card">
+  <h2>Member Information</h2>
+
+  <p>
+    <strong>Email:</strong>
+    {{ member.user.email|default:"Not provided" }}
+  </p>
+
+  <p>
+    <strong>Organization Role:</strong>
+    {{ member.get_role_display }}
+  </p>
+
+  <p>
+    <strong>Member Since:</strong>
+    {{ member.created_at|date:"F j, Y" }}
+  </p>
+</div>
+
+<h2>Committee Participation</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Committee</th>
+        <th scope="col">Committee Role</th>
+        <th scope="col">Joined</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for membership in committee_memberships %}
+        <tr>
+          <td>
+            <a href="{% url 'committees:detail' membership.committee.pk %}">
+              {{ membership.committee.name }}
+            </a>
+          </td>
+
+          <td>{{ membership.get_role_display }}</td>
+
+          <td>{{ membership.joined_at|date:"M j, Y" }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="3" class="muted">
+            This member does not belong to any committees yet.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

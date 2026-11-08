@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block content %}
+  <h1>{{ event.title }}{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</h1>
+  <div class="card">
+    <p><strong>When:</strong> {{ event.starts_at|date:"D, M j, Y · g:i A" }}{% if event.ends_at %} – {{ event.ends_at|date:"g:i A" }}{% endif %}</p>
+    <p><strong>Where:</strong> {{ event.location }}</p>
+    {% if event.description %}<p>{{ event.description|linebreaksbr }}</p>{% endif %}
+    <p class="muted">{{ going_count }} going · {{ not_going_count }} not going{% if not event.is_upcoming %} · {{ attended_count }} attended{% endif %}</p>
+  </div>
+
+  <h2>Your RSVP</h2>
+  {% if event.accepts_rsvps %}
+    <form method="post" action="{% url 'events:rsvp' event.pk %}" class="card">
+      {% csrf_token %}
+      <p>{% if my_rsvp %}You answered <strong>{{ my_rsvp.get_response_display }}</strong>. You can change it below.{% else %}Will you be there?{% endif %}</p>
+      <button type="submit" name="response" value="going">Going</button>
+      <button type="submit" name="response" value="not_going" class="secondary">Not going</button>
+    </form>
+  {% elif event.cancelled %}
+    <p class="muted">This event was cancelled.</p>
+  {% else %}
+    <p class="muted">This event has started, so RSVPs are closed.{% if my_rsvp %} You answered {{ my_rsvp.get_response_display|lower }}.{% endif %}</p>
+  {% endif %}
+
+  {% if is_officer %}
+    <h2>Attendance</h2>
+    {% if event.cancelled %}
+      <p class="muted">No attendance for a cancelled event.</p>
+    {% else %}
+      <form method="post" action="{% url 'events:attendance' event.pk %}" class="card">
+        {% csrf_token %}
+        <p class="muted">Tick everyone who attended, then save.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Attended</th><th scope="col">Member</th><th scope="col">RSVP</th></tr></thead>
+            <tbody>
+              {% for member, attended, response in attendance_rows %}
+                <tr>
+                  <td>
+                    <input type="checkbox" name="attended" value="{{ member.pk }}" id="att-{{ member.pk }}" {% if attended %}checked{% endif %}>
+                    <label for="att-{{ member.pk }}" class="visually-hidden">{{ member.email|default:member.username }} attended</label>
+                  </td>
+                  <td>{{ member.email|default:member.username }}</td>
+                  <td>{{ response }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="muted">No members on the roster yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p></p>
+        <button type="submit">Save attendance</button>
+      </form>
+    {% endif %}
+
+    <h2>Manage</h2>
+    <p>
+      <a class="button" href="{% url 'events:edit' event.pk %}">Edit event</a>
+      {% if event.accepts_rsvps %}
+        <form method="post" action="{% url 'events:cancel' event.pk %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="danger">Cancel event</button>
+        </form>
+      {% endif %}
+    </p>
+  {% endif %}
+
+  <p><a href="{% url 'events:list' %}">Back to events</a></p>
+{% endblock %}

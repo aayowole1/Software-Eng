@@ -1,0 +1,213 @@
+Observed Claude Opus 5.5 Medium static review in https://claude.ai/chat/b5ed74cb-09ef-479c-a573-7346b4972227
+Assistant-only accessibility transcript; no unrelated sidebar history.
+																	565 article Message 4 of 4
+																		566 heading Claude responded: Finding 2 is closed.
+																		567 group Checking recovery gaps in draft revision failure handling. Description: Checking recovery gaps in draft revision failure handling.
+																			568 text Checking recovery gaps in draft revision failure handling
+																			569 button Checking recovery gaps in draft revision failure handling
+																		570 status
+																			571 text Checking recovery gaps in draft revision failure handling
+																		572 text Finding 2 is closed. The meeting fixes close finding 1 for competing reviewers, but the create and revise paths still let a draft be reviewed while its items are being regenerated. Password signup compensation is correct; what remains is recovery when the compensation itself fails. Everything below is a static reading. I have not run anything and have no execution results for the new test modules.
+																		573 heading Resolved
+																		574 text Finding 2 (session revalidation): closed.
+																		575 list
+																			576 list item AUTHENTICATION_BACKENDS lists only EmailOrUsernameBackend, so every session, including any Django admin login, is revalidated through the custom check in backends.py 28–39.
+																				577 text AUTHENTICATION_BACKENDS
+																				578 text EmailOrUsernameBackend
+																				579 text backends.py
+																			580 list item test_existing_session_loses_access_when_only_suspension_flag_is_written covers the half-completed suspend.
+																				581 text test_existing_session_loses_access_when_only_suspension_flag_is_written
+																			582 list item Moving get_role/role_required onto active_role is now optional defense-in-depth, not a blocker.
+																				583 text get_role
+																				584 text role_required
+																				585 text active_role
+																		586 text Finding 1 (approval snapshot): closed for competing reviews, subject to the tests actually passing.
+																		587 list
+																			588 list item 395fb13 records the decision, the full item intent and the pending marker in one conditional update. Only the winner writes items, and complete_review_update is idempotent by item ID.
+																				589 text 395fb13
+																				590 text complete_review_update
+																			591 list item Import is blocked while the marker is set and uses the intent’s accepted text.
+																			592 list item test_stale_http_loser_cannot_edit_or_add_actions_that_tasks_consume matches my original trigger.
+																				593 text test_stale_http_loser_cannot_edit_or_add_actions_that_tasks_consume
+																		594 text Unfinished membership review recovery: resolved.
+																		595 text 
+																		596 text finish_review_access
+																		597 text in
+																		598 text membership/views.py
+																		599 text 214–226 is the recovery workflow. That also covers the pending-update half of finding 4.
+																		600 text Corrections to my earlier advice:
+																		601 list
+																			602 list item My age/no-application sweeper criteria were too broad. Codex is right that they could delete legitimate admin-created accounts. The replacement is finding C below.
+																			603 list item For the reinstatement lockout, restoring a recorded pre-suspension activation state is better than my not pending rule. I agree with the activation-snapshot approach in progress.
+																				604 text not pending
+																		605 text Signup compensation (
+																		606 text c99ce06
+																		607 text ): correct for exception paths.
+																		608 list
+																			609 list item The reserved pk combined with filter(pk, username).delete() cannot remove another account; test_user_integrity_failure_does_not_remove_an_existing_account covers this.
+																				610 text pk
+																				611 text filter(pk, username).delete()
+																				612 text test_user_integrity_failure_does_not_remove_an_existing_account
+																			613 list item The signal failure, application failure and insert-then-fail paths are all covered.
+																		614 heading Remaining confirmed defects
+																		615 text A. Medium (Jack-owned, shared gate): a draft becomes reviewable before its items are complete.
+																		616 list
+																			617 list item Where: meetings/models.py generate() saves the draft as pending before deleting and recreating its items.◦ On create (ea05fe3), the draft is inserted as pending, then the items follow.◦ In revise(), the status is set to pending and a full save() runs, then items are deleted and recreated.
+																				618 text Where:
+																				619 text meetings/models.py
+																				620 text generate()
+																				621 list
+																					622 list item On create (ea05fe3), the draft is inserted as pending, then the items follow.
+																						623 text ea05fe3
+																					624 list item In revise(), the status is set to pending and a full save() runs, then items are deleted and recreated.
+																						625 text revise()
+																						626 text save()
+																			627 list item Trigger on revise:1. Officer A revises a draft. generate() saves it as pending, and A’s request is now deleting old items.2. Officer B loads the draft and approves it. B’s intent lists the old items.3. A deletes the old items and creates new ones.4. B’s complete_review_update recreates the old items by ID through update_or_create.
+																				628 text Trigger on revise:
+																				629 list
+																					630 list item Officer A revises a draft. generate() saves it as pending, and A’s request is now deleting old items.
+																						631 text generate()
+																					632 list item Officer B loads the draft and approves it. B’s intent lists the old items.
+																					633 list item A deletes the old items and creates new ones.
+																					634 list item B’s complete_review_update recreates the old items by ID through update_or_create.
+																						635 text complete_review_update
+																						636 text update_or_create
+																			637 list item Impact: an approved draft holds the resurrected old items plus A’s unreviewed new items. Import uses only B’s intent, so tasks still match what B saw, but the draft no longer matches its current notes.
+																				638 text Impact:
+																			639 list item Trigger on create: officer B approves during the creation window and the create then fails._cleanup_created_draft deletes the draft B already approved.
+																				640 text Trigger on create:
+																				641 text _cleanup_created_draft
+																			642 list item Other paths: two concurrent revise() calls can interleave their item sets, because revise uses a full-document save() with no status condition. draft_revise catches onlyRuntimeError/ValueError, so a DatabaseError leaves the partial state.
+																				643 text Other paths:
+																				644 text revise()
+																				645 text save()
+																				646 text draft_revise
+																				647 text RuntimeError
+																				648 text ValueError
+																				649 text DatabaseError
+																			650 list item Fix: make the draft write the commit point.◦ On create: with the reserved draft pk, insert the items first, then the draft withforce_insert. Cleanup deletes items by draft_id.◦ On revise: create new items tagged with a generation token. Then flip the draft fromrevision_requested to pending_review with a conditional update that also sets the summary and current generation. Review and display filter items by generation.
+																				651 text Fix:
+																				652 list
+																					653 list item On create: with the reserved draft pk, insert the items first, then the draft withforce_insert. Cleanup deletes items by draft_id.
+																						654 text pk
+																						655 text force_insert
+																						656 text draft_id
+																					657 list item On revise: create new items tagged with a generation token. Then flip the draft fromrevision_requested to pending_review with a conditional update that also sets the summary and current generation. Review and display filter items by generation.
+																						658 text revision_requested
+																						659 text pending_review
+																		660 text B. Low (Chau): the import preview shows live items, not the approved snapshot.
+																		661 list
+																			662 list item Where: tasks/views.py 277 renders draft.action_items.filter(accepted=True), butimport_action_items creates from review_item_intent.
+																				663 text Where:
+																				664 text tasks/views.py
+																				665 text draft.action_items.filter(accepted=True)
+																				666 text import_action_items
+																				667 text review_item_intent
+																			668 list item Impact: they agree after completion unless items are changed outside review, astest_import_uses_recorded_accepted_text… does deliberately. The confirmation page should show exactly what will be created.
+																				669 text Impact:
+																				670 text test_import_uses_recorded_accepted_text…
+																			671 list item Fix: build the preview from the intent when it is present.
+																				672 text Fix:
+																		673 text C. Low–Medium (Chau, both signup flows): there is no exact recovery when compensation itself fails.
+																		674 list
+																			675 list item Where: forms.py _cleanup_password_signup and google_auth.py 175–182 log a deliberately detail-free alert.
+																				676 text Where:
+																				677 text forms.py
+																				678 text _cleanup_password_signup
+																				679 text google_auth.py
+																			680 list item Impact: the orphan account keeps the username and email reserved, and the operator has no identifier to act on.
+																				681 text Impact:
+																			682 list item Fix, bounded by owned-attempt evidence:◦ Log the reserved ObjectId, which is not a credential.◦ Add a recover_signup <id> command that deletes only if that ID is inactive, has no application, has never logged in, and is not staff or superuser.◦ If you want automation instead, insert a provisioning-attempt record before create_userand clear it at the application commit point. Recovery then acts only on uncleared attempts.
+																				683 text Fix, bounded by owned-attempt evidence:
+																				684 list
+																					685 list item Log the reserved ObjectId, which is not a credential.
+																						686 text ObjectId
+																					687 list item Add a recover_signup <id> command that deletes only if that ID is inactive, has no application, has never logged in, and is not staff or superuser.
+																						688 text recover_signup <id>
+																					689 list item If you want automation instead, insert a provisioning-attempt record before create_userand clear it at the application commit point. Recovery then acts only on uncleared attempts.
+																						690 text create_user
+																		691 text D. Low (Chau): the username-race message is now unreachable.
+																		692 list
+																			693 list item IntegrityError subclasses DatabaseError, so the except IntegrityError branch inaccounts/views.py (the one telling the user to try a different username) never runs.
+																				694 text IntegrityError
+																				695 text DatabaseError
+																				696 text except IntegrityError
+																				697 text accounts/views.py
+																			698 list item A concurrent duplicate username now gets “try submitting again” and then fails validation.
+																			699 list item Fix: map an IntegrityError at the user-creation stage to the different-username message.
+																				700 text Fix:
+																				701 text IntegrityError
+																		702 text E. Low (TJ-owned):
+																		703 list
+																			704 list item membership/views.py 46–63 checks can_apply, then saves. A double submit can create two pending applications.
+																				705 text membership/views.py
+																				706 text can_apply
+																			707 list item The roster and member_detail (237–239, 283–287) list suspended and access-pending accounts.
+																				708 text member_detail
+																		709 text F. Low:
+																		710 text 
+																		711 text committee_detail.html
+																		712 text 23 uses
+																		713 text m.user.profile.pk
+																		714 text , which raises a 500 if a profile is missing.
+																		715 text meetings/views.py
+																		716 text still imports
+																		717 text transaction
+																		718 text without using it.
+																		719 heading Intentional choices and team policy gates (not defects)
+																		720 list
+																			721 list item Committee CRUD: the Officer/Admin policy stays until the team reconciles the older president-only wording.
+																				722 text Committee CRUD:
+																			723 list item Role-change audit: still an acceptance GAP until Chau’s in-progress role CAS lands or the team reassigns it.
+																				724 text Role-change audit:
+																			725 list item Live provider proof: the October 13 Google proof at e69b1ad is historical. Live OpenAI/Deepgram runs are unverified.
+																				726 text Live provider proof:
+																				727 text e69b1ad
+																			728 list item Production settings: the cookie defaults and DEBUG=True are acceptable for development only. No production claim is made.
+																				729 text Production settings:
+																				730 text DEBUG=True
+																			731 list item Retry semantics: batch import is retryable by design, not atomic.
+																				732 text Retry semantics:
+																			733 list item Legacy drafts: approved drafts with no intent import from live items. That is acceptable only if no path still sets APPROVED without an intent (question 4).
+																				734 text Legacy drafts:
+																				735 text APPROVED
+																		736 heading Updated acceptance map (changes only)
+																		737 table
+																			738 row
+																				739 column header Requirement
+																				740 column header Status
+																			741 row
+																				742 item Local password login
+																				743 item PASS (backend confirmed)
+																			744 row
+																				745 item Suspension withholds access
+																				746 item PASS; reinstatement lockout GAP until activation snapshots land
+																			747 row
+																				748 item Unfinished review withholds access
+																				749 item PASS (recovery view exists; template unseen)
+																			750 row
+																				751 item Safe retry after partial provisioning
+																				752 item PASS for exception paths; GAP for recovery after a failed compensation (C)
+																			753 row
+																				754 item Approved/accepted-only conversion
+																				755 item PASS for review races; GAP for create/revise ordering (A, Jack)
+																			756 row
+																				757 item CSRF
+																				758 item PASS for shown forms and middleware; google_signin.js unseen
+																			759 row
+																				760 item Current diagrams and evidence
+																				761 item GAP: diagrams are at 7eac4c6, verification at 638123e, the packet at cbf67e5, and the fixes in four later commits. The new test modules have no recorded run.
+																		762 heading Still needed
+																		763 list
+																			764 list item accounts/static/accounts/google_signin.js.
+																				765 text accounts/static/accounts/google_signin.js
+																			766 list item membership/templates/membership/application_list.html, to confirm the Finish account access button and its CSRF token.
+																				767 text membership/templates/membership/application_list.html
+																			768 list item A full-suite and targeted run at one final revision that includes the four new test modules, withtasks-verification.txt, the diagrams and the checkpoint doc updated to that revision.
+																				769 text tasks-verification.txt
+																			770 list item Whether MeetingDraft is registered in Django admin or set to APPROVED anywhere other thanreview().
+																				771 text MeetingDraft
+																				772 text APPROVED
+																				773 text review()
+																			774 list item The final packet: role CAS and audit, activation snapshots, canonical indexes, bounded history, eligibility and dangling-committee guards.
+																		775 text Ready for the final packet once items 1–4 arrive. Of the remaining items, A is the one that needs coordination with Jack before November 1.

@@ -1,0 +1,10 @@
+{% autoescape off %}Hi {{ user.get_username }},
+
+Thank you for applying to OrgFlow. After reviewing your application, an officer was not able to approve it at this time.
+
+Reason: {{ application.review_note }}
+
+You are welcome to sign in to see this decision and apply again after the waiting period has passed.
+
+If you have any questions, reach out to an officer.
+{% endautoescape %}

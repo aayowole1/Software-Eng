@@ -10,7 +10,7 @@
         {% for d in drafts %}
           <tr>
             <td><a href="{% url 'meetings:detail' d.pk %}">{{ d.title }}</a></td>
-            <td><span class="badge">{{ d.get_status_display }}</span></td>
+            <td><span class="badge">{{ d.get_status_display }}</span>{% if d.review_update_pending %} <strong>Action updates unfinished</strong>{% endif %}</td>
             <td>{{ d.created_by.email|default:"—" }}</td>
             <td>{{ d.created_at|date:"M j, Y" }}</td>
           </tr>

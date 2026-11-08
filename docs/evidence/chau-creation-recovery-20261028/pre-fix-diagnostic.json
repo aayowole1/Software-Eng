@@ -1,0 +1,23 @@
+{
+  "checked_at_utc": "2026-10-28T15:50:30.131853+00:00",
+  "revision": "a62928e269af62556d9977b2a32e3db15dc8da13",
+  "scope": "One isolated diagnostic; not a functional acceptance pass or full-suite run",
+  "database": "test_orgflow_committee_review_create_20261028",
+  "dotenv_loaded": false,
+  "provider_credentials": "blank",
+  "fault": "Creator membership insert raises OperationalError before writing",
+  "first_response_status": 500,
+  "persisted_committee_count_after_failure": 1,
+  "creator_memberships_after_failure": 0,
+  "retry_response_status": 200,
+  "retry_name_errors": [
+    "A committee with this name already exists."
+  ],
+  "persisted_committee_count_after_retry": 1,
+  "existing_detail_response_status": 200,
+  "normal_roster_repair_response_status": 302,
+  "creator_chair_memberships_after_ui_repair": 1,
+  "finding_reproduced": true,
+  "diagnostic_assertions": "confirmed",
+  "final_head": "a62928e269af62556d9977b2a32e3db15dc8da13"
+}
