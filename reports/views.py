@@ -1,7 +1,7 @@
 """Participation and engagement reports for leadership (FR-6.2, FR-6.3; SCRUM-64)."""
 
 import csv
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django import forms
 from django.contrib.auth import get_user_model
@@ -57,13 +57,17 @@ def _build_report(start_date, end_date):
     """Return a dict of all report data for the given inclusive date range."""
     tz = timezone.get_current_timezone()
 
-    # Events whose start day falls within [start_date, end_date], excluding cancelled ones.
-    start_dt = timezone.datetime(start_date.year, start_date.month, start_date.day, tzinfo=tz)
-    end_dt = timezone.datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=tz)
+    # The range covers whole local days: from midnight at the start of
+    # start_date up to (not including) midnight after end_date, so nothing
+    # late on the end date is dropped.
+    start_dt = timezone.make_aware(datetime.combine(start_date, time.min), tz)
+    end_exclusive = timezone.make_aware(datetime.combine(end_date + timedelta(days=1), time.min), tz)
 
+    # Events held: non-cancelled events in the range that have already started.
+    # Upcoming events haven't been held yet, so they don't lower attendance.
     events_qs = Event.objects.filter(
         starts_at__gte=start_dt,
-        starts_at__lte=end_dt,
+        starts_at__lt=min(end_exclusive, timezone.now()),
         cancelled=False,
     ).order_by("starts_at")
     events = list(events_qs)
@@ -72,7 +76,7 @@ def _build_report(start_date, end_date):
     # Tasks created in the range (all statuses).
     tasks_qs = Task.objects.filter(
         created_at__gte=start_dt,
-        created_at__lte=end_dt,
+        created_at__lt=end_exclusive,
     )
 
     today = timezone.localdate()

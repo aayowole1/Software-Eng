@@ -40,8 +40,9 @@
     <li><strong>Attendance %</strong> = events attended ÷ events held in range × 100</li>
     <li><strong>Committee attendance %</strong> = total attendances by committee members ÷ (members × events held) × 100</li>
     <li><strong>Overdue tasks</strong> = tasks with a past due date that are not yet Done, as of today</li>
-    <li>Cancelled events are excluded. Only events whose start date falls within the selected range are counted.</li>
+    <li>Events held are non-cancelled events that started within the selected range and have already taken place. Cancelled and upcoming events are not counted.</li>
     <li>Only tasks created within the selected date range are counted.</li>
+    <li>Dates use the organization's time zone and include the whole start and end day.</li>
   </ul>
 </section>
 
@@ -70,7 +71,7 @@
       </tbody>
     </table>
   {% else %}
-    <p>No non-cancelled events started in this range.</p>
+    <p>No events were held in this range.</p>
   {% endif %}
 </section>
 

@@ -522,3 +522,111 @@ class DefinitionsOnPageTests(TestCase):
     def test_overdue_definition_present(self):
         response = self.client.get(REPORT_URL)
         self.assertContains(response, "Overdue")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ReviewDateBoundaryTests(TestCase):
+    """Review fixes: upcoming events are not 'held', and the whole end day is included."""
+
+    def setUp(self):
+        self.officer = make_user("boundary-officer@example.com", Role.OFFICER)
+        self.member = make_user("boundary-member@example.com", Role.MEMBER)
+        self.client.force_login(self.officer)
+        self.tz = timezone.get_current_timezone()
+
+    def _local(self, day, hour=0, minute=0, second=0, microsecond=0):
+        return timezone.make_aware(
+            timezone.datetime.combine(day, timezone.datetime.min.time()).replace(
+                hour=hour, minute=minute, second=second, microsecond=microsecond
+            ),
+            self.tz,
+        )
+
+    def _params(self, start_offset, end_offset):
+        today = _today()
+        return {
+            "start_date": (today + timedelta(days=start_offset)).isoformat(),
+            "end_date": (today + timedelta(days=end_offset)).isoformat(),
+        }
+
+    def _report(self, start_offset, end_offset):
+        return self.client.get(REPORT_URL, self._params(start_offset, end_offset)).context["data"]
+
+    def _csv_rows(self, start_offset, end_offset):
+        response = self.client.get(CSV_URL, self._params(start_offset, end_offset))
+        return list(csv.reader(io.StringIO(response.content.decode())))
+
+    def _member_row(self, data):
+        return next(r for r in data["per_member"] if r["user"] == self.member)
+
+    # --- Upcoming events are not counted as held ----------------------------
+
+    def test_upcoming_event_in_range_is_not_counted_as_held(self):
+        past = _make_event(self.officer, days_offset=-1, title="Held")
+        _make_event(self.officer, days_offset=2, title="Upcoming")
+        _attend(past, self.member, self.officer)
+
+        data = self._report(start_offset=-5, end_offset=5)
+
+        self.assertEqual(data["events_held"], 1)
+        self.assertEqual([i["event"].title for i in data["per_event"]], ["Held"])
+        row = self._member_row(data)
+        self.assertEqual(row["events_held"], 1)
+        self.assertEqual(row["attendance_pct"], 100.0)
+
+    def test_upcoming_event_excluded_from_csv(self):
+        _make_event(self.officer, days_offset=-1, title="Held")
+        _make_event(self.officer, days_offset=2, title="Upcoming")
+
+        rows = self._csv_rows(start_offset=-5, end_offset=5)
+
+        self.assertIn(["events", "summary", "events_held", "1"], rows)
+        self.assertFalse(any(r[1] == "Upcoming" for r in rows))
+
+    def test_committee_attendance_ignores_upcoming_events(self):
+        committee = Committee.objects.create(name="Outreach")
+        CommitteeMember.objects.create(committee=committee, user=self.member)
+        past = _make_event(self.officer, days_offset=-1, title="Held")
+        _make_event(self.officer, days_offset=3, title="Upcoming")
+        _attend(past, self.member, self.officer)
+
+        data = self._report(start_offset=-5, end_offset=5)
+
+        row = next(r for r in data["per_committee"] if r["committee"] == committee)
+        self.assertEqual(row["attendance_pct"], 100.0)
+
+    # --- Records late on the end date are included --------------------------
+
+    def test_event_in_last_second_of_end_date_is_included(self):
+        yesterday = _today() - timedelta(days=1)
+        Event.objects.create(
+            title="Late Night", location="Hall", created_by=self.officer,
+            starts_at=self._local(yesterday, 23, 59, 59, 500000),
+        )
+        Event.objects.create(
+            title="Next Day", location="Hall", created_by=self.officer,
+            starts_at=self._local(_today()),
+        )
+
+        data = self._report(start_offset=-1, end_offset=-1)
+
+        self.assertEqual([i["event"].title for i in data["per_event"]], ["Late Night"])
+        rows = self._csv_rows(start_offset=-1, end_offset=-1)
+        self.assertIn(["events", "summary", "events_held", "1"], rows)
+
+    def test_task_created_in_last_second_of_end_date_is_counted(self):
+        yesterday = _today() - timedelta(days=1)
+        task = _make_task(self.officer, assignee=self.member)
+        Task.objects.filter(pk=task.pk).update(created_at=self._local(yesterday, 23, 59, 59, 500000))
+
+        data = self._report(start_offset=-1, end_offset=-1)
+
+        self.assertEqual(self._member_row(data)["tasks_assigned"], 1)
+        rows = self._csv_rows(start_offset=-1, end_offset=-1)
+        member_name = self.member.get_full_name() or self.member.username
+        self.assertIn(["member", member_name, "tasks_assigned", "1"], rows)
+
+    def test_definitions_explain_upcoming_events_and_whole_days(self):
+        response = self.client.get(REPORT_URL)
+        self.assertContains(response, "Cancelled and upcoming events are not counted.")
+        self.assertContains(response, "include the whole start and end day")
