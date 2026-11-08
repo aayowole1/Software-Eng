@@ -44,9 +44,11 @@ class MeetingNotesForm(forms.ModelForm):
             "notes": "Add context, corrections, or other notes for the summarizer.",
         }
         widgets = {
-            "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
+            "title": forms.TextInput(
+                attrs={"style": "width: 100%; max-width: none;", "placeholder": "Enter Title Here"}
+            ),
             "transcript": forms.HiddenInput(),
-            "notes": forms.Textarea(attrs={"rows": 6}),
+            "notes": forms.Textarea(attrs={"rows": 6, "placeholder": "Add Notes Here"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -112,12 +114,12 @@ def draft_create(request):
             return render(
                 request,
                 "meetings/draft_form.html",
-                {"form": form, "heading": "New notes"},
+                {"form": form, "heading": "Take notes"},
                 status=503,
             )
         messages.success(request, "Notes created.")
         return redirect("meetings:detail", pk=draft.pk)
-    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New notes"})
+    return render(request, "meetings/draft_form.html", {"form": form, "heading": "Take notes"})
 
 
 def _create_draft(user, data):
@@ -146,7 +148,7 @@ def meeting_processing(request):
             return render(
                 request,
                 "meetings/draft_form.html",
-                {"form": form, "heading": "New notes"},
+                {"form": form, "heading": "Take notes"},
                 status=400,
             )
         request.session["meeting_processing"] = {
@@ -297,7 +299,7 @@ def draft_review(request, pk):
         )
         return redirect("meetings:detail", pk=draft.pk)
     messages.success(request, f"Draft marked {draft.get_status_display().lower()}.")
-    return redirect("meetings:detail", pk=draft.pk)
+    return redirect("meetings:list")
 
 
 @require_POST

@@ -64,6 +64,10 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "Submitting notes and preparing the draft")
         self.assertContains(response, "function showProcessingPage()")
         self.assertNotContains(response, "Start Notes to resume or Submit Notes to finish.")
+        self.assertContains(response, 'placeholder="Enter Title Here"')
+        self.assertContains(response, 'placeholder="Add Notes Here"')
+        self.assertNotContains(response, "Add your own notes below.")
+        self.assertNotContains(response, "until an officer approves it.")
 
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
@@ -109,7 +113,7 @@ class MeetingFlowTests(TestCase):
             {"notes": "Officer merged notes", "decision": "approved", "expected_generation": ""},
         )
 
-        self.assertRedirects(response, reverse("meetings:detail", args=[draft.pk]))
+        self.assertRedirects(response, reverse("meetings:list"))
         draft.refresh_from_db()
         self.assertEqual(draft.notes, "Officer merged notes")
 
