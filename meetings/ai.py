@@ -24,7 +24,7 @@ def build_summary_messages(transcript: str, officer_notes: str = "") -> list[dic
     officer_notes = officer_notes.strip()
     if not transcript and not officer_notes:
         raise ValueError("Cannot summarize an empty transcript and empty officer notes.")
-    return [
+    messages = [
         {
             "role": "system",
             "content": (
@@ -44,14 +44,57 @@ def build_summary_messages(transcript: str, officer_notes: str = "") -> list[dic
                 "actions, but do not turn ordinary discussion into an action."
             ),
         },
-        {
-            "role": "user",
-            "content": (
-                f"Transcript:\n\n{transcript or '(No transcript provided.)'}\n\n"
-                f"Officer notes:\n\n{officer_notes or '(No officer notes provided.)'}"
-            ),
-        },
+        {"role": "user", "content": f"Transcript:\n\n{transcript or '(No transcript provided.)'}"},
     ]
+    if officer_notes:
+        messages[1]["content"] += f"\n\nOfficer notes:\n\n{officer_notes}"
+    return messages
+
+
+def generate_meeting_title(transcript: str, officer_notes: str = "") -> str:
+    """Generate a concise descriptive title from meeting source text."""
+    source = "\n\n".join(part.strip() for part in (transcript, officer_notes) if part.strip())
+    if not source:
+        raise ValueError("Cannot generate a title without meeting content.")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is not configured.")
+    try:
+        from openai import OpenAI, OpenAIError
+
+        response = OpenAI(
+            api_key=api_key,
+            base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            default_headers={
+                "HTTP-Referer": os.getenv("OPENROUTER_SITE_URL", ""),
+                "X-Title": os.getenv("OPENROUTER_APP_NAME", "OrgFlow"),
+            },
+            timeout=30.0,
+            max_retries=2,
+        ).chat.completions.create(
+            model=get_summary_model(),
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": 'Return only valid JSON with exactly one field, "title". Create a concise descriptive meeting title of no more than 80 characters. Do not invent details.',
+                },
+                {"role": "user", "content": source},
+            ],
+        )
+        content = response.choices[0].message.content
+    except ImportError as error:
+        raise RuntimeError(f"OpenRouter title generation is unavailable: {error}") from error
+    except (OpenAIError, OSError, TimeoutError) as error:
+        raise RuntimeError(f"OpenRouter title generation failed: {error}") from error
+    try:
+        title = json.loads(content or "").get("title", "").strip()
+    except (json.JSONDecodeError, AttributeError) as error:
+        raise RuntimeError("OpenRouter returned invalid JSON for the meeting title.") from error
+    if not title or len(title) > 80:
+        raise RuntimeError("OpenRouter returned an invalid meeting title.")
+    return title
 
 
 def parse_summary_response(content: str | None) -> MeetingSummary:

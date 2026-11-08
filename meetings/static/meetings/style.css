@@ -42,6 +42,44 @@
     box-sizing: border-box;
 }
 
+.meeting-review-columns > .card:first-child {
+    min-width: 0;
+}
+
+.meeting-review-columns > .card:first-child textarea {
+    width: calc(100% + 24px);
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.action-item-list {
+    padding: 0;
+    list-style: none;
+}
+
+.action-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.action-item-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.action-item-pretty {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    width: 100%;
+}
+
+.action-item-pretty > span {
+    white-space: nowrap;
+}
+
 .meeting-review-form,
 .meeting-review-form textarea {
     width: 100%;

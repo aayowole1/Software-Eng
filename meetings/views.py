@@ -20,6 +20,15 @@ from .stt import DeepgramTranscriber
 _active_recordings = {}
 logger = logging.getLogger(__name__)
 
+
+def _action_item_parts(description):
+    parts = {}
+    for segment in description.removeprefix("Action:").strip().split(";"):
+        if "=" in segment:
+            key, value = segment.split("=", 1)
+            parts[key.strip().lower()] = value.strip()
+    return parts
+
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
 
@@ -223,6 +232,10 @@ def draft_detail(request, pk):
         {
             "draft": draft,
             "items": draft.current_action_items,
+            "review_items": [
+                {"item": item, "parts": _action_item_parts(item.description)}
+                for item in draft.current_action_items
+            ],
             "review_form": ReviewForm(initial={"expected_generation": draft.generation_token or ""}),
             "can_review": draft.status == DraftStatus.PENDING_REVIEW and not draft.review_update_pending,
             "can_revise": draft.status == DraftStatus.REVISION_REQUESTED and not draft.review_update_pending,

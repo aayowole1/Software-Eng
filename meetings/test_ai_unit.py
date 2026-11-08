@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 from openai import OpenAIError
 
-from .ai import MeetingSummary, summarize_meeting
+from .ai import MeetingSummary, build_summary_messages, summarize_meeting
 
 
 def provider_returning(content):
@@ -27,6 +27,10 @@ def provider_returning(content):
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
 class SummarizeMeetingTests(SimpleTestCase):
+
+    def test_blank_officer_notes_are_omitted_from_prompt(self):
+        messages = build_summary_messages("Transcript text", "")
+        self.assertNotIn("Officer notes", messages[-1]["content"])
 
     def summarize(self, content, notes="We met. Action: Book room"):
         fake_class, client = provider_returning(content)

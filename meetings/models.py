@@ -22,7 +22,7 @@ from django.db import DatabaseError, IntegrityError, models
 from django.db.models import Q
 from django.utils import timezone
 
-from .ai import summarize_meeting
+from .ai import generate_meeting_title, summarize_meeting
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +110,8 @@ class MeetingDraft(models.Model):
         self._staged_generation = None
         self._publication_uncertain = False
         result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
+        if title.endswith(" - Untitled Meeting"):
+            title = generate_meeting_title(transcript, notes)
         self.pk = self.pk or ObjectId()
         token = uuid4().hex
         self._staged_generation = token
@@ -122,6 +124,7 @@ class MeetingDraft(models.Model):
             publishing = True
             self._publication_uncertain = True
             if new:
+                self.title = title
                 self.summary = result.summary
                 self.generation_token = token
                 self.status = DraftStatus.PENDING_REVIEW

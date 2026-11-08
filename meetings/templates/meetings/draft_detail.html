@@ -35,24 +35,47 @@
       <h2>AI summary</h2>
       <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
       <h2>Action items</h2>
-      <ul>
-        {% for item in items %}
-          <li>
-            {% if can_review %}<input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>{% endif %}
-            <label for="item-{{ item.pk }}-accepted">{{ item.description }}</label>
-          </li>
+      {% if can_review %}
+        <p class="muted">Keep checked items, edit their text, or uncheck an item to undo/delete it. Add new items below.</p>
+      {% endif %}
+      <ul class="action-item-list">
+      {% for entry in review_items %}
+        {% with item=entry.item parts=entry.parts %}
+        <li class="action-item-row">
+          {% if can_review %}
+            <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
+            <label for="item-{{ item.pk }}-accepted" class="action-item-keep">Keep</label>
+            <input class="action-item-input" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
+          {% else %}
+            {% if parts %}
+              <span class="action-item-pretty">
+                <strong>Task:</strong> {{ parts.task|default:item.description }}
+                <span><strong>Owner:</strong> {{ parts.owner|default:"Not specified" }}</span>
+                <span><strong>Due:</strong> {{ parts.due|default:"Not specified" }}</span>
+                <span><strong>Priority:</strong> {{ parts.priority|default:"Not specified" }}</span>
+              </span>
+            {% elif item.accepted %}{{ item.description }}{% else %}<s>{{ item.description }}</s>{% endif %}
+          {% endif %}
+        </li>
+        {% endwith %}
         {% empty %}
           <li class="muted">None.</li>
         {% endfor %}
       </ul>
-      <p class="muted">AI output is read-only. Add anything you want to keep to your officer notes.</p>
+      {% if can_review %}
+        <label for="id_new_items">Add action items (one per line)</label>
+        {{ review_form.new_items }}
+      {% endif %}
+      <p class="muted">Review the proposed items and merge anything you want to keep into your officer notes.</p>
     </div>
   </div>
 
   {% if can_review %}
       <div class="card">
         <h2>Review meeting</h2>
-      {{ review_form.as_p }}
+      {{ review_form.expected_generation }}
+      <p>{{ review_form.decision.label_tag }} {{ review_form.decision }}</p>
+      <p>{{ review_form.note.label_tag }} {{ review_form.note }}</p>
       <button type="submit">Submit review</button>
       </div>
     </form>

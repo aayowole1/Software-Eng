@@ -16,8 +16,9 @@ class MeetingFlowTests(TestCase):
         self.officer = make_user("meeting-flow@example.com", Role.OFFICER)
         self.client.force_login(self.officer)
 
+    @patch("meetings.models.generate_meeting_title", return_value="Officer Notes Meeting")
     @patch("meetings.models.summarize_meeting")
-    def test_blank_title_gets_date_based_untitled_meeting_title(self, summarize):
+    def test_blank_title_gets_llm_descriptive_title(self, summarize, generate_title):
         summarize.return_value = MeetingSummary("Summary", [])
 
         response = self.client.post(
@@ -27,7 +28,8 @@ class MeetingFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         draft = MeetingDraft.objects.get()
-        self.assertEqual(draft.title, f"{timezone.now():%d %B, %Y} - Untitled Meeting")
+        self.assertEqual(draft.title, "Officer Notes Meeting")
+        generate_title.assert_called_once()
 
     @patch("meetings.models.summarize_meeting")
     def test_submit_requires_notes_or_transcript(self, summarize):
@@ -112,6 +114,8 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, 'class="transcript-display"')
         self.assertContains(response, 'class="meeting-review-form"')
         self.assertNotContains(response, "Save notes")
+        self.assertContains(response, "Add action items (one per line)")
+        self.assertContains(response, "class=\"action-item-list\"")
 
     @patch("meetings.models.summarize_meeting")
     def test_submit_persists_transcript_notes_summary_and_actions(self, summarize):
