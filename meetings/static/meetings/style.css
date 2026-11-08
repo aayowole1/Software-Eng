@@ -9,6 +9,16 @@
     margin: 0;
 }
 
+.meeting-form-card input[type="text"],
+.meeting-form-card textarea {
+    width: 100%;
+    max-width: none;
+}
+
+.notes-flow-status {
+    min-height: 24px;
+}
+
 .meeting-transcript {
     display: block;
     width: 100%;
@@ -28,6 +38,189 @@
     justify-content: space-between;
     align-items: center;
     gap: 16px;
+}
+
+.notes-submit-warning {
+    margin: 12px 0;
+    padding: 12px 16px;
+    color: #8a1111;
+    background: #fee4e2;
+    border: 2px solid #d92d20;
+    border-radius: 6px;
+    font-weight: 700;
+    animation: notes-warning-flash 0.8s ease-in-out 2;
+}
+
+@keyframes notes-warning-flash {
+    50% {
+        background: #fda29b;
+        box-shadow: 0 0 0 4px rgba(217, 45, 32, 0.2);
+    }
+}
+
+.meeting-review-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.meeting-review-columns > .card {
+    height: 100%;
+    margin-bottom: 0;
+    border-color: #c9d2e3;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(31, 50, 81, 0.08);
+}
+
+.meeting-review-columns > .card h2 {
+    margin-top: 0;
+    color: #23395d;
+}
+
+.meeting-review-columns textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.meeting-review-columns > .card:first-child {
+    min-width: 0;
+}
+
+.meeting-review-columns > .card:first-child textarea {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+    overflow-y: auto;
+    resize: none;
+    min-height: 330px;
+    max-height: 330px;
+}
+
+.meeting-summary-scroll {
+    max-height: 330px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.meeting-summary-scroll p {
+    margin-top: 0;
+}
+
+.action-item-list {
+    padding: 0;
+    list-style: none;
+}
+
+.action-item-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.action-item-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.action-item-pretty {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    width: 100%;
+}
+
+.action-item-pretty > span {
+    white-space: nowrap;
+}
+
+.meeting-review-form,
+.meeting-review-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.meeting-review-card {
+    margin-top: 16px;
+}
+
+.meeting-review-card select,
+.meeting-review-card textarea {
+    max-width: none;
+}
+
+.meeting-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.meeting-processing {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.88);
+}
+
+.meeting-processing-page {
+    min-height: calc(100vh - 8rem);
+    display: grid;
+    place-items: center;
+    width: 100%;
+}
+
+.meeting-processing[hidden] {
+    display: none;
+}
+
+.meeting-processing-card {
+    width: min(90%, 420px);
+    box-sizing: border-box;
+    padding: 28px;
+    text-align: center;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+.meeting-spinner {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 16px;
+    border: 4px solid #ddd;
+    border-top-color: #1769aa;
+    border-radius: 50%;
+    animation: meeting-spin 0.8s linear infinite;
+}
+
+@keyframes meeting-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.transcript-display {
+    background-color: #dddddd;
+    color: #000000;
+    border: 1px solid #cccccc;
+    padding: 12px;
+    min-height: 120px;
+    max-height: 260px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+    .meeting-review-columns {
+        grid-template-columns: 1fr;
+    }
 }
 
 .meeting-recording-actions {

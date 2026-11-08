@@ -10,6 +10,10 @@ venv/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+!.env.production.example
+deploy/ci/
 
 # Django
 *.log
@@ -36,5 +40,8 @@ Thumbs.db
 *.pid
 .aider*
 
-# ML Models
-models/
+# Regeneratable Data
+meetings/benchmark_data/audio
+
+# Benchmark Artifacts
+meetings/benchmark/results

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ task.title }}{% endblock %}
+{% block content %}
+  <p><a href="{% url 'tasks:list' %}">All tasks</a></p>
+  <h1>{{ task.title }}</h1>
+  {% if can_manage %}<p><a class="button" href="{% url 'tasks:edit' task.pk %}">Edit task</a></p>{% endif %}
+  <div class="card">
+    <dl>
+      <dt>Committee</dt><dd>{% if task.committee_id %}{% if task.committee %}<a href="{% url 'committees:detail' task.committee.pk %}">{{ task.committee }}</a>{% else %}Missing committee — an officer must edit this assignment{% endif %}{% else %}Organization{% endif %}</dd>
+      <dt>Assignee</dt><dd>{{ task.assignee|default:"Unassigned" }}</dd>
+      <dt>Status</dt><dd>{{ task.get_status_display }}</dd>
+      <dt>Priority</dt><dd>{{ task.get_priority_display }}</dd>
+      <dt>Due date</dt><dd>{{ task.due_date|date:"M j, Y"|default:"No due date" }}{% if task.is_overdue %} <strong class="badge">Overdue</strong>{% endif %}</dd>
+      <dt>Created by</dt><dd>{{ task.created_by|default:"Former member" }}</dd>
+    </dl>
+    {% if task.description %}<h2>Description</h2><div>{{ task.description|linebreaks }}</div>{% endif %}
+  </div>
+  {% if can_update %}<section class="card" aria-labelledby="status-heading">
+    <h2 id="status-heading">Update progress</h2>
+    <form method="post" action="{% url 'tasks:update_status' task.pk %}">{% csrf_token %}{{ status_form.as_p }}<button type="submit">Save status</button></form>
+  </section>{% endif %}
+  {% if claim_error %}<p class="errorlist" role="alert">{{ claim_error }}</p>{% endif %}
+  {% if can_claim %}<form class="card" method="post" action="{% url 'tasks:claim' task.pk %}">
+    {% csrf_token %}<input type="hidden" name="version" value="{{ task.version }}">
+    <p>This committee task is unassigned. Claim it to become responsible for its progress.</p><button type="submit">Assign to me</button>
+  </form>{% endif %}
+  <h2>Task history</h2>
+  <p class="muted">Long descriptions are abbreviated in history with their character count and SHA-256 fingerprint. The current description appears in full above.</p>
+  <ol style="overflow-wrap: anywhere">{% for entry in history_entries %}<li class="card">
+    <strong>{{ entry.action|capfirst }}</strong> by {{ entry.actor }} <span class="muted">{{ entry.at }}</span>
+    {% if entry.display_changes %}<ul>{% for change in entry.display_changes %}<li>{{ change.label }}: {{ change.before }} → {{ change.after }}</li>{% endfor %}</ul>{% endif %}
+  </li>{% empty %}<li>No recorded changes.</li>{% endfor %}</ol>
+{% endblock %}

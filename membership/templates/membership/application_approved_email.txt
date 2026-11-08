@@ -1,0 +1,8 @@
+{% autoescape off %}Hi {{ user.get_username }},
+
+Great news! An officer has reviewed your OrgFlow membership application and approved it.
+
+You can now sign in to access member resources.
+
+If you have any questions, reach out to an officer.
+{% endautoescape %}

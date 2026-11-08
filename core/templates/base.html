@@ -1,10 +1,10 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-50">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}OrgFlow{% endblock %} · OrgFlow</title>
+  <title>{% block title %}OrgFlow{% endblock %} Â· OrgFlow</title>
 
   <!-- Typography: Plus Jakarta Sans & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -122,6 +122,16 @@
 <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'committees' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'committees:list' %}">
 <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
 <span>Committees</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'tasks' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'tasks:list' %}">
+<span>Tasks</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'events' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'events:list' %}">
+<span>Events</span>
 </a>
 </li>
               {% else %}
@@ -308,7 +318,7 @@
 </div>
 <button class="text-slate-400 hover:text-slate-700 ml-4 p-0.5 rounded cursor-pointer" onclick="this.parentElement.remove()" type="button">
 <span class="sr-only">Dismiss</span>
-                  ×
+                  Ã—
                 </button>
 </div>
             {% endfor %}
@@ -323,7 +333,7 @@
 <!-- Global Minimalist Footer -->
       {% block footer %}
       <footer class="py-5 px-6 lg:px-8 border-t border-slate-200 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white mt-auto">
-<p>© {% now "Y" %} OrgFlow Student Portal. Campus Governance &amp; Operations.</p>
+<p>Â© {% now "Y" %} OrgFlow Student Portal. Campus Governance &amp; Operations.</p>
 <div class="flex items-center gap-4 text-slate-500">
 <a class="hover:text-slate-800 transition" href="#">Accessibility</a>
 <a class="hover:text-slate-800 transition" href="#">Bylaws &amp; Governance</a>

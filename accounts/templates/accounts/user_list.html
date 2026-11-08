@@ -1,36 +1,238 @@
+
 {% extends "base.html" %}
-{% block title %}Users{% endblock %}
+
+{% block title %}Users and Roles{% endblock %}
+
 {% block content %}
-  <h1>Users and roles</h1>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Change role</th></tr></thead>
-      <tbody>
-        {% for p in profiles %}
-          <tr>
-            <td>{{ p.user.email|default:p.user.username }}{% if not p.user.is_active %} <span class="badge">Not active yet</span>{% endif %}</td>
-            <td><span class="badge">{% if p.user.is_superuser %}Admin{% else %}{{ p.get_role_display }}{% endif %}</span></td>
-            <td>
+
+<h1>Users and Roles</h1>
+
+<p class="muted">
+  Manage organization roles and account access.
+  Only administrators can change roles or suspend user accounts.
+  Finish membership reviews before changing roles. For a rejected review whose
+  account access is unfinished, restore Applicant, then ask an officer to finish account access.
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Email</th>
+        <th scope="col">Organization Role</th>
+        <th scope="col">Account Status</th>
+        <th scope="col">Change Role</th>
+        <th scope="col">Account Actions</th>
+        <th scope="col">Role history</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for p in profiles %}
+        <tr>
+
+          <!-- User information -->
+          <td>
+            {{ p.user.email|default:p.user.username }}
+
+            {% if p.user == user %}
+              <span class="muted">(you)</span>
+            {% endif %}
+          </td>
+
+          <!-- Organization role -->
+          <td>
+            <span class="badge">
               {% if p.user.is_superuser %}
-                <span class="muted">Superuser (fixed Admin role)</span>
-              {% elif p.user != user %}
-                <form method="post" action="{% url 'accounts:change_role' p.user.pk %}" class="inline">
-                  {% csrf_token %}
-                  <label for="role-{{ p.pk }}" class="visually-hidden">New role for {{ p.user.email }}</label>
-                  <select name="role" id="role-{{ p.pk }}">
-                    {% for value, label in role_choices %}
-                      <option value="{{ value }}" {% if value == p.role %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="submit" class="secondary">Save</button>
-                </form>
+                Admin
               {% else %}
-                <span class="muted">(you)</span>
+                {{ p.get_role_display }}
               {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+            </span>
+          </td>
+
+          <!-- Account status -->
+          <td>
+            {% if p.is_suspended %}
+              <span class="badge">Suspended</span>
+
+            {% elif p.user.is_active %}
+              <span class="badge">Active</span>
+
+            {% else %}
+              <span class="badge">Not active yet</span>
+            {% endif %}
+            {% if p.suspension_update_pending %}
+              <span class="muted">Account access update pending</span>
+            {% endif %}
+          </td>
+
+          <!-- Role management -->
+          <td>
+            {% if p.user.is_superuser %}
+              <span class="muted">
+                Superuser (fixed Admin role)
+              </span>
+
+            {% elif p.user != user %}
+              <form
+                method="post"
+                action="{% url 'accounts:change_role' p.user.pk %}"
+                class="inline"
+              >
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.role_version|default_if_none:0 }}">
+
+                <label
+                  for="role-{{ p.pk }}"
+                  class="visually-hidden"
+                >
+                  New role for {{ p.user.email|default:p.user.username }}
+                </label>
+
+                <select
+                  name="role"
+                  id="role-{{ p.pk }}"
+                >
+                  {% for value, label in role_choices %}
+                    <option
+                      value="{{ value }}"
+                      {% if value == p.role %}selected{% endif %}
+                    >
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+
+                <button type="submit" class="secondary">
+                  Save
+                </button>
+              </form>
+
+            {% else %}
+              <span class="muted">
+                Cannot change your own role
+              </span>
+            {% endif %}
+          </td>
+
+          <!-- Suspension and reinstatement -->
+          <td>
+            {% if p.user.is_superuser %}
+              <span class="muted">
+                Protected superuser
+              </span>
+
+            {% elif p.user == user %}
+              <span class="muted">
+                Cannot suspend yourself
+              </span>
+
+            {% elif p.suspension_update_pending %}
+              <form method="post" action="{% url 'accounts:change_suspension' p.user.pk %}" class="inline">
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
+                <input type="hidden" name="action" value="{% if p.is_suspended %}suspend{% else %}reinstate{% endif %}">
+                <button type="submit" class="secondary">
+                  {% if p.is_suspended %}Finish suspension{% else %}Finish reinstatement{% endif %}
+                </button>
+              </form>
+            {% elif p.is_suspended %}
+              <form
+                method="post"
+                action="{% url 'accounts:change_suspension' p.user.pk %}"
+                class="inline"
+              >
+                {% csrf_token %}
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
+
+                <input
+                  type="hidden"
+                  name="action"
+                  value="reinstate"
+                >
+
+                <button
+                  type="submit"
+                  class="secondary"
+                >
+                  Reinstate
+                </button>
+              </form>
+
+            {% else %}
+              <form
+                method="post"
+                action="{% url 'accounts:change_suspension' p.user.pk %}"
+                class="inline"
+              >
+                {% csrf_token %}
+
+                <input
+                  type="hidden"
+                  name="action"
+                  value="suspend"
+                >
+                <input type="hidden" name="version" value="{{ p.suspension_version|default_if_none:0 }}">
+
+                <button
+                  type="submit"
+                  class="secondary"
+                >
+                  Suspend
+                </button>
+              </form>
+            {% endif %}
+          </td>
+
+          <td>
+            <details>
+              <summary>Role history ({{ p.role_history|length }})</summary>
+              <ul>
+                {% for entry in p.role_history %}
+                  <li>
+                    <strong>{{ entry.old_role|capfirst }} to {{ entry.new_role|capfirst }}</strong><br>
+                    {{ entry.actor }} · <time datetime="{{ entry.at }}">{{ entry.at }}</time><br>
+                    <span class="muted">
+                      {% if entry.source == "account_role_management" %}
+                        Administrator role change
+                      {% elif entry.source|slice:":18" == "membership_review:" %}
+                        Membership approval
+                      {% elif entry.source == "system" %}
+                        System update
+                      {% elif entry.source == "rejected_membership_reconciliation" %}
+                        Rejected membership access correction
+                      {% else %}
+                        {{ entry.source }}
+                      {% endif %}
+                    </span>
+                  </li>
+                {% empty %}
+                  <li class="muted">No recorded role changes.</li>
+                {% endfor %}
+              </ul>
+            </details>
+          </td>
+
+        </tr>
+
+      {% empty %}
+        <tr>
+          <td colspan="6" class="muted">
+            No users found.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="muted">
+  Note: Suspending an account prevents the user from signing in.
+  Reinstating an account removes the administrative suspension,
+  restores its saved prior activation, and finishes recorded membership access
+  updates. Deliberately inactive accounts stay inactive; pending applications
+  still require a review.
+</p>
+
 {% endblock %}

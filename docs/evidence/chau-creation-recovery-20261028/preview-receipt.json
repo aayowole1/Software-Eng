@@ -1,0 +1,106 @@
+{
+  "started_at_utc": "2026-10-28T16:16:36.630739+00:00",
+  "project": "<workspace>\\OrgFlow-Integration-Preview",
+  "expected_head": "de676e21252342da46da3d9662a2ab7a743451a5",
+  "revision": "de676e21252342da46da3d9662a2ab7a743451a5",
+  "database": "test_orgflow_completion_creation_preview_20261028_de676e2",
+  "mongodb": "loopback:27029",
+  "dotenv_loaded": false,
+  "provider_credentials": "blank",
+  "password_hasher": "process-only MD5 test override",
+  "validation_kind": "full-regression",
+  "test_labels": [],
+  "isolated_test_deps": "<workspace>\\tmp\\orgflow_completion_20261028\\test-deps",
+  "scope": "committees and tasks Python implementation, including admin; excludes tests, migrations, initializers, apps and test helpers; not whole-project coverage",
+  "omits": [
+    "*/test*.py",
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/apps.py",
+    "*/testing.py"
+  ],
+  "coverage_version": "7.17.0",
+  "checks": {
+    "check": {
+      "result": "passed",
+      "seconds": 0.899
+    },
+    "makemigrations": {
+      "result": "passed",
+      "seconds": 0.12
+    }
+  },
+  "tests": {
+    "collected": 661,
+    "discovery_errors": [],
+    "run": 661,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2,
+    "expected_failures": 0,
+    "unexpected_successes": 0,
+    "run_seconds": 166.932,
+    "skip_reasons": [
+      "Set DEEPGRAM_API_KEY to run Deepgram STT integration tests.",
+      "Set DEEPGRAM_API_KEY to run Deepgram STT integration tests."
+    ],
+    "passed": 659,
+    "including_setup_teardown_seconds": 172.023
+  },
+  "artifacts": {
+    "log": "preview-validation.txt",
+    "coverage_summary": "preview-coverage-summary.txt",
+    "coverage_json": "Retained locally with the exact-head validation run."
+  },
+  "coverage": {
+    "combined": {
+      "num_statements": 871,
+      "covered_lines": 835,
+      "missing_lines": 36,
+      "num_branches": 230,
+      "covered_branches": 218,
+      "missing_branches": 12,
+      "num_partial_branches": 8,
+      "statement_percent": 95.87,
+      "branch_percent": 94.78
+    },
+    "committees": {
+      "num_statements": 349,
+      "covered_lines": 334,
+      "missing_lines": 15,
+      "num_branches": 76,
+      "covered_branches": 71,
+      "missing_branches": 5,
+      "num_partial_branches": 3,
+      "statement_percent": 95.7,
+      "branch_percent": 93.42
+    },
+    "tasks": {
+      "num_statements": 522,
+      "covered_lines": 501,
+      "missing_lines": 21,
+      "num_branches": 154,
+      "covered_branches": 147,
+      "missing_branches": 7,
+      "num_partial_branches": 5,
+      "statement_percent": 95.98,
+      "branch_percent": 95.45
+    },
+    "files": [
+      "committees\\admin.py",
+      "committees\\models.py",
+      "committees\\urls.py",
+      "committees\\views.py",
+      "tasks\\forms.py",
+      "tasks\\models.py",
+      "tasks\\services.py",
+      "tasks\\urls.py",
+      "tasks\\views.py"
+    ]
+  },
+  "result": "passed",
+  "completed_at_utc": "2026-10-28T16:19:31.962185+00:00",
+  "total_seconds": 175.331,
+  "openai_dependency_version": "1.109.1"
+}

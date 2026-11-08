@@ -6,30 +6,36 @@
 {% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" class="card" novalidate id="meeting-form">
+  <form method="post" action="{% url 'meetings:processing_start' %}" class="card meeting-form-card" novalidate id="meeting-form">
     {% csrf_token %}
+    {{ form.transcript }}
+    {{ form.expected_generation }}
+    {{ form.expected_generation.errors }}
+    {% if form.non_field_errors %}
+      <div class="notes-submit-warning" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
     <p>
       {{ form.title.label_tag }}
       {{ form.title }}
       {{ form.title.errors }}
     </p>
-    {{ form.notes }}
-    {{ form.notes.errors }}
-    <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
+    <p>
+      {{ form.notes.label_tag }}
+      {{ form.notes }}
+      {{ form.notes.errors }}
+    </p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
-        <button type="button" id="start-recording">Start Recording</button>
-        <button type="button" id="stop-recording" class="stop-meeting" disabled>
+        <button type="button" id="start-recording">Start Notes</button>
+        <button type="button" id="stop-recording" class="stop-meeting">
           <span aria-hidden="true">■</span>
-          Stop Recording
+          Stop Notes
         </button>
       </div>
-      <button type="submit" id="submit-meeting">Submit Meeting</button>
+      <button type="submit" id="submit-meeting">Submit Notes</button>
     </div>
   </form>
-  <p id="recording-status" class="muted" role="status">
-    Click Start Recording and allow microphone access to begin transcription.
-  </p>
+  <p id="recording-status" class="notes-flow-status" role="status" hidden></p>
   <script>
     (() => {
       const form = document.getElementById("meeting-form");
@@ -39,6 +45,7 @@
       const stopButton = document.getElementById("stop-recording");
       const submitButton = document.getElementById("submit-meeting");
       const status = document.getElementById("recording-status");
+      const transcript = document.getElementById("id_transcript");
       const transcribeUrl = "{% url 'meetings:transcribe' %}";
       const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
       let audioContext;
@@ -49,17 +56,59 @@
       let recordingId;
       let pendingUploads = Promise.resolve();
       let isRecording = false;
+      let isPaused = false;
       let isStopping = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
-      let committedTranscript = notes.value.trim();
+      let committedTranscript = transcript.value.trim();
       let currentSegment = "";
+      let processingCard;
+
+      function showSubmitWarning(message) {
+        status.textContent = message;
+        status.classList.remove("muted");
+        status.classList.add("notes-submit-warning");
+        status.hidden = false;
+      }
+
+      function showFlowWarning(message) {
+        showSubmitWarning(message);
+      }
+
+      function showProcessingPage() {
+        processingCard = document.createElement("div");
+        processingCard.className = "meeting-processing-page";
+        processingCard.innerHTML = `
+          <div class="meeting-processing-card" aria-live="polite">
+            <div class="meeting-spinner" aria-hidden="true"></div>
+            <h1>Processing notes</h1>
+            <p>Transcribing audio and preparing the notes summary and action items.</p>
+            <p class="muted">Please wait. This page will open the notes draft when processing is complete.</p>
+          </div>
+        `;
+        const main = document.querySelector("main");
+        form.hidden = true;
+        main.replaceChildren(processingCard, form);
+      }
+
+      function showProcessingError(message) {
+        if (processingCard) {
+          processingCard.innerHTML = `
+            <div class="meeting-processing-card">
+              <h1>Notes processing failed</h1>
+              <p class="notes-submit-warning"></p>
+              <p><a class="button" href="{% url "meetings:create" %}">Return to notes</a></p>
+            </div>
+          `;
+          processingCard.querySelector(".notes-submit-warning").textContent = message;
+        }
+      }
 
       function setTranscript(value) {
         currentSegment = value.trim();
         const parts = [committedTranscript, currentSegment].filter(Boolean);
         const fullTranscript = parts.join("\n");
-        notes.value = fullTranscript;
+        transcript.value = fullTranscript;
       }
 
       function downsample(buffer, inputRate, outputRate) {
@@ -96,7 +145,7 @@
       }
 
       function upload(audio, isFinal = false) {
-        pendingUploads = pendingUploads.then(async () => {
+        const request = pendingUploads.catch(() => {}).then(async () => {
           const response = await fetch(transcribeUrl, {
             method: "POST",
             headers: {
@@ -109,46 +158,60 @@
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "Transcription failed.");
-          if (isRecording || isFinal) {
+          if (isRecording || isPaused || isFinal) {
             setTranscript(data.transcript);
           }
         });
-        return pendingUploads;
+        pendingUploads = request;
+        return request;
       }
 
-      async function stopRecording() {
-        if (!isRecording || isStopping) return;
+      async function stopRecording(forSubmission = false) {
+        if (isStopping) return;
+        if (!isRecording) {
+          showFlowWarning("Start Notes before selecting Stop Notes.");
+          return;
+        }
         isRecording = false;
+        isPaused = true;
         isStopping = true;
+        stopButton.disabled = true;
         submitButton.disabled = true;
+        status.textContent = "Pausing notes…";
         processor.disconnect();
         muteGain.disconnect();
         source.disconnect();
         stream.getTracks().forEach((track) => track.stop());
-        await flushAudioBuffer();
-        await pendingUploads;
-        await upload(new ArrayBuffer(0), true);
-        committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
-        currentSegment = "";
-        audioBuffer = [];
-        bufferedSamples = 0;
-        await audioContext.close();
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        submitButton.disabled = false;
-        isStopping = false;
-        status.textContent = "Recording stopped. Transcript finalized in the background.";
+        try {
+          await flushAudioBuffer();
+          await pendingUploads;
+          committedTranscript = [committedTranscript, currentSegment].filter(Boolean).join("\n");
+          currentSegment = "";
+          audioBuffer = [];
+          bufferedSamples = 0;
+          if (!forSubmission) {
+            status.textContent = "Notes paused.";
+            status.classList.remove("notes-submit-warning");
+            status.classList.add("muted");
+          }
+        } finally {
+          await audioContext.close();
+          startButton.disabled = false;
+          submitButton.disabled = false;
+          isStopping = false;
+        }
       }
 
-      startButton.addEventListener("click", async () => {
+      async function startRecording() {
         if (isRecording || isStopping) return;
+        const wasPaused = isPaused;
         if (!title.value.trim()) {
           const date = new Date().toLocaleDateString(undefined, {
             day: "2-digit",
             month: "long",
             year: "numeric",
           });
-          title.value = `${date} - Untitled Transcript`;
+          title.value = `${date} - Untitled Notes`;
         }
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -158,10 +221,8 @@
           processor = audioContext.createScriptProcessor(4096, 1, 1);
           muteGain = audioContext.createGain();
           muteGain.gain.value = 0;
-          recordingId = crypto.randomUUID();
+          recordingId = recordingId || crypto.randomUUID();
           currentSegment = "";
-          isStopping = false;
-          pendingUploads = Promise.resolve();
           processor.onaudioprocess = (event) => {
             if (!isRecording) return;
             const samples = downsample(
@@ -173,7 +234,7 @@
             bufferedSamples += samples.length;
             if (bufferedSamples >= 16000) {
               flushAudioBuffer().catch((error) => {
-                status.textContent = error.message;
+                showSubmitWarning(error.message);
                 stopRecording();
               });
             }
@@ -182,22 +243,62 @@
           processor.connect(muteGain);
           muteGain.connect(audioContext.destination);
           isRecording = true;
+          isPaused = false;
           startButton.disabled = true;
           stopButton.disabled = false;
-          status.textContent = "Recording and transcribing…";
+          status.textContent = wasPaused ? "Recording resumed…" : "Recording and transcribing…";
+          status.hidden = false;
+          status.classList.remove("notes-submit-warning");
+          status.classList.add("muted");
         } catch (error) {
           stream?.getTracks().forEach((track) => track.stop());
           status.textContent = error.message || "Microphone access is required.";
         }
-      });
+      }
 
-      stopButton.addEventListener("click", () => stopRecording().catch((error) => {
+      async function finalizeRecording() {
+        if (isRecording) await stopRecording(true);
+        if (!recordingId) return;
+        await pendingUploads;
+        await upload(new ArrayBuffer(0), true);
+        recordingId = null;
+        isPaused = false;
+      }
+
+      startButton.addEventListener("click", () => startRecording().catch((error) => {
         status.textContent = error.message;
       }));
+      stopButton.addEventListener("click", () => stopRecording().catch((error) => {
+        status.textContent = error.message;
+        startButton.disabled = false;
+        submitButton.disabled = false;
+        isStopping = false;
+      }));
       form.addEventListener("submit", (event) => {
-        if (isRecording) {
+        if (isRecording || isPaused) {
           event.preventDefault();
-          stopRecording().then(() => form.requestSubmit());
+          showProcessingPage();
+          startButton.disabled = true;
+          stopButton.disabled = true;
+          submitButton.disabled = true;
+          status.textContent = "Submitting notes and preparing the draft…";
+          status.hidden = false;
+          status.classList.remove("notes-submit-warning", "muted");
+          finalizeRecording().then(() => {
+            if (!notes.value.trim() && !transcript.value.trim()) {
+              throw new Error("No audio was found. Record audio or add officer notes before submitting.");
+            }
+            form.hidden = false;
+            form.submit();
+          }).catch((error) => {
+            showProcessingError(error.message);
+          });
+          return;
+        }
+        if (!notes.value.trim() && !transcript.value.trim()) {
+          event.preventDefault();
+          showFlowWarning("Start Notes and record audio, or add officer notes before submitting.");
+          return;
         }
       });
     })();

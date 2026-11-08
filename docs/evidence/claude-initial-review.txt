@@ -1,0 +1,153 @@
+Claude Opus 5.5 Medium static review, observed in Claude desktop chat b5ed74cb-09ef-479c-a573-7346b4972227.
+Snapshot cbf67e5; findings need independent verification.
+
+Claude responded: I reviewed the packet statically and ran nothing.
+Designing snapshot-based safeguards for meeting data consistency.
+￼
+Designing snapshot-based safeguards for meeting data consistency.
+I reviewed the packet statically and ran nothing. Most of the Tasks core holds up: the single-document CAS covering state, version and history is sound, and the conversion idempotency is correct. The main risks are elsewhere. The approval gate depends on meeting-review code that isn’t concurrency-safe, session revalidation depends on settings that aren’t in the packet, and account provisioning and reinstatement have liveness holes.
+Findings
+1. High: the approval snapshot isn’t stable, so conversion can import items the final reviewer never approved. Owner is Jack (meetings), but it breaks Chau’s acceptance.
+• Where: meetings/views.py 137 checks status on a stale instance, and 144–151 write items before the decision. meetings/models.py 78 checks status on the stale instance again, and 80–84 do a full-document save(). tasks/services.py 139–150 checks status once, then reads live ActionItem rows.
+• Trigger:
+1. Officers A and B open the same pending draft.
+2. A approves with item 2 unticked. B submits “reject”, or approves with item 2 ticked.
+3. Both pass line 137.
+4. The item writes interleave, and the last save() wins.
+5. Officer C imports between A’s save and B’s.
+• Impact: tasks can come from a draft that ends up REJECTED. Even without that, the accepted set can differ from what the approver saw.
+• Is the in-progress status CAS enough? No. The losing reviewer’s item edits and new_itemsare already persisted before the CAS runs.
+• Smallest correct fix:
+◦ Create any new_items as accepted=False first, so they are inert.
+◦ Do one conditional update, filter(pk, status=PENDING).update(status=…, reviewed_*…, accepted_snapshot=[{item_id, description}]). Live items are not mutated before it.
+◦ import_action_items reads accepted_snapshot, notaction_items.filter(accepted=True).
+◦ Replace save() in review().
+2. High if confirmed (UNVERIFIED): access enforcement for non-task pages depends entirely on which auth backend the session stored.
+• Where: accounts/models.py 71–82 (get_role ignores is_active, suspension and the pending flag) and accounts/decorators.py 23. Enforcement exists only inaccounts/backends.py 28–39, through ModelBackend.get_user →user_can_authenticate.
+• Trigger:
+1. AUTHENTICATION_BACKENDS also lists ModelBackend, or a login goes through Django admin with it first.
+2. An admin suspend half-completes: is_suspended=True but is_active=True (views 123–127).
+• Impact: the session survives, and role_required views stay reachable: meetings, committees and user_list.
+• Fix: move active_role into accounts and have both role_required and get_rolecallers use it, so there is one source of truth. Tasks already uses it.
+3. Medium: local registration can’t be safely retried after a partial failure. Owner is Chau. A fix is in progress; this is what it needs to cover.
+• Where: accounts/forms.py 72–77 runs create_user outside the try. The post_save Profile in signals.py 13 can fail after the insert. views.py 25 catches onlyIntegrityError.
+• Trigger: the Profile insert fails after the user insert.
+• Impact: an orphaned inactive user with no application. The username and email stay reserved, and the login only says “This account is inactive.” There is no recovery path.
+• What a sufficient fix needs:
+◦ Pre-assign pk, as the Google flow does.
+◦ Wrap everything from create_user through the application insert, and compensate with filter(pk, username).delete().
+◦ Catch DatabaseError in the view and show a retry message.
+◦ Add a sweeper. Compensation can fail, or the worker can die mid-sequence;google_auth.py 182 already logs “operator recovery required.” The sweeper should delete accounts that are inactive, non-staff, non-superuser, have last_login IS NULL, have no application, and are older than about 15 minutes.
+■ The last_login condition matters: purged-rejected-then-suspended users also have no application.
+◦ The same sweeper covers Google orphans. Right now google_auth.py 201 and 329–332 turn a failed cleanup into a permanent “email already used” lockout.
+4. Medium: reinstating can leave an account permanently locked out, and it never finishes a pending access update. Owner is TJ’s suspension PR, inside Chau’s acceptance.
+• Where: accounts/views.py 138–145 and membership/models.py 201–213.
+• Lockout trigger: reject an applicant, wait until the 7-day purge deletes the application, suspend, then reinstate. has_completed_review is False, so the account stays inactive forever. Admin-created accounts with no application hit the same path.
+• Pending-update trigger: suspend between review() line 95 and the CAS. The decision is recorded, then complete_access_update raises. Reinstate never calls it, so the flag blocks access indefinitely.
+• Fix:
+◦ On reinstate, set is_active = not latest_application_pending.
+◦ Then call complete_access_update() for any application withaccess_update_pending=True.
+5. Medium: the role-change audit is missing, role changes aren’t stale-safe, and a role set before rejection is activated. Owner is Chau.
+• Where: accounts/views.py 85–96, models.py 85–94, membership/models.py 147–159.
+• Trigger:
+1. An admin sets an applicant whose application is still pending to officer.
+2. An officer rejects the application.
+3. complete_access_update activates the account without touching the role.
+• Impact: a rejected applicant gets an active officer account.
+• Fix:
+◦ Embed role_history on Profile and change roles withProfile.objects.filter(pk, role=old).update(role=new, role_history=[…, {actor, from, to, at}]). This is the same single-document CAS pattern Tasks uses, and it also closes the gap where two admins’ stale changes silently overwrite each other.
+◦ Refuse role changes while an application is pending or access-pending.
+6. Medium (known GAP, not fixed): email and username uniqueness have no database-level enforcement.
+• Where: forms.py 40 and 47–51 do check-then-insert. backends.py 20–21 requires exactly one email match. google_auth.py 209 has a post-insert check that local registration lacks.
+• Trigger: concurrent registration, or local and Google signups with the same email. A case variant of a username also slips through, because the check is iexact but the index is case-sensitive.
+• Impact: email login breaks for both accounts.
+• Fix: create unique indexes with case-insensitive collation (strength 2) on auth_user.email(partial filter for email != "") and on username. Deduplicate existing data first.
+7. Medium: task history grows without bound and can hit MongoDB’s 16 MB document cap.Owner is Chau.
+• Where: tasks/models.py 128 (description has no max_length) and services.py 21–30 and 104 (every edit stores the full before/after description and rewrites the whole array).
+• Trigger: repeated edits of a large description.
+• Impact: the task becomes un-updatable, and the failure surfaces as a 500 rather than a 409.
+• Fix: add max_length to the description (around 5,000), and store a length or hash for description diffs over a threshold.
+8. Low–Medium, shared: a committee delete can race with task creation. committees/views.py 93–97 relies on Django’s emulated PROTECT. A task created between collection and delete keeps a dangling committee reference, and task_detail then 500s ontask.committee. Fix: handle a missing committee gracefully in _task and the template, or have _create re-check that the committee exists after insert.
+9. Low: tasks/models.py 176, reached via services.py 89, revalidates the existing assignee on every edit. An officer can’t change priority or mark a task Done for a suspended assignee without reassigning first. Fix: validate only when assignee or committee changes.
+10. Low: tasks/views.py 31–43 (task_access) skips the pending-flag check. The pending case gets an empty 200 list instead of a 403. Fix: gate on active_role(user).
+11. Low, shared: committees/views.py 39–43 (AddMemberForm) offers suspended, inactive and access-pending users. Fix: use the eligible_assignees() logic.
+12. Low, cosmetic: accounts/views.py 81 is a floating comment, and 102 is a dead docstring inside change_role after its return.
+Inherited from Jack (meetings), not Chau’s defects:
+• views.py 65–69 and models.py 66–73: transaction.atomic() gives no rollback on standalone Mongo. A failed generate() leaves the draft saved with items deleted or partial. On AI failure, an orphan pending draft remains.
+• Line 77: there is no redirect after create, so a refresh creates a duplicate.
+• Lines 16 and 96: _active_recordings is process-local, so it fails with multiple workers and leaks abandoned recordings.
+Docs:
+• tasks-checkpoint.md 174–178 says the post-54-run safeguards still need results, but 170–172 and tasks-acceptance.md 71–75 say they passed.
+• Both docs cite 254/84 tests, while the packet’s evidence is preview 267/265 at cbf67e5.
+• Reconcile both against the tested revision.
+Acceptance map
+Requirement
+Status
+Basis
+Google SSO bound to the verified subject
+PASS (code) / UNVERIFIED (live)
+Subject-keyed identity, session nonce, verified email. Needs the GIS mode in login.html (Q3).
+Local password login
+PASS, conditional
+Depends on backend config (#2).
+Role order Applicant<Member<Officer<Admin
+PASS
+Caveat #2.
+Superuser protection
+PASS
+In-app protection holds. Django admin is_superuser toggle is a residual risk.
+Suspension withholds access
+PASS (fail-closed) / GAP
+Conditional on #2; reinstate liveness #4.
+Unfinished review withholds access
+PASS / UNVERIFIED
+Fails closed. The recovery workflow isn’t in the packet.
+Safe retry after partial provisioning
+GAP
+#3; Google path needs the sweeper.
+Committee-limited visibility
+PASS
+￼
+Delegation
+PASS
+Friction from #9.
+Self-claim
+PASS
+Committee removal is a separate document; accepted and documented.
+Progress updates
+PASS
+￼
+Due dates and completed/overdue counts
+PASS
+￼
+Actor and before/after history
+PASS / risk
+#7.
+Version conflict handling
+PASS
+Covers a single task document.
+Approved and accepted-only conversion with safe retry
+GAP
+Conversion code passes; its approval source doesn’t (#1).
+CSRF
+UNVERIFIED
+Views are POST-gated. Middleware and non-supplied templates are unseen.
+Escaped content
+PASS (shown) / UNVERIFIED (rest)
+Shown templates autoescape; JS uses textContent and Option.
+Current diagrams and evidence
+UNVERIFIED / GAP
+No diagrams supplied; docs are inconsistent.
+Role-change audit
+GAP
+#5.
+Needed from Codex
+1. settings.py with secrets redacted: AUTHENTICATION_BACKENDS, MIDDLEWARE, session/CSRF cookie flags, USE_TZ/TIME_ZONE.
+2. membership/views.py and the access-pending recovery command or workflow.
+3. These templates: accounts/login.html, google_apply.html, register.html,user_list.html, tasks/task_list.html, import_draft.html,assignment_feedback.html, committees/committee_detail.html,meetings/draft_detail.html.
+4. The context processor that sets is_member, is_officer and is_admin, plus the accounts and tasks urls.py.
+5. The in-progress diffs for the local provisioning fix and the meeting-review CAS, so they can be checked against #1 and #3.
+6. Any existing tests for: a half-completed suspend with a live session; concurrent draft review; a Profile signal failure during registration.
+7. docs/tasks-verification.txt with its tested revision, and the diagrams.
+8. Who owns committees (WBS 1.4) and the suspension PRs (#10/#11), to finalize the attribution above.
+Ready to re-review once items 1, 2 and 5 arrive. Those three decide whether #2 and the two in-progress fixes are closed.

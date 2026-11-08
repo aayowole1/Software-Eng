@@ -1,0 +1,13 @@
+Name                   Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------
+committees\admin.py        9      0      0      0   100%
+committees\models.py      24      1      0      0    96%   53
+committees\urls.py         4      0      0      0   100%
+committees\views.py      185      3     38      1    98%   92, 197-198
+tasks\forms.py            61      1     14      1    97%   61
+tasks\models.py          105      2     30      1    98%   58, 170
+tasks\services.py        129      7     46      3    93%   75, 188, 203, 210-213
+tasks\urls.py              4      0      0      0   100%
+tasks\views.py           223     12     64      1    95%   196-197, 220-221, 236->247, 264-265, 288-293
+------------------------------------------------------------------
+TOTAL                    744     26    192      7    96%

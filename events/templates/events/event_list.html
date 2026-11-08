@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+  <h1>Events</h1>
+  {% if is_officer %}<p><a class="button" href="{% url 'events:create' %}">New event</a></p>{% endif %}
+
+  <h2>Upcoming</h2>
+  {% for event, my_response in upcoming %}
+    <div class="card">
+      <h3><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a>{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</h3>
+      <p class="muted">{{ event.starts_at|date:"D, M j, Y · g:i A" }} · {{ event.location }}</p>
+      {% if my_response == "going" %}<p><span class="badge">You're going</span></p>
+      {% elif my_response == "not_going" %}<p><span class="badge">You're not going</span></p>{% endif %}
+    </div>
+  {% empty %}
+    <p class="muted">No upcoming events.</p>
+  {% endfor %}
+
+  <h2>Past</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">Event</th><th scope="col">Date</th><th scope="col">Location</th></tr></thead>
+      <tbody>
+        {% for event in past %}
+          <tr>
+            <td><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a>{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</td>
+            <td>{{ event.starts_at|date:"M j, Y" }}</td>
+            <td>{{ event.location }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="muted">No past events.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

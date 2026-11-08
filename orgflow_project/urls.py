@@ -19,4 +19,6 @@ urlpatterns = [
     path('committees/', include('committees.urls')),
     path('meetings/', include('meetings.urls')),
     path('announcements/', include('announcements.urls')),
+    path('tasks/', include('tasks.urls')),
+    path('events/', include('events.urls')),
 ]

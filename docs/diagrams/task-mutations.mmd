@@ -1,0 +1,31 @@
+%% Current tasks.views + tasks.services update/claim sequence at 812d9e6.
+%% The atomic boundary is one Task document, not a MongoDB transaction.
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial","fontSize":"17px","primaryColor":"#e8f1ff","primaryTextColor":"#17324d","primaryBorderColor":"#3d6b9e","lineColor":"#64748b","actorBkg":"#e8f1ff","actorBorder":"#3d6b9e","signalColor":"#334155","noteBkgColor":"#f1f5f9","noteBorderColor":"#94a3b8"},"sequence":{"actorMargin":45,"width":170,"messageMargin":12,"noteMargin":6,"boxMargin":7,"wrap":false,"useMaxWidth":false,"mirrorActors":false,"messageFontSize":17,"noteFontSize":16}}}%%
+sequenceDiagram
+    participant U as Browser
+    participant V as Task view + form
+    participant S as Task service
+    participant M as MongoDB
+
+    U->>V: POST change + version
+    V->>V: CSRF + login + access
+    V->>M: Scoped task lookup
+    M-->>V: Visible task or 404
+    V->>S: Validated update or claim<br/>with expected version
+    S->>M: Reload visible task
+    M-->>S: State + version N
+
+    S->>S: Check version + authority<br/>Validate resulting task
+    Note over V,M: Officer: details / delegation. Assignee: status only.<br/>Claim: committee member + unassigned + unfinished.<br/>Rejected access, invalid data or stale version stop before writing.
+    S->>S: Build changed fields + compact audit<br/>Check history BSON budget (8 MiB)
+    S->>M: Conditional task update<br/>id + version N predicate
+    Note over S,M: SET state + history + updated_at<br/>SET version N+1<br/>One atomic task document update
+    alt exactly one document matched
+        M-->>S: matched_count = 1
+        S-->>V: Persisted task
+        V-->>U: HTTP 302, task detail
+    else no document matched
+        M-->>S: matched_count = 0
+        S-->>V: TaskConflict, no overwrite
+        V-->>U: HTTP 409, reload task
+    end

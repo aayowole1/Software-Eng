@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{{ draft.title }}{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
+{% endblock %}
 {% block content %}
   <h1>{{ draft.title }}</h1>
   <p><span class="badge">{{ draft.get_status_display }}</span>
@@ -8,51 +12,96 @@
     <p class="muted">Reviewed by {{ draft.reviewed_by.email }} on {{ draft.reviewed_at|date:"M j, Y" }}{% if draft.review_note %}: “{{ draft.review_note }}”{% endif %}</p>
   {% endif %}
 
-  <div class="card">
-    <h2>AI summary</h2>
-    <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
-    <p class="muted">AI output can omit, misread or invent details. Check it against the notes below.</p>
-  </div>
+  {% if can_finish_review %}
+    <div class="card" role="status">
+      <h2>Action updates unfinished</h2>
+      <p>The review decision is recorded. Finish its saved action updates before converting tasks or revising notes.</p>
+      <form method="post" action="{% url 'meetings:finish_review' draft.pk %}">
+        {% csrf_token %}<button type="submit">Finish review</button>
+      </form>
+    </div>
+  {% endif %}
 
   {% if can_review %}
-    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="card">
+    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="meeting-review-form" id="review-form">
       {% csrf_token %}
-      <h2>Proposed action items</h2>
-      <p class="muted">Edit any item, untick the ones that are wrong, or add missing ones.</p>
-      {% for item in items %}
-        <div class="action-item">
-          <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
-          <label for="item-{{ item.pk }}-accepted" class="visually-hidden">Keep this item</label>
-          <label for="item-{{ item.pk }}-description" class="visually-hidden">Action item text</label>
-          <input type="text" name="item-{{ item.pk }}-description" id="item-{{ item.pk }}-description" value="{{ item.description }}">
-        </div>
-      {% empty %}
-        <p class="muted">The AI didn't find any action items.</p>
-      {% endfor %}
-      {{ review_form.as_p }}
-      <button type="submit">Submit review</button>
-    </form>
-  {% else %}
+  {% endif %}
+  <div class="meeting-review-columns">
     <div class="card">
+      <h2>Officer notes</h2>
+      <textarea name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
+    </div>
+    <div class="card">
+      <h2>AI summary</h2>
+      <div class="meeting-summary-scroll">
+        <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
+      </div>
       <h2>Action items</h2>
-      <ul>
-        {% for item in items %}
-          <li>{% if item.accepted %}{{ item.description }}{% else %}<s>{{ item.description }}</s> <span class="muted">(rejected by reviewer)</span>{% endif %}</li>
+      {% if can_review %}
+        <p class="muted">Keep checked items, edit their text, or uncheck an item to undo/delete it. Add new items below.</p>
+      {% endif %}
+      <ul class="action-item-list">
+      {% for entry in review_items %}
+        {% with item=entry.item parts=entry.parts %}
+        <li class="action-item-row">
+          {% if can_review %}
+            <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
+            <label for="item-{{ item.pk }}-accepted" class="action-item-keep">Keep</label>
+            <input class="action-item-input" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
+          {% else %}
+            {% if parts %}
+              <span class="action-item-pretty">
+                <strong>Task:</strong> {{ parts.task|default:item.description }}
+                <span><strong>Owner:</strong> {{ parts.owner|default:"Not specified" }}</span>
+                <span><strong>Due:</strong> {{ parts.due|default:"Not specified" }}</span>
+                <span><strong>Priority:</strong> {{ parts.priority|default:"Not specified" }}</span>
+              </span>
+            {% elif item.accepted %}{{ item.description }}{% else %}<s>{{ item.description }}</s>{% endif %}
+          {% endif %}
+        </li>
+        {% endwith %}
         {% empty %}
           <li class="muted">None.</li>
         {% endfor %}
       </ul>
+      {% if can_review %}
+        <label for="id_new_items">Add action items (one per line)</label>
+        {{ review_form.new_items }}
+      {% endif %}
+      <p class="muted">Review the proposed items and merge anything you want to keep into your officer notes.</p>
     </div>
+  </div>
+
+  {% if can_review %}
+      <div class="card meeting-review-card">
+        <h2>Review notes</h2>
+      {{ review_form.expected_generation }}
+      <p>{{ review_form.decision.label_tag }} {{ review_form.decision }}</p>
+      <p>{{ review_form.note.label_tag }} {{ review_form.note }}</p>
+      <div class="meeting-review-actions">
+        <button type="submit">Submit review</button>
+        {% if is_admin %}
+          <button type="submit" class="danger" formaction="{% url 'meetings:delete' draft.pk %}" formmethod="post" onclick="return confirm('Delete this draft?');">Delete draft</button>
+        {% endif %}
+      </div>
+      </div>
+    </form>
   {% endif %}
 
   {% if can_revise %}
     <p><a class="button" href="{% url 'meetings:revise' draft.pk %}">Revise notes and regenerate</a></p>
   {% endif %}
 
-  <h2>Original notes</h2>
-  <div class="card"><p>{{ draft.notes|linebreaksbr }}</p></div>
+  {% if draft.status == "approved" and is_officer and not draft.review_update_pending %}
+    <p><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
+  {% endif %}
 
-  {% if is_admin %}
+  <h2>Transcript</h2>
+  <div class="card">
+    <p class="transcript-display">{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
+  </div>
+
+  {% if is_admin and not can_review %}
     <form method="post" action="{% url 'meetings:delete' draft.pk %}" onsubmit="return confirm('Delete this draft?');">
       {% csrf_token %}
       <button type="submit" class="danger">Delete draft</button>

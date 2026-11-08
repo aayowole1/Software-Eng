@@ -1,0 +1,23 @@
+{
+  "checked_at_utc": "2026-10-28T16:15:00.582846+00:00",
+  "base_head": "a62928e269af62556d9977b2a32e3db15dc8da13",
+  "source_scope": "Uncommitted committee creation recovery patch on primary; focused suite, not full regression",
+  "source_sha256": {
+    "committees/views.py": "2dc01768511f09afe63cdd373df6232d938cb32e62e4c44f926f46bcd95067ef",
+    "committees/urls.py": "eae48423407e9435836fb101183033c7b687265bc6f94eef3dfa845e576ac6ee",
+    "committees/test_creation_recovery.py": "84d59fdd5cb336d2ef481767b27695242b6f114c4a6d97835285a62fb01437f5",
+    "committees/templates/committees/committee_form.html": "d49e0aec088199309956b841ef041054955da06ba9b647d9a2caf275fe073016",
+    "committees/templates/committees/committee_creation_retry.html": "127d0773e66a1bdd07ceefae238ef21840c8f5def546d1a8afb40ba286aefcaf",
+    "committees/templates/committees/committee_creation_recovery.html": "45b450c425802b3dbe76c145d6187864d2082dfe0066e4b84755c3a2a89c1567"
+  },
+  "dotenv_loaded": false,
+  "provider_credentials": "blank",
+  "database": "test_orgflow_committee_creation_recovery_receipt_20261028",
+  "run": 21,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "test_seconds": 4.48,
+  "source_unchanged_during_run": true,
+  "result": "passed"
+}

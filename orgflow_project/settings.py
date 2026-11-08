@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     "committees.apps.CommitteesConfig",
     "meetings.apps.MeetingsConfig",
     "announcements.apps.AnnouncementsConfig",
+    "tasks.apps.TasksConfig",
+    "events.apps.EventsConfig",
 ]
 
 MIDDLEWARE = [
@@ -133,7 +135,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Times are shown and entered in this zone (dates are still stored in UTC).
+TIME_ZONE = os.getenv("TIME_ZONE", "America/Chicago")
 
 USE_I18N = True
 
@@ -185,4 +188,3 @@ MIGRATION_MODULES = {
     "auth": "mongo_migrations.auth",
     "contenttypes": "mongo_migrations.contenttypes",
 }
-

@@ -1,0 +1,65 @@
+Creating test database for alias 'default'...
+
+.........................................................................................................................................................................................................................................................................ss
+----------------------------------------------------------------------
+Ran 267 tests in 59.940s
+
+OK (skipped=2)
+Destroying test database for alias 'default'...
+
+Coverage.py 7.17.0; project revision 8e2f7348bf4cfb4665b77093d70f5be3da371dcc
+Scope: application Python modules in accounts and tasks; tests, migrations, apps, admin, package initializers and test helper omitted.
+Isolated database: test_orgflow_chau_full_branch_coverage on MongoDB localhost:27029
+Provider keys explicitly empty; MD5 override limited to this test process.
+Found 267 test(s).
+System check identified no issues (0 silenced).
+{
+  "all_accounts_and_tasks": {
+    "num_statements": 962,
+    "covered_lines": 910,
+    "missing_lines": 52,
+    "num_branches": 260,
+    "covered_branches": 226,
+    "missing_branches": 34,
+    "num_partial_branches": 24,
+    "statement_percent": 94.59,
+    "branch_percent": 86.92,
+    "combined_percent": 92.96
+  },
+  "accounts": {
+    "num_statements": 478,
+    "covered_lines": 457,
+    "missing_lines": 21,
+    "num_branches": 124,
+    "covered_branches": 109,
+    "missing_branches": 15,
+    "num_partial_branches": 15,
+    "statement_percent": 95.61,
+    "branch_percent": 87.9,
+    "combined_percent": 94.02
+  },
+  "tasks": {
+    "num_statements": 484,
+    "covered_lines": 453,
+    "missing_lines": 31,
+    "num_branches": 136,
+    "covered_branches": 117,
+    "missing_branches": 19,
+    "num_partial_branches": 9,
+    "statement_percent": 93.6,
+    "branch_percent": 86.03,
+    "combined_percent": 91.94
+  },
+  "revision": "8e2f7348bf4cfb4665b77093d70f5be3da371dcc",
+  "coverage_version": "7.17.0",
+  "source_omit": [
+    "*/test*.py",
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__init__.py",
+    "*/apps.py",
+    "*/admin.py",
+    "*/testing.py"
+  ]
+}
+Missing lines/branches and per-module summary retained in coverage-full267-summary.txt and coverage-full267.json.

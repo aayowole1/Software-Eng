@@ -4,6 +4,7 @@ No account is linked by email alone. Existing local-account linking is a separat
 authenticated workflow and is deliberately not offered by this login endpoint.
 """
 
+import logging
 import secrets
 import time
 from urllib.parse import urlsplit
@@ -14,7 +15,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -28,7 +29,10 @@ from google.oauth2 import id_token
 from membership.models import MembershipApplication, inactive_account_message
 
 from .forms import EmailLoginForm, GoogleApplicationForm
-from .models import GoogleIdentity
+from .models import GoogleIdentity, Profile
+from .provisioning import complete_signup, prepare_signup_compensation, record_signup_compensation, reserve_signup
+
+logger = logging.getLogger(__name__)
 
 NONCE_SESSION_KEY = "google_signin_nonces"
 NONCE_TTL_SECONDS = 300
@@ -41,6 +45,10 @@ VERIFY_TIMEOUT_SECONDS = 5
 
 class GoogleSignInError(ValueError):
     """A safe explanation suitable for the sign-in page."""
+
+
+class GoogleSignupRetryError(GoogleSignInError):
+    """Provisioning failed; retain the verified signup and entered statement."""
 
 
 class BoundedGoogleRequest(GoogleRequest):
@@ -139,9 +147,17 @@ def _existing_identity_user(subject):
     identity = GoogleIdentity.objects.filter(subject=subject).select_related("user").first()
     if identity is None:
         return None
+    if Profile.objects.filter(user_id=identity.user_id, is_suspended=True).exists():
+        raise GoogleSignInError("This account is administratively suspended.")
+    if Profile.objects.filter(user_id=identity.user_id, suspension_update_pending=True).exists():
+        raise GoogleSignInError("Your account access is still being updated. Please try again shortly.")
     if not identity.user.is_active:
         # Pending or refused membership applications land here too.
         raise GoogleSignInError(inactive_account_message(identity.user))
+    if MembershipApplication.objects.filter(
+        user_id=identity.user_id, access_update_pending=True
+    ).exists():
+        raise GoogleSignInError("Your membership review is still being applied. Please try again shortly.")
     # The subject, not a mutable email address, identifies returning users.
     return identity.user
 
@@ -158,6 +174,18 @@ def _ensure_email_unused(email):
         )
 
 
+def _cleanup_google_signup(attempt, *, application_attempted=False):
+    """Best-effort compensation limited to the account reserved by this attempt."""
+    if not prepare_signup_compensation(attempt, application_attempted=application_attempted):
+        return
+    try:
+        get_user_model().objects.filter(pk=attempt.reserved_user_id, username=attempt.username).delete()
+    except Exception:
+        # Database exceptions can include connection strings or account data.
+        # Keep the recovery alert free of exception details and credentials.
+        logger.error("An incomplete Google signup could not be cleaned up; operator recovery is required.")
+
+
 def create_google_applicant(subject, email, statement):
     """Create a switched-off account, its Google link, and its membership application.
 
@@ -165,33 +193,54 @@ def create_google_applicant(subject, email, statement):
     approves the application.
     """
     User = get_user_model()
-    if GoogleIdentity.objects.filter(subject=subject).exists():
-        raise GoogleSignInError("This Google account has already applied. Sign in to check its status.")
-    _ensure_email_unused(email)
+    username = f"google_{uuid4().hex}"
+    attempt = None
+    attempted_create = False
+    stage = "precheck"
     try:
+        if GoogleIdentity.objects.filter(subject=subject).exists():
+            raise GoogleSignInError("This Google account has already applied. Sign in to check its status.")
+        _ensure_email_unused(email)
+        attempt = reserve_signup("google", username, email, statement, subject)
+        stage = "user"
+        attempted_create = True
         user = User.objects.create_user(
-            username=f"google_{uuid4().hex}", email=email, password=None, is_active=False
+            pk=attempt.reserved_user_id, username=username, email=email, password=None, is_active=False
         )
-    except IntegrityError as error:
-        raise GoogleSignInError("This account could not be created. Please try again.") from error
-    # MongoDB's standalone development service cannot provide a multi-document
-    # transaction. Recheck observed collisions and clean up failed provisioning;
-    # a database-wide canonical-email constraint remains a separate improvement.
-    if User.objects.filter(_email_collision(email)).exclude(pk=user.pk).exists():
-        user.delete()
-        raise GoogleSignInError("An account already uses this email. Sign in with that account.")
-    try:
+        # Canonical database indexes reject identity races. Retain this check
+        # for a safe response when inspecting an older unmigrated database.
+        if User.objects.filter(_email_collision(email)).exclude(pk=user.pk).exists():
+            raise GoogleSignInError("An account already uses this email. Sign in with that account.")
+        stage = "identity"
         GoogleIdentity.objects.create(subject=subject, user=user)
+        stage = "application"
+        MembershipApplication.objects.create(pk=attempt.application_id, user=user, statement=statement)
+        complete_signup(attempt)
     except IntegrityError as error:
-        user.delete()
-        # A simultaneous sign-up with the same subject may have completed first.
-        raise GoogleSignInError(
-            "This Google account has already applied. Sign in to check its status."
+        if attempted_create:
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
+            record_signup_compensation(attempt)
+        if stage == "identity":
+            # A simultaneous sign-up with this subject may have won the race.
+            raise GoogleSignInError(
+                "This Google account has already applied. Sign in to check its status."
+            ) from error
+        if stage == "user":
+            raise GoogleSignInError("This account could not be created. Please try again.") from error
+        raise GoogleSignupRetryError(
+            "Your application could not be confirmed right now. Please try submitting it again."
         ) from error
-    try:
-        MembershipApplication.objects.create(user=user, statement=statement)
+    except DatabaseError as error:
+        if attempted_create:
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
+            record_signup_compensation(attempt)
+        raise GoogleSignupRetryError(
+            "Your application could not be confirmed right now. Please try submitting it again."
+        ) from error
     except Exception:
-        user.delete()
+        if attempted_create:
+            _cleanup_google_signup(attempt, application_attempted=stage == "application")
+            record_signup_compensation(attempt)
         raise
     return user
 
@@ -278,6 +327,12 @@ def google_apply(request):
     if request.method == "POST" and form.is_valid():
         try:
             create_google_applicant(pending["subject"], pending["email"], form.cleaned_data["statement"])
+        except GoogleSignupRetryError as error:
+            form.add_error(None, str(error))
+            return render(
+                request, "accounts/google_apply.html",
+                {"form": form, "email": pending["email"]}, status=503,
+            )
         except GoogleSignInError as error:
             request.session.pop(PENDING_SIGNUP_SESSION_KEY, None)
             messages.error(request, str(error))

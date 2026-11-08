@@ -1,0 +1,21 @@
+Revision: 8e2f7348bf4cfb4665b77093d70f5be3da371dcc
+Coverage.py: 7.17.0
+Outcome: passed
+Name                             Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------------
+accounts\backends.py                27      2     10      2    89%   15, 43
+accounts\context_processors.py       4      0      0      0   100%
+accounts\decorators.py              13      0      2      0   100%
+accounts\forms.py                   61      3     10      0    96%   80-83
+accounts\google_auth.py            216      6     68      7    95%   114, 141, 200, 210, 216->218, 236, 313
+accounts\models.py                  47      2     10      1    95%   63, 67->exit, 109
+accounts\signals.py                  9      0      2      0   100%
+accounts\urls.py                     7      0      0      0   100%
+accounts\views.py                   94      8     22      5    89%   20, 41, 111-112, 116-117, 144-145
+tasks\forms.py                      58      2     12      2    94%   25, 56
+tasks\models.py                     98      2     26      1    98%   54, 162
+tasks\services.py                  104      7     38      3    92%   49, 144, 158, 165-168
+tasks\urls.py                        4      0      0      0   100%
+tasks\views.py                     220     20     60      3    89%   57-63, 77->80, 197-198, 212->226, 221-222, 237->248, 243-244, 265-266, 286-291
+----------------------------------------------------------------------------
+TOTAL                              962     52    260     24    93%

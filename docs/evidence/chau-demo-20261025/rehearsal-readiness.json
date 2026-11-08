@@ -1,0 +1,41 @@
+{
+  "scope": "Django rendered HTTP rehearsal prerequisites on exact synthetic local DB; no form submissions or provider calls",
+  "checks": [
+    {
+      "check": "officer can open task creation",
+      "status": 200,
+      "result": "passed"
+    },
+    {
+      "check": "member cannot open task creation",
+      "status": 403,
+      "result": "passed"
+    },
+    {
+      "check": "member sees fresh claim opportunity",
+      "status": 200,
+      "result": "passed"
+    },
+    {
+      "check": "member cannot read Finance task",
+      "status": 404,
+      "result": "passed"
+    },
+    {
+      "check": "officer sees pending review controls",
+      "status": 200,
+      "result": "passed"
+    },
+    {
+      "check": "pending review cannot be imported",
+      "status": 400,
+      "result": "passed"
+    },
+    {
+      "check": "member cannot read officer meeting notes",
+      "status": 403,
+      "result": "passed"
+    }
+  ],
+  "human_rehearsal_completed": false
+}
