@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" action="{% url 'meetings:processing_start' %}" class="card" novalidate id="meeting-form">
+  <form method="post" action="{% url 'meetings:processing_start' %}" class="card meeting-form-card" novalidate id="meeting-form">
     {% csrf_token %}
     {{ form.transcript }}
     {{ form.expected_generation }}
@@ -29,7 +29,7 @@
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
         <button type="button" id="start-recording">Start Notes</button>
-        <button type="button" id="stop-recording" class="stop-meeting" disabled>
+        <button type="button" id="stop-recording" class="stop-meeting">
           <span aria-hidden="true">■</span>
           Stop Notes
         </button>
@@ -37,9 +37,7 @@
       <button type="submit" id="submit-meeting">Submit Notes</button>
     </div>
   </form>
-  <p id="recording-status" class="muted" role="status">
-    Click Start Notes and allow microphone access to begin transcription.
-  </p>
+  <p id="recording-status" class="notes-flow-status" role="status" hidden></p>
   <script>
     (() => {
       const form = document.getElementById("meeting-form");
@@ -71,6 +69,11 @@
         status.textContent = message;
         status.classList.remove("muted");
         status.classList.add("notes-submit-warning");
+        status.hidden = false;
+      }
+
+      function showFlowWarning(message) {
+        showSubmitWarning(message);
       }
 
       function setTranscript(value) {
@@ -136,7 +139,11 @@
       }
 
       async function stopRecording() {
-        if (!isRecording || isStopping) return;
+        if (isStopping) return;
+        if (!isRecording) {
+          showFlowWarning("Start Notes before selecting Stop Notes.");
+          return;
+        }
         isRecording = false;
         isPaused = true;
         isStopping = true;
@@ -155,6 +162,8 @@
           audioBuffer = [];
           bufferedSamples = 0;
           status.textContent = "Notes paused. Start Notes to resume or Submit Notes to finish.";
+          status.classList.remove("notes-submit-warning");
+          status.classList.add("muted");
         } finally {
           await audioContext.close();
           startButton.disabled = false;
@@ -208,6 +217,9 @@
           startButton.disabled = true;
           stopButton.disabled = false;
           status.textContent = wasPaused ? "Recording resumed…" : "Recording and transcribing…";
+          status.hidden = false;
+          status.classList.remove("notes-submit-warning");
+          status.classList.add("muted");
         } catch (error) {
           stream?.getTracks().forEach((track) => track.stop());
           status.textContent = error.message || "Microphone access is required.";
@@ -248,7 +260,7 @@
         }
         if (!notes.value.trim() && !transcript.value.trim()) {
           event.preventDefault();
-          showSubmitWarning("No audio was found. Record audio or add officer notes before submitting.");
+          showFlowWarning("Start Notes and record audio, or add officer notes before submitting.");
           return;
         }
       });

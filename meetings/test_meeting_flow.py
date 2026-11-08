@@ -58,6 +58,9 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "form.submit();")
         self.assertContains(response, 'action="/meetings/new/processing/start/"')
         self.assertNotContains(response, 'class="meeting-transcript"')
+        self.assertNotContains(response, "Click Start Notes and allow microphone access")
+        self.assertContains(response, "Start Notes before selecting Stop Notes.")
+        self.assertContains(response, "Start Notes and record audio, or add officer notes before submitting.")
 
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
@@ -123,6 +126,16 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, "Save notes")
         self.assertContains(response, "Add action items (one per line)")
         self.assertContains(response, "class=\"action-item-list\"")
+
+    def test_notes_layout_uses_equal_review_cards_and_full_width_fields(self):
+        response = self.client.get(reverse("meetings:detail", args=[MeetingDraft.objects.create(
+            title="Layout notes",
+            notes="Officer notes",
+            summary="AI summary",
+            created_by=self.officer,
+        ).pk]))
+
+        self.assertContains(response, "meeting-review-columns")
 
     @patch("meetings.models.summarize_meeting")
     def test_submit_persists_transcript_notes_summary_and_actions(self, summarize):
