@@ -62,7 +62,6 @@
       let isRecording = false;
       let isPaused = false;
       let isStopping = false;
-      let allowSubmit = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
       let committedTranscript = transcript.value.trim();
@@ -234,10 +233,6 @@
         isStopping = false;
       }));
       form.addEventListener("submit", (event) => {
-        if (allowSubmit) {
-          allowSubmit = false;
-          return;
-        }
         if (isRecording || isPaused) {
           event.preventDefault();
           status.textContent = "Submitting notes and finalizing transcript…";
@@ -245,8 +240,7 @@
             if (!notes.value.trim() && !transcript.value.trim()) {
               throw new Error("No audio was found. Record audio or add officer notes before submitting.");
             }
-            allowSubmit = true;
-            form.requestSubmit();
+            form.submit();
           }).catch((error) => {
             showSubmitWarning(error.message);
           });

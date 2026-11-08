@@ -55,9 +55,15 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "let isPaused = false;")
         self.assertContains(response, "async function finalizeRecording()")
         self.assertContains(response, 'X-Recording-Final')
-        self.assertContains(response, "let allowSubmit = false;")
+        self.assertContains(response, "form.submit();")
         self.assertContains(response, 'action="/meetings/new/processing/start/"')
         self.assertNotContains(response, 'class="meeting-transcript"')
+
+    def test_notes_list_uses_note_labels(self):
+        response = self.client.get(reverse("meetings:list"))
+        self.assertContains(response, "<h1>Notes</h1>")
+        self.assertContains(response, "Create new note")
+        self.assertNotContains(response, "Notes drafts")
 
     def test_submit_redirects_to_separate_processing_page(self):
         response = self.client.post(

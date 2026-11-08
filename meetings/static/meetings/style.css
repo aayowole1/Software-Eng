@@ -65,9 +65,11 @@
 }
 
 .meeting-review-columns > .card:first-child textarea {
-    width: calc(100% + 24px);
+    width: 100%;
     max-width: none;
     box-sizing: border-box;
+    overflow-y: auto;
+    resize: none;
 }
 
 .action-item-list {
@@ -111,6 +113,13 @@
     display: grid;
     place-items: center;
     background: rgba(255, 255, 255, 0.88);
+}
+
+.meeting-processing-page {
+    min-height: calc(100vh - 8rem);
+    display: grid;
+    place-items: center;
+    width: 100%;
 }
 
 .meeting-processing[hidden] {
