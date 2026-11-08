@@ -87,6 +87,14 @@ def draft_create(request):
         try:
             draft.generate(force_insert=True)
         except (RuntimeError, ValueError, DatabaseError):
+            published = MeetingDraft.objects.filter(
+                pk=draft.pk,
+                created_by=request.user,
+                generation_token=draft.generation_token,
+            ).first()
+            if published is not None:
+                messages.warning(request, "The meeting was saved, but confirmation was delayed. Review the draft below.")
+                return redirect("meetings:detail", pk=published.pk)
             if _cleanup_created_draft(draft):
                 message = "The meeting could not be created. No new draft was retained. Please try submitting again."
             else:
@@ -167,16 +175,6 @@ def draft_detail(request, pk):
 
 @require_POST
 @role_required(Role.OFFICER)
-def draft_save_notes(request, pk):
-    draft = get_object_or_404(MeetingDraft, pk=pk)
-    draft.notes = request.POST.get("notes", "")
-    draft.save(update_fields=["notes"])
-    messages.success(request, "Officer notes saved.")
-    return redirect("meetings:detail", pk=draft.pk)
-
-
-@require_POST
-@role_required(Role.OFFICER)
 def draft_review(request, pk):
     """Record a decision. Reviewers can edit, untick, or add action items first (FR-12)."""
     draft = get_object_or_404(MeetingDraft, pk=pk)
@@ -199,6 +197,8 @@ def draft_review(request, pk):
         item_intent.append({"id": str(ObjectId()), "description": line, "accepted": True})
 
     try:
+        draft.notes = request.POST.get("notes", draft.notes)
+        draft.save(update_fields=["notes"])
         draft.review(
             request.user, form.cleaned_data["decision"], form.cleaned_data["note"],
             item_intent=item_intent, expected_generation=form.cleaned_data["expected_generation"],

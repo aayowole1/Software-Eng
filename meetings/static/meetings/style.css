@@ -42,6 +42,21 @@
     box-sizing: border-box;
 }
 
+.meeting-review-form,
+.meeting-review-form textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.transcript-display {
+    background-color: #dddddd;
+    color: #000000;
+    border: 1px solid #cccccc;
+    padding: 12px;
+    min-height: 120px;
+    white-space: pre-wrap;
+}
+
 @media (max-width: 700px) {
     .meeting-review-columns {
         grid-template-columns: 1fr;

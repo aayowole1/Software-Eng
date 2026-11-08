@@ -59,6 +59,7 @@
       let isRecording = false;
       let isPaused = false;
       let isStopping = false;
+      let allowSubmit = false;
       let audioBuffer = [];
       let bufferedSamples = 0;
       let committedTranscript = transcript.value.trim();
@@ -118,7 +119,7 @@
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "Transcription failed.");
-          if (isRecording || isFinal) {
+          if (isRecording || isPaused || isFinal) {
             setTranscript(data.transcript);
           }
         });
@@ -224,6 +225,10 @@
         isStopping = false;
       }));
       form.addEventListener("submit", (event) => {
+        if (allowSubmit) {
+          allowSubmit = false;
+          return;
+        }
         if (isRecording || isPaused) {
           event.preventDefault();
           submitButton.disabled = true;
@@ -232,6 +237,7 @@
             if (!notes.value.trim() && !transcript.value.trim()) {
               throw new Error("Add officer notes or record part of the meeting before submitting.");
             }
+            allowSubmit = true;
             form.requestSubmit();
           }).catch((error) => {
             submitButton.disabled = false;

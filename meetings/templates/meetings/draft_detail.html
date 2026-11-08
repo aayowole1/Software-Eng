@@ -22,13 +22,15 @@
     </div>
   {% endif %}
 
-  <div class="meeting-review-columns">
-    <form method="post" action="{% url 'meetings:save_notes' draft.pk %}" class="card">
+  {% if can_review %}
+    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="meeting-review-form" id="review-form">
       {% csrf_token %}
+  {% endif %}
+  <div class="meeting-review-columns">
+    <div class="card">
       <h2>Officer notes</h2>
-      <textarea name="notes" rows="14">{{ draft.notes }}</textarea>
-      <button type="submit">Save notes</button>
-    </form>
+      <textarea name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
+    </div>
     <div class="card">
       <h2>AI summary</h2>
       <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
@@ -36,7 +38,7 @@
       <ul>
         {% for item in items %}
           <li>
-            {% if can_review %}<input type="checkbox" name="item-{{ item.pk }}-accepted" form="review-form" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>{% endif %}
+            {% if can_review %}<input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>{% endif %}
             <label for="item-{{ item.pk }}-accepted">{{ item.description }}</label>
           </li>
         {% empty %}
@@ -48,11 +50,11 @@
   </div>
 
   {% if can_review %}
-    <form method="post" action="{% url 'meetings:review' draft.pk %}" class="card" id="review-form">
-      {% csrf_token %}
-      <h2>Review meeting</h2>
+      <div class="card">
+        <h2>Review meeting</h2>
       {{ review_form.as_p }}
       <button type="submit">Submit review</button>
+      </div>
     </form>
   {% endif %}
 
@@ -66,7 +68,7 @@
 
   <h2>Transcript</h2>
   <div class="card">
-    <p>{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
+    <p class="transcript-display">{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
   </div>
 
   {% if is_admin %}

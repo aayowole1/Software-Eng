@@ -52,9 +52,10 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "let isPaused = false;")
         self.assertContains(response, "async function finalizeRecording()")
         self.assertContains(response, 'X-Recording-Final')
+        self.assertContains(response, "let allowSubmit = false;")
         self.assertNotContains(response, 'class="meeting-transcript"')
 
-    def test_officer_can_save_notes_from_review_page(self):
+    def test_review_submission_saves_officer_notes(self):
         draft = MeetingDraft.objects.create(
             title="Review notes",
             notes="Initial notes",
@@ -63,13 +64,28 @@ class MeetingFlowTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("meetings:save_notes", args=[draft.pk]),
-            {"notes": "Officer merged notes"},
+            reverse("meetings:review", args=[draft.pk]),
+            {"notes": "Officer merged notes", "decision": "approved", "expected_generation": ""},
         )
 
         self.assertRedirects(response, reverse("meetings:detail", args=[draft.pk]))
         draft.refresh_from_db()
         self.assertEqual(draft.notes, "Officer merged notes")
+
+    def test_review_page_has_full_width_notes_and_read_only_transcript(self):
+        draft = MeetingDraft.objects.create(
+            title="Review layout",
+            notes="Officer notes",
+            transcript="Transcript text",
+            summary="AI summary",
+            created_by=self.officer,
+        )
+
+        response = self.client.get(reverse("meetings:detail", args=[draft.pk]))
+
+        self.assertContains(response, 'class="transcript-display"')
+        self.assertContains(response, 'class="meeting-review-form"')
+        self.assertNotContains(response, "Save notes")
 
     @patch("meetings.models.summarize_meeting")
     def test_submit_persists_transcript_notes_summary_and_actions(self, summarize):
