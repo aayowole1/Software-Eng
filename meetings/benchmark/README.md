@@ -19,7 +19,9 @@ second LLM call as a binary judge: `1` means the summary and action items are
 accurate and materially complete, while `0` means they are not. The result
 records both the summarization model (`OPENROUTER_MODEL`) and judge model
 (`OPENROUTER_JUDGE_MODEL`, defaulting to the summarization model), along with
-item-level precision/recall/F1 for action items.
+item-level precision/recall/F1 for action items. Each saved case includes the
+full summarizer `prediction` and corresponding `ground_truth` summary and
+action items so judge decisions can be manually reviewed.
 
 STT and end-to-end modes decode audio through `pydub` and require FFmpeg for
 compressed files, as well as `DEEPGRAM_API_KEY`. Summarization and end-to-end

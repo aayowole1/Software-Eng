@@ -230,6 +230,14 @@ def summarize_scores(
     reference: dict[str, Any], result: MeetingSummary
 ) -> dict[str, Any]:
     return {
+        "prediction": {
+            "summary": result.summary,
+            "action_items": result.action_items,
+        },
+        "ground_truth": {
+            "summary": reference["reference_summary"],
+            "action_items": reference.get("reference_action_items", []),
+        },
         "judge": judge_summary(reference, result),
         "action_items": action_item_scores(
             reference.get("reference_action_items", []), result.action_items
