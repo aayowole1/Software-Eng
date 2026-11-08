@@ -42,6 +42,27 @@
   {% endif %}
 
   {% if is_officer %}
+    {# FR-6.1: summary cards for officers and admins #}
+    <div class="summary-cards" aria-label="Organisation summary">
+      <div class="card summary-card">
+        <strong>{{ summary_active_members }}</strong>
+        <a href="{% url 'membership:roster' %}">Active members</a>
+      </div>
+      <div class="card summary-card">
+        <strong>{{ summary_upcoming_events }}</strong>
+        <a href="{% url 'events:list' %}">Upcoming events</a>
+      </div>
+      <div class="card summary-card">
+        <strong>{{ summary_open_tasks }}</strong>
+        <a href="{% url 'tasks:list' %}">Open tasks</a>
+      </div>
+      <div class="card summary-card">
+        <strong>{{ summary_pending_approvals }}</strong>
+        <span>Pending approvals
+          (<a href="{% url 'membership:application_list' %}">applications</a>
+          / <a href="{% url 'meetings:list' %}">drafts</a>)</span>
+      </div>
+    </div>
     <div class="card">
       <h2>Needs your attention</h2>
       <ul>
