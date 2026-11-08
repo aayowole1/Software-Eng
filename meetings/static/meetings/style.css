@@ -94,6 +94,17 @@
     overflow-y: auto;
     resize: none;
     min-height: 330px;
+    max-height: 330px;
+}
+
+.meeting-summary-scroll {
+    max-height: 330px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.meeting-summary-scroll p {
+    margin-top: 0;
 }
 
 .action-item-list {
@@ -128,6 +139,23 @@
 .meeting-review-form textarea {
     width: 100%;
     box-sizing: border-box;
+}
+
+.meeting-review-card {
+    margin-top: 16px;
+}
+
+.meeting-review-card select,
+.meeting-review-card textarea {
+    max-width: none;
+}
+
+.meeting-review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 20px;
 }
 
 .meeting-processing {
@@ -183,7 +211,10 @@
     border: 1px solid #cccccc;
     padding: 12px;
     min-height: 120px;
+    max-height: 260px;
+    overflow-y: auto;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 @media (max-width: 700px) {

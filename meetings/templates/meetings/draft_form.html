@@ -64,6 +64,7 @@
       let bufferedSamples = 0;
       let committedTranscript = transcript.value.trim();
       let currentSegment = "";
+      let processingCard;
 
       function showSubmitWarning(message) {
         status.textContent = message;
@@ -74,6 +75,35 @@
 
       function showFlowWarning(message) {
         showSubmitWarning(message);
+      }
+
+      function showProcessingPage() {
+        processingCard = document.createElement("div");
+        processingCard.className = "meeting-processing-page";
+        processingCard.innerHTML = `
+          <div class="meeting-processing-card" aria-live="polite">
+            <div class="meeting-spinner" aria-hidden="true"></div>
+            <h1>Processing notes</h1>
+            <p>Transcribing audio and preparing the notes summary and action items.</p>
+            <p class="muted">Please wait. This page will open the notes draft when processing is complete.</p>
+          </div>
+        `;
+        const main = document.querySelector("main");
+        form.hidden = true;
+        main.replaceChildren(processingCard, form);
+      }
+
+      function showProcessingError(message) {
+        if (processingCard) {
+          processingCard.innerHTML = `
+            <div class="meeting-processing-card">
+              <h1>Notes processing failed</h1>
+              <p class="notes-submit-warning"></p>
+              <p><a class="button" href="{% url "meetings:create" %}">Return to notes</a></p>
+            </div>
+          `;
+          processingCard.querySelector(".notes-submit-warning").textContent = message;
+        }
       }
 
       function setTranscript(value) {
@@ -138,7 +168,7 @@
         return request;
       }
 
-      async function stopRecording() {
+      async function stopRecording(forSubmission = false) {
         if (isStopping) return;
         if (!isRecording) {
           showFlowWarning("Start Notes before selecting Stop Notes.");
@@ -161,9 +191,11 @@
           currentSegment = "";
           audioBuffer = [];
           bufferedSamples = 0;
-          status.textContent = "Notes paused. Start Notes to resume or Submit Notes to finish.";
-          status.classList.remove("notes-submit-warning");
-          status.classList.add("muted");
+          if (!forSubmission) {
+            status.textContent = "Notes paused.";
+            status.classList.remove("notes-submit-warning");
+            status.classList.add("muted");
+          }
         } finally {
           await audioContext.close();
           startButton.disabled = false;
@@ -227,7 +259,7 @@
       }
 
       async function finalizeRecording() {
-        if (isRecording) await stopRecording();
+        if (isRecording) await stopRecording(true);
         if (!recordingId) return;
         await pendingUploads;
         await upload(new ArrayBuffer(0), true);
@@ -247,14 +279,21 @@
       form.addEventListener("submit", (event) => {
         if (isRecording || isPaused) {
           event.preventDefault();
-          status.textContent = "Submitting notes and finalizing transcript…";
+          showProcessingPage();
+          startButton.disabled = true;
+          stopButton.disabled = true;
+          submitButton.disabled = true;
+          status.textContent = "Submitting notes and preparing the draft…";
+          status.hidden = false;
+          status.classList.remove("notes-submit-warning", "muted");
           finalizeRecording().then(() => {
             if (!notes.value.trim() && !transcript.value.trim()) {
               throw new Error("No audio was found. Record audio or add officer notes before submitting.");
             }
+            form.hidden = false;
             form.submit();
           }).catch((error) => {
-            showSubmitWarning(error.message);
+            showProcessingError(error.message);
           });
           return;
         }

@@ -61,6 +61,9 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, "Click Start Notes and allow microphone access")
         self.assertContains(response, "Start Notes before selecting Stop Notes.")
         self.assertContains(response, "Start Notes and record audio, or add officer notes before submitting.")
+        self.assertContains(response, "Submitting notes and preparing the draft")
+        self.assertContains(response, "function showProcessingPage()")
+        self.assertNotContains(response, "Start Notes to resume or Submit Notes to finish.")
 
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
@@ -126,6 +129,9 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, "Save notes")
         self.assertContains(response, "Add action items (one per line)")
         self.assertContains(response, "class=\"action-item-list\"")
+        self.assertContains(response, "meeting-summary-scroll")
+        self.assertContains(response, "meeting-review-actions")
+        self.assertContains(response, "transcript-display")
 
     def test_notes_layout_uses_equal_review_cards_and_full_width_fields(self):
         response = self.client.get(reverse("meetings:detail", args=[MeetingDraft.objects.create(

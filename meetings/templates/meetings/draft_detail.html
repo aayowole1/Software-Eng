@@ -33,7 +33,9 @@
     </div>
     <div class="card">
       <h2>AI summary</h2>
-      <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
+      <div class="meeting-summary-scroll">
+        <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
+      </div>
       <h2>Action items</h2>
       {% if can_review %}
         <p class="muted">Keep checked items, edit their text, or uncheck an item to undo/delete it. Add new items below.</p>
@@ -71,12 +73,17 @@
   </div>
 
   {% if can_review %}
-      <div class="card">
+      <div class="card meeting-review-card">
         <h2>Review notes</h2>
       {{ review_form.expected_generation }}
       <p>{{ review_form.decision.label_tag }} {{ review_form.decision }}</p>
       <p>{{ review_form.note.label_tag }} {{ review_form.note }}</p>
-      <button type="submit">Submit review</button>
+      <div class="meeting-review-actions">
+        <button type="submit">Submit review</button>
+        {% if is_admin %}
+          <button type="submit" class="danger" formaction="{% url 'meetings:delete' draft.pk %}" formmethod="post" onclick="return confirm('Delete this draft?');">Delete draft</button>
+        {% endif %}
+      </div>
       </div>
     </form>
   {% endif %}
@@ -94,7 +101,7 @@
     <p class="transcript-display">{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
   </div>
 
-  {% if is_admin %}
+  {% if is_admin and not can_review %}
     <form method="post" action="{% url 'meetings:delete' draft.pk %}" onsubmit="return confirm('Delete this draft?');">
       {% csrf_token %}
       <button type="submit" class="danger">Delete draft</button>
