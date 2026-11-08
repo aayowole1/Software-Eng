@@ -47,6 +47,10 @@ summarization and judge prompt builders live in `meetings/ai.py`; the benchmark
 uses the same judge instructions as the application rather than duplicating
 prompt text.
 
+Rate-limited tests are marked `status: "rate_limited"` in the saved results and
+are excluded from all averages. The aggregate output separately reports
+`rate_limited_tests` and the saved file includes their test IDs.
+
 STT and end-to-end modes decode audio through `pydub` and require FFmpeg for
 compressed files, as well as `DEEPGRAM_API_KEY`. Summarization and end-to-end
 modes require `OPENROUTER_API_KEY`.

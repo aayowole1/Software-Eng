@@ -52,6 +52,7 @@ DATA_PATH = Path(__file__).resolve().parents[1] / "benchmark_data" / (
 )
 AUDIO_EXTENSIONS = (".wav", ".mp3", ".m4a", ".flac", ".ogg")
 TOKEN_PATTERN = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*", re.UNICODE)
+RATE_LIMIT_MARKERS = ("rate limit", "ratelimit", "too many requests", "429")
 
 
 def normalize_text(text: str) -> str:
@@ -178,6 +179,28 @@ def stt_scores(reference: str, candidate: str) -> dict[str, float]:
     return scores
 
 
+def is_rate_limit_error(error: BaseException) -> bool:
+    """Identify provider rate-limit failures, including wrapped exceptions."""
+    pending: list[BaseException | None] = [error]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        status_code = getattr(current, "status_code", None)
+        if status_code == 429:
+            return True
+        response = getattr(current, "response", None)
+        if getattr(response, "status_code", None) == 429:
+            return True
+        message = str(current).casefold()
+        if any(marker in message for marker in RATE_LIMIT_MARKERS):
+            return True
+        pending.extend((current.__cause__, current.__context__))
+    return False
+
+
 def judge_summary(reference: dict[str, Any], result: MeetingSummary) -> dict[str, Any]:
     """Ask an LLM to score the generated summary from one to five."""
     model = os.getenv("OPENROUTER_JUDGE_MODEL", get_summary_model())
@@ -244,7 +267,7 @@ def summarize_scores(
 
 
 def build_averages(results: list[dict[str, Any]]) -> dict[str, float]:
-    completed = [result for result in results if "error" not in result]
+    completed = [result for result in results if result.get("status") == "completed"]
     numeric_values: dict[str, list[float]] = {}
 
     def collect(value: Any, prefix: str = "") -> None:
@@ -294,7 +317,11 @@ def main() -> None:
     for test in tqdm(tests, desc="Benchmarking"):
         test_id = test.get("test_id", "<unknown>")
         started = time.perf_counter()
-        result: dict[str, Any] = {"test_id": test_id, "topic": test.get("topic")}
+        result: dict[str, Any] = {
+            "test_id": test_id,
+            "topic": test.get("topic"),
+            "status": "running",
+        }
         try:
             reference_transcript = test["version_a"]["reference_transcript"]
             transcript = reference_transcript
@@ -306,11 +333,22 @@ def main() -> None:
                 summary = summarize_meeting(transcript)
                 result["summarization"] = summarize_scores(test["version_b"], summary)
             result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
+            result["status"] = "completed"
         except (KeyError, FileNotFoundError, RuntimeError, ValueError) as error:
             result["error"] = str(error)
+            if is_rate_limit_error(error):
+                result["status"] = "rate_limited"
+                result["error_type"] = "rate_limit"
+            else:
+                result["status"] = "failed"
         results.append(result)
 
-    completed = [result for result in results if "error" not in result]
+    completed = [result for result in results if result.get("status") == "completed"]
+    rate_limited = [
+        result["test_id"]
+        for result in results
+        if result.get("status") == "rate_limited"
+    ]
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output_path = args.output_dir / f"benchmark_{args.mode}_{timestamp}.json"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -321,6 +359,8 @@ def main() -> None:
         "averages": build_averages(results),
         "completed_cases": len(completed),
         "total_cases": len(results),
+        "rate_limited_cases": len(rate_limited),
+        "rate_limited_test_ids": rate_limited,
         "cases": results,
     }
     output_path.write_text(
@@ -334,6 +374,7 @@ def main() -> None:
                 "overall_score": payload["averages"],
                 "completed_cases": len(completed),
                 "total_cases": len(results),
+                "rate_limited_tests": len(rate_limited),
                 "results_file": str(output_path),
             },
             indent=2,
