@@ -630,3 +630,60 @@ class ReviewDateBoundaryTests(TestCase):
         response = self.client.get(REPORT_URL)
         self.assertContains(response, "Cancelled and upcoming events are not counted.")
         self.assertContains(response, "include the whole start and end day")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class CsvInvalidRangeTests(TestCase):
+    """The CSV never silently exports a different range than the one requested."""
+
+    def setUp(self):
+        self.officer = make_user("csv-range-officer@example.com", Role.OFFICER)
+        self.client.force_login(self.officer)
+
+    def test_end_before_start_returns_400_with_message(self):
+        today = _today()
+        response = self.client.get(CSV_URL, {
+            "start_date": today.isoformat(),
+            "end_date": (today - timedelta(days=3)).isoformat(),
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("attachment", response.get("Content-Disposition", ""))
+        self.assertIn("End date cannot be before start date.", response.content.decode())
+
+    def test_unreadable_date_returns_400(self):
+        response = self.client.get(CSV_URL, {"start_date": "not-a-date", "end_date": _today().isoformat()})
+        self.assertEqual(response.status_code, 400)
+
+    def test_missing_one_date_returns_400(self):
+        response = self.client.get(CSV_URL, {"start_date": _today().isoformat()})
+        self.assertEqual(response.status_code, 400)
+
+    def test_no_dates_downloads_default_last_30_days(self):
+        response = self.client.get(CSV_URL)
+        today = _today()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f"participation_report_{today - timedelta(days=30)}_{today}.csv",
+            response["Content-Disposition"],
+        )
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class SuspendedOfficerAccessTests(TestCase):
+    """A suspended officer can't open the report or download the CSV."""
+
+    def setUp(self):
+        self.officer = make_user("suspended-officer@example.com", Role.OFFICER)
+        self.client.force_login(self.officer)
+        Profile.objects.filter(user=self.officer).update(is_suspended=True)
+
+    def test_suspended_officer_is_signed_out_of_report(self):
+        response = self.client.get(REPORT_URL)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response["Location"])
+
+    def test_suspended_officer_cannot_download_csv(self):
+        response = self.client.get(CSV_URL)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response["Location"])
+        self.assertNotIn("attachment", response.get("Content-Disposition", ""))

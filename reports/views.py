@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timedelta
 
 from django import forms
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -218,12 +218,17 @@ def report(request):
 @role_required(Role.OFFICER)
 def report_csv(request):
     start_default, end_default = _default_dates()
-    form = DateRangeForm(request.GET or {"start_date": start_default, "end_date": end_default})
+    if request.GET.get("start_date") or request.GET.get("end_date"):
+        form = DateRangeForm(request.GET)
+    else:
+        form = DateRangeForm({"start_date": start_default, "end_date": end_default})
 
     if not form.is_valid():
-        # Fall back to defaults on invalid input rather than 500.
-        form = DateRangeForm({"start_date": start_default, "end_date": end_default})
-        form.is_valid()
+        # Never silently export a different range than the one requested.
+        errors = "; ".join(str(e) for errs in form.errors.values() for e in errs)
+        return HttpResponseBadRequest(
+            f"Invalid date range: {errors}", content_type="text/plain; charset=utf-8"
+        )
 
     start_date = form.cleaned_data["start_date"]
     end_date = form.cleaned_data["end_date"]

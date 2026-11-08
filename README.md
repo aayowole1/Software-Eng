@@ -105,6 +105,7 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `tasks` | Officer task creation and delegation; committee work, member claiming and progress, due dates, priorities, scoped counts and audit history | FR-04, FR-09; WBS 1.6 |
 | `events` | Officers create, edit and cancel events; members RSVP; officers record attendance; upcoming events on the dashboard | FR-03, FR-08 (partial) |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
+| `reports` | Participation and engagement report for officers and admins: attendance by event, member and committee, and task counts, for a chosen date range, with CSV download | FR-6.2, FR-6.3, WBS 1.8 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
 ### Roles
@@ -115,7 +116,7 @@ Each role includes everything the roles below it can do.
 |------|-----|
 | `applicant` | Waiting on a membership application (default for new accounts) |
 | `member` | View the roster, committees and events; RSVP to events |
-| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts |
+| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts; view participation reports |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
@@ -174,6 +175,23 @@ After approving a draft, an officer can choose **Create tasks from accepted acti
 items**, review the assignment defaults, and confirm. Only accepted items are copied.
 Repeating the conversion preserves existing tasks and creates no duplicates.
 Original meeting notes remain officer-only.
+
+### Participation reports (WBS 1.8)
+
+Officers and admins open **Reports** in the sidebar (`/reports/`). Pick a start and
+end date (the last 30 days by default); both days are included in full, in the
+organization's time zone. The page shows:
+
+* **Events held:** non-cancelled events in the range that have already started,
+  with RSVPs going and attendance for each. Upcoming events are not counted.
+* **Members:** events attended out of events held, attendance %, and tasks
+  assigned, completed and overdue (tasks created in the range).
+* **Committees:** members, attendance % across those events, and task totals.
+
+**Download CSV** exports the same figures with a `section` column. Cells that
+start with `=`, `+`, `-` or `@` are escaped so spreadsheets don't run them as
+formulas. An end date before the start date is rejected on the page and in the
+download. Charts are not included yet (SCRUM-37).
 
 ### Tasks and committee work
 
