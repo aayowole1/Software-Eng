@@ -125,6 +125,26 @@ def event_rsvp(request, pk):
     return redirect("events:detail", pk=event.pk)
 
 
+def _ensure_mark_entry(event, attendance):
+    """Write the completed "marked present" entry for an Attendance record if it is missing.
+
+    The entry credits the officer who originally marked the member
+    (Attendance.marked_by) at the original time (Attendance.marked_at), so a
+    repair on a later save never credits the officer who happens to retry.
+    """
+    AttendanceAuditLog.objects.get_or_create(
+        change_key=f"mark:{attendance.pk}",
+        defaults={
+            "event": event,
+            "user_id": attendance.user_id,
+            "action": AttendanceAction.MARKED,
+            "actor_id": attendance.marked_by_id,
+            "at": attendance.marked_at,
+            "status": AttendanceAuditStatus.COMPLETED,
+        },
+    )
+
+
 @require_POST
 @role_required(Role.OFFICER)
 def event_attendance(request, pk):
@@ -139,8 +159,9 @@ def event_attendance(request, pk):
             completed audit entry. A repaired entry credits the original
             Attendance.marked_by at Attendance.marked_at, not the officer
             who retried.
-    Unmark: get_or_create a *pending* audit entry, delete the Attendance
-            record, then mark the entry completed.
+    Unmark: first restore the mark entry if an earlier save failed to write
+            it, then get_or_create a *pending* audit entry, delete the
+            Attendance record, and mark the entry completed.
 
     Pending removals left by an interrupted save are resolved first: if the
     Attendance record is gone, the delete happened and the entry is completed;
@@ -180,21 +201,14 @@ def event_attendance(request, pk):
                 event=event, user=user, defaults={"marked_by": request.user}
             )
         # Runs for existing records too, so a retry can repair a missing entry.
-        AttendanceAuditLog.objects.get_or_create(
-            change_key=f"mark:{attendance.pk}",
-            defaults={
-                "event": event,
-                "user": user,
-                "action": AttendanceAction.MARKED,
-                "actor_id": attendance.marked_by_id,
-                "at": attendance.marked_at,
-                "status": AttendanceAuditStatus.COMPLETED,
-            },
-        )
+        _ensure_mark_entry(event, attendance)
 
     for user_id, record in existing.items():
         if user_id in attended_ids:
             continue
+        # Restore a missing "marked present" entry before recording the removal,
+        # so unchecking a member never loses the original mark from the history.
+        _ensure_mark_entry(event, record)
         log, _ = AttendanceAuditLog.objects.get_or_create(
             change_key=f"unmark:{record.pk}",
             defaults={

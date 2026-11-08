@@ -473,6 +473,60 @@ class AttendanceAuditPendingAndActorTests(TestCase):
         self.assertEqual(log.actor, self.officer)
         self.assertEqual(log.at, attendance.marked_at)
 
+    # --- Unchecking after a failed mark entry keeps the original mark ---------
+
+    def _mark_with_failed_audit_entry(self, as_user):
+        with patch.object(
+            QuerySet, "get_or_create", autospec=True, side_effect=_fail_audit_get_or_create_once()
+        ):
+            with self.assertRaises(DatabaseError):
+                self._post_attendance([self.member.pk], as_user=as_user)
+        attendance = Attendance.objects.get(event=self.event, user=self.member)
+        self.assertFalse(AttendanceAuditLog.objects.filter(change_key=f"mark:{attendance.pk}").exists())
+        return attendance
+
+    def test_unchecking_after_failed_mark_entry_restores_the_mark_first(self):
+        """Chau's case: the mark entry failed, then the next save unchecks the member."""
+        attendance = self._mark_with_failed_audit_entry(self.officer)
+
+        self._post_attendance([], as_user=self.officer)
+
+        self.assertFalse(Attendance.objects.filter(event=self.event, user=self.member).exists())
+        mark = AttendanceAuditLog.objects.get(change_key=f"mark:{attendance.pk}")
+        removal = self._removals().get()
+        self.assertEqual(mark.action, AttendanceAction.MARKED)
+        self.assertEqual(mark.status, AttendanceAuditStatus.COMPLETED)
+        self.assertEqual(mark.actor, self.officer)
+        self.assertEqual(mark.at, attendance.marked_at)
+        self.assertEqual(removal.status, AttendanceAuditStatus.COMPLETED)
+        self.assertLessEqual(mark.at, removal.at)
+        page = self._audit_page()
+        self.assertContains(page, "marked present")
+        self.assertContains(page, "marked absent")
+
+    def test_restored_mark_credits_original_officer_when_another_officer_unchecks(self):
+        attendance = self._mark_with_failed_audit_entry(self.officer)
+
+        self._post_attendance([], as_user=self.other_officer)
+
+        mark = AttendanceAuditLog.objects.get(change_key=f"mark:{attendance.pk}")
+        self.assertEqual(mark.actor, self.officer)
+        self.assertEqual(self._removals().get().actor, self.other_officer)
+
+    def test_unchecking_legacy_attendance_backfills_its_mark(self):
+        """Attendance saved before audit history existed keeps its mark when removed."""
+        attendance = Attendance.objects.create(
+            event=self.event, user=self.member, marked_by=self.officer
+        )
+        attendance.refresh_from_db()  # MongoDB stores times to the millisecond.
+
+        self._post_attendance([], as_user=self.other_officer)
+
+        mark = AttendanceAuditLog.objects.get(change_key=f"mark:{attendance.pk}")
+        self.assertEqual(mark.actor, self.officer)
+        self.assertEqual(mark.at, attendance.marked_at)
+        self.assertEqual(self._removals().get().actor, self.other_officer)
+
     def test_removal_credits_officer_who_removed(self):
         self._post_attendance([self.member.pk], as_user=self.officer)
         self._post_attendance([], as_user=self.other_officer)
