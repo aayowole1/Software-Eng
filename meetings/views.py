@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db import DatabaseError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -77,13 +78,9 @@ def draft_create(request):
     if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
-        # Reserve this attempt's ID before any write. Provider generation runs
-        # before the insert, and force_insert cannot update an existing draft.
         draft.pk = ObjectId()
-
         if not draft.title:
             draft.title = f"{timezone.now():%d %B, %Y} - Untitled Meeting"
-
         try:
             draft.generate(force_insert=True)
         except (RuntimeError, ValueError, DatabaseError):
@@ -112,6 +109,67 @@ def draft_create(request):
         messages.success(request, "Meeting created.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+
+
+def _create_draft(user, data):
+    draft = MeetingDraft(
+        title=data.get("title", ""),
+        transcript=data.get("transcript", ""),
+        notes=data.get("notes", ""),
+        created_by=user,
+        pk=ObjectId(),
+    )
+    if not draft.title:
+        draft.title = f"{timezone.now():%d %B, %Y} - Untitled Meeting"
+    try:
+        draft.generate(force_insert=True)
+    except (RuntimeError, ValueError, DatabaseError):
+        _cleanup_created_draft(draft)
+        raise
+    return draft
+
+
+@role_required(Role.OFFICER)
+def meeting_processing(request):
+    if request.method == "POST":
+        form = MeetingNotesForm(request.POST)
+        if not form.is_valid():
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": "New meeting notes"},
+                status=400,
+            )
+        request.session["meeting_processing"] = {
+            "title": form.cleaned_data["title"],
+            "transcript": form.cleaned_data["transcript"],
+            "notes": form.cleaned_data["notes"],
+        }
+        request.session.save()
+        return redirect("meetings:processing")
+    return redirect("meetings:create")
+
+
+@role_required(Role.OFFICER)
+def meeting_processing_page(request):
+    if "meeting_processing" not in request.session:
+        return redirect("meetings:create")
+    return render(request, "meetings/processing.html")
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def meeting_process(request):
+    data = request.session.get("meeting_processing")
+    if not data:
+        return JsonResponse({"error": "This meeting processing request has expired."}, status=400)
+    try:
+        draft = _create_draft(request.user, data)
+    except (RuntimeError, ValueError, DatabaseError):
+        return JsonResponse({"error": "The meeting could not be processed. Please return and try again."}, status=503)
+    del request.session["meeting_processing"]
+    request.session.save()
+    return JsonResponse({"redirect": reverse("meetings:detail", args=[draft.pk])})
 
 
 def _cleanup_created_draft(draft):

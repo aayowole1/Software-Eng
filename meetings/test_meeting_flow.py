@@ -53,9 +53,33 @@ class MeetingFlowTests(TestCase):
         self.assertContains(response, "async function finalizeRecording()")
         self.assertContains(response, 'X-Recording-Final')
         self.assertContains(response, "let allowSubmit = false;")
-        self.assertContains(response, 'id="meeting-processing"')
-        self.assertContains(response, "Transcribing audio and preparing the summary and action items.")
+        self.assertContains(response, 'action="/meetings/new/processing/start/"')
         self.assertNotContains(response, 'class="meeting-transcript"')
+
+    def test_submit_redirects_to_separate_processing_page(self):
+        response = self.client.post(
+            reverse("meetings:processing_start"),
+            {"title": "Processing test", "transcript": "Transcript", "notes": ""},
+        )
+        self.assertRedirects(response, reverse("meetings:processing"))
+        page = self.client.get(response.url)
+        self.assertContains(page, "Processing meeting")
+        self.assertContains(page, "Transcribing audio and preparing the summary and action items.")
+
+    @patch("meetings.models.summarize_meeting")
+    def test_processing_page_completes_generation_and_redirects_to_draft(self, summarize):
+        summarize.return_value = MeetingSummary("Processed summary", ["Action: Follow up"])
+
+        self.client.post(
+            reverse("meetings:processing_start"),
+            {"title": "Async meeting", "transcript": "Deepgram text", "notes": "Officer notes"},
+        )
+        response = self.client.post(reverse("meetings:process"))
+
+        self.assertEqual(response.status_code, 200)
+        draft = MeetingDraft.objects.get(title="Async meeting")
+        self.assertEqual(response.json()["redirect"], reverse("meetings:detail", args=[draft.pk]))
+        self.assertEqual(draft.summary, "Processed summary")
 
     def test_review_submission_saves_officer_notes(self):
         draft = MeetingDraft.objects.create(
