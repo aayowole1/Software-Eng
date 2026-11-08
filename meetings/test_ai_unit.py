@@ -1,4 +1,4 @@
-"""Unit tests for meetings/ai.py — summarize_meeting() with the OpenAI provider.
+"""Unit tests for meetings/ai.py — summarize_meeting() with OpenRouter.
 
 The OpenAI client is replaced with a fake, so these run without an API key,
 network access or cost. They check the request we send and how provider
@@ -17,7 +17,7 @@ from .ai import MeetingSummary, build_summary_messages, summarize_meeting
 
 
 def provider_returning(content):
-    """A fake OpenAI class whose chat completion returns `content`."""
+    """A fake OpenRouter-compatible OpenAI client."""
     client = MagicMock()
     client.chat.completions.create.return_value = SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
@@ -25,7 +25,7 @@ def provider_returning(content):
     return MagicMock(return_value=client), client
 
 
-@patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
+@patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key", "OPENROUTER_MODEL": "openrouter/free"})
 class SummarizeMeetingTests(SimpleTestCase):
 
     def test_blank_officer_notes_are_omitted_from_prompt(self):
@@ -74,11 +74,13 @@ class SummarizeMeetingTests(SimpleTestCase):
         fake_class.assert_called_once()
         self.assertEqual(fake_class.call_args.kwargs["api_key"], "test-key")
         request = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(request["model"], "gpt-4o-mini")
+        self.assertEqual(request["model"], "openrouter/free")
         self.assertEqual(request["response_format"], {"type": "json_object"})
         self.assertIn("Budget talk", request["messages"][-1]["content"])
+        self.assertEqual(fake_class.call_args.kwargs["timeout"], 30.0)
+        self.assertEqual(fake_class.call_args.kwargs["max_retries"], 2)
 
-    @patch.dict(os.environ, {"OPENAI_MODEL": "gpt-test"})
+    @patch.dict(os.environ, {"OPENROUTER_MODEL": "gpt-test"})
     def test_model_can_be_overridden(self):
         _, _, client = self.summarize(self.payload())
         self.assertEqual(client.chat.completions.create.call_args.kwargs["model"], "gpt-test")
@@ -90,9 +92,9 @@ class SummarizeMeetingTests(SimpleTestCase):
             with self.subTest(notes=notes), self.assertRaises(ValueError):
                 summarize_meeting(notes)
 
-    @patch.dict(os.environ, {"OPENAI_API_KEY": ""})
+    @patch.dict(os.environ, {"OPENROUTER_API_KEY": ""})
     def test_missing_api_key_is_reported(self):
-        with self.assertRaisesMessage(RuntimeError, "OPENAI_API_KEY is not configured"):
+        with self.assertRaisesMessage(RuntimeError, "OPENROUTER_API_KEY is not configured"):
             summarize_meeting("Some notes")
 
     # ---- malformed provider responses ----
@@ -115,5 +117,5 @@ class SummarizeMeetingTests(SimpleTestCase):
     def test_provider_errors_become_runtime_errors(self):
         fake_class, client = provider_returning(self.payload())
         client.chat.completions.create.side_effect = OpenAIError("service unavailable")
-        with patch("openai.OpenAI", fake_class), self.assertRaisesMessage(RuntimeError, "OpenAI summarization failed"):
+        with patch("openai.OpenAI", fake_class), self.assertRaisesMessage(RuntimeError, "OpenRouter summarization failed"):
             summarize_meeting("Some notes")

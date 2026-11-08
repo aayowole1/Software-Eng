@@ -117,6 +117,41 @@ class MeetingFlowTests(TestCase):
         draft.refresh_from_db()
         self.assertEqual(draft.notes, "Officer merged notes")
 
+    def test_every_review_decision_returns_to_notes_list(self):
+        for decision in ("approved", "rejected", "revision_requested"):
+            with self.subTest(decision=decision):
+                draft = MeetingDraft.objects.create(
+                    title=f"{decision} notes",
+                    notes="Officer notes",
+                    created_by=self.officer,
+                )
+                response = self.client.post(
+                    reverse("meetings:review", args=[draft.pk]),
+                    {"notes": "Reviewed notes", "decision": decision, "expected_generation": ""},
+                )
+                self.assertRedirects(response, reverse("meetings:list"))
+
+    def test_officer_can_review_but_cannot_delete(self):
+        draft = MeetingDraft.objects.create(title="Protected notes", created_by=self.officer)
+        review = self.client.post(
+            reverse("meetings:review", args=[draft.pk]),
+            {"decision": "approved", "expected_generation": ""},
+        )
+        self.assertRedirects(review, reverse("meetings:list"))
+        draft.refresh_from_db()
+        self.assertEqual(draft.status, "approved")
+        deletion = self.client.post(reverse("meetings:delete", args=[draft.pk]))
+        self.assertEqual(deletion.status_code, 403)
+        self.assertTrue(MeetingDraft.objects.filter(pk=draft.pk).exists())
+
+    def test_admin_can_delete_notes(self):
+        admin = make_user("meeting-admin@example.com", Role.ADMIN)
+        draft = MeetingDraft.objects.create(title="Admin notes", created_by=self.officer)
+        self.client.force_login(admin)
+        response = self.client.post(reverse("meetings:delete", args=[draft.pk]))
+        self.assertRedirects(response, reverse("meetings:list"))
+        self.assertFalse(MeetingDraft.objects.filter(pk=draft.pk).exists())
+
     def test_review_page_has_full_width_notes_and_read_only_transcript(self):
         draft = MeetingDraft.objects.create(
             title="Review layout",
@@ -200,6 +235,25 @@ class MeetingFlowTests(TestCase):
 
         self.assertEqual(chunk.json(), {"transcript": "partial transcript"})
         self.assertEqual(final.json(), {"transcript": "final transcript"})
+
+    def test_transcribe_timeout_discards_recording_and_returns_retryable_error(self):
+        class FailingTranscriber:
+            def add_pcm(self, audio):
+                raise TimeoutError("Deepgram timed out")
+
+            def discard(self):
+                self.discarded = True
+
+        transcriber = FailingTranscriber()
+        with patch("meetings.views.DeepgramTranscriber", return_value=transcriber):
+            response = self.client.post(
+                reverse("meetings:transcribe"),
+                data=b"pcm",
+                content_type="application/octet-stream",
+                HTTP_X_RECORDING_ID="timeout-test",
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["error"], "Deepgram timed out")
 
     def test_empty_processing_result_warns_that_no_audio_was_found(self):
         self.client.post(

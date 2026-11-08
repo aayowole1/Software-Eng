@@ -222,10 +222,14 @@ def transcribe_chunk(request):
         if request.headers.get("X-Recording-Final") == "true":
             transcript = transcriber.finish()
             _active_recordings.pop(key, None)
-    except (OSError, ValueError, RuntimeError) as error:
+    except ValueError as error:
         transcriber.discard()
         _active_recordings.pop(key, None)
         return JsonResponse({"error": str(error)}, status=400)
+    except (OSError, RuntimeError) as error:
+        transcriber.discard()
+        _active_recordings.pop(key, None)
+        return JsonResponse({"error": str(error)}, status=503)
 
     return JsonResponse({"transcript": transcript})
 
