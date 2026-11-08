@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Meeting drafts{% endblock %}
+{% block title %}Notes drafts{% endblock %}
 {% block content %}
-  <h1>AI meeting drafts</h1>
-  <p><a class="button" href="{% url 'meetings:create' %}">Submit meeting notes</a></p>
+  <h1>AI notes drafts</h1>
+  <p><a class="button" href="{% url 'meetings:create' %}">Submit notes</a></p>
   <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">Title</th><th scope="col">Status</th><th scope="col">Submitted by</th><th scope="col">Date</th></tr></thead>

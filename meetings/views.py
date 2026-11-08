@@ -57,7 +57,7 @@ class MeetingNotesForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("notes", "").strip() and not cleaned_data.get("transcript", "").strip():
-            raise forms.ValidationError("Add officer notes or record part of the meeting before submitting.")
+            raise forms.ValidationError("Add officer notes or record audio before submitting.")
         return cleaned_data
 
 
@@ -89,7 +89,7 @@ def draft_create(request):
         draft.created_by = request.user
         draft.pk = ObjectId()
         if not draft.title:
-            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Meeting"
+            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Notes"
         try:
             draft.generate(force_insert=True)
         except (RuntimeError, ValueError, DatabaseError):
@@ -99,25 +99,25 @@ def draft_create(request):
                 generation_token=draft.generation_token,
             ).first()
             if published is not None:
-                messages.warning(request, "The meeting was saved, but confirmation was delayed. Review the draft below.")
+                messages.warning(request, "The notes were saved, but confirmation was delayed. Review the draft below.")
                 return redirect("meetings:detail", pk=published.pk)
             if _cleanup_created_draft(draft):
-                message = "The meeting could not be created. No new draft was retained. Please try submitting again."
+                message = "The notes could not be created. No new draft was retained. Please try submitting again."
             else:
                 message = (
-                    "The meeting's creation could not be confirmed. Review Meeting drafts before retrying. "
+                    "The notes' creation could not be confirmed. Review Notes drafts before retrying. "
                     "A completed draft or unpublished action data may remain; ask an officer for help if needed."
                 )
             messages.error(request, message)
             return render(
                 request,
                 "meetings/draft_form.html",
-                {"form": form, "heading": "New meeting notes"},
+                {"form": form, "heading": "New notes"},
                 status=503,
             )
-        messages.success(request, "Meeting created.")
+        messages.success(request, "Notes created.")
         return redirect("meetings:detail", pk=draft.pk)
-    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New notes"})
 
 
 def _create_draft(user, data):
@@ -129,7 +129,7 @@ def _create_draft(user, data):
         pk=ObjectId(),
     )
     if not draft.title:
-        draft.title = f"{timezone.now():%d %B, %Y} - Untitled Meeting"
+        draft.title = f"{timezone.now():%d %B, %Y} - Untitled Notes"
     try:
         draft.generate(force_insert=True)
     except (RuntimeError, ValueError, DatabaseError):
@@ -146,7 +146,7 @@ def meeting_processing(request):
             return render(
                 request,
                 "meetings/draft_form.html",
-                {"form": form, "heading": "New meeting notes"},
+                {"form": form, "heading": "New notes"},
                 status=400,
             )
         request.session["meeting_processing"] = {
@@ -171,11 +171,16 @@ def meeting_processing_page(request):
 def meeting_process(request):
     data = request.session.get("meeting_processing")
     if not data:
-        return JsonResponse({"error": "This meeting processing request has expired."}, status=400)
+        return JsonResponse({"error": "This notes processing request has expired."}, status=400)
+    if not data.get("transcript", "").strip() and not data.get("notes", "").strip():
+        return JsonResponse(
+            {"error": "No audio was found. Record audio or add officer notes before submitting."},
+            status=422,
+        )
     try:
         draft = _create_draft(request.user, data)
     except (RuntimeError, ValueError, DatabaseError):
-        return JsonResponse({"error": "The meeting could not be processed. Please return and try again."}, status=503)
+        return JsonResponse({"error": "The notes could not be processed. Please return and try again."}, status=503)
     del request.session["meeting_processing"]
     request.session.save()
     return JsonResponse({"redirect": reverse("meetings:detail", args=[draft.pk])})
@@ -277,7 +282,7 @@ def draft_review(request, pk):
     except MeetingReviewConflict:
         messages.error(
             request,
-            "The meeting status changed during review. Reload the draft before trying again. "
+            "The notes status changed during review. Reload the draft before trying again. "
             "No action-item changes from this review were saved.",
         )
         return redirect("meetings:detail", pk=draft.pk)
@@ -332,12 +337,12 @@ def draft_revise(request, pk):
                 expected_generation=form.cleaned_data["expected_generation"],
             )
         except MeetingReviewConflict:
-            messages.error(request, "This meeting changed during revision. Reload it before trying again.")
+            messages.error(request, "These notes changed during revision. Reload them before trying again.")
             return redirect("meetings:detail", pk=draft.pk)
         except (RuntimeError, ValueError, DatabaseError):
             messages.error(
                 request,
-                "The revised generation could not be confirmed. Reload the meeting before retrying. "
+                "The revised generation could not be confirmed. Reload the notes before retrying. "
                 "The published action set has not been removed.",
             )
             return render(

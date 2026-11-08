@@ -30,6 +30,24 @@
     gap: 16px;
 }
 
+.notes-submit-warning {
+    margin: 12px 0;
+    padding: 12px 16px;
+    color: #8a1111;
+    background: #fee4e2;
+    border: 2px solid #d92d20;
+    border-radius: 6px;
+    font-weight: 700;
+    animation: notes-warning-flash 0.8s ease-in-out 2;
+}
+
+@keyframes notes-warning-flash {
+    50% {
+        background: #fda29b;
+        box-shadow: 0 0 0 4px rgba(217, 45, 32, 0.2);
+    }
+}
+
 .meeting-review-columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Processing meeting{% endblock %}
+{% block title %}Processing notes{% endblock %}
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
 {% endblock %}
@@ -8,9 +8,9 @@
   <main class="meeting-processing-page" aria-live="polite">
     <div class="meeting-processing-card">
       <div class="meeting-spinner" aria-hidden="true"></div>
-      <h1>Processing meeting</h1>
-      <p>Transcribing audio and preparing the summary and action items.</p>
-      <p class="muted">Please wait. This page will open the meeting draft when processing is complete.</p>
+      <h1>Processing notes</h1>
+      <p>Transcribing audio and preparing the notes summary and action items.</p>
+      <p class="muted">Please wait. This page will open the notes draft when processing is complete.</p>
     </div>
   </main>
   <form id="processing-form" method="post" action="{% url 'meetings:process' %}">
@@ -23,13 +23,13 @@
     })
       .then(async (response) => {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Meeting processing failed.");
+        if (!response.ok) throw new Error(data.error || "Notes processing failed.");
         window.location.assign(data.redirect);
       })
       .catch((error) => {
         document.querySelector(".meeting-processing-card").innerHTML =
-          `<h1>Meeting processing failed</h1><p>${error.message}</p>` +
-          '<p><a class="button" href="{% url "meetings:create" %}">Return to meeting</a></p>';
+          `<h1>Notes processing failed</h1><p class="notes-submit-warning">${error.message}</p>` +
+          '<p><a class="button" href="{% url "meetings:create" %}">Return to notes</a></p>';
       });
   </script>
 {% endblock %}

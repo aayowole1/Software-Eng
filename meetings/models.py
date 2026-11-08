@@ -110,7 +110,7 @@ class MeetingDraft(models.Model):
         self._staged_generation = None
         self._publication_uncertain = False
         result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
-        if title.endswith(" - Untitled Meeting"):
+        if title.endswith(" - Untitled Notes"):
             title = generate_meeting_title(transcript, notes)
         self.pk = self.pk or ObjectId()
         token = uuid4().hex

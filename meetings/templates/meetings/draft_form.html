@@ -11,6 +11,9 @@
     {{ form.transcript }}
     {{ form.expected_generation }}
     {{ form.expected_generation.errors }}
+    {% if form.non_field_errors %}
+      <div class="notes-submit-warning" role="alert">{{ form.non_field_errors }}</div>
+    {% endif %}
     <p>
       {{ form.title.label_tag }}
       {{ form.title }}
@@ -25,17 +28,17 @@
     <p class="muted">The transcript is created in the background. Nothing is saved as a task until an officer approves it.</p>
     <div class="meeting-actions">
       <div class="meeting-recording-actions">
-        <button type="button" id="start-recording">Start Meeting</button>
+        <button type="button" id="start-recording">Start Notes</button>
         <button type="button" id="stop-recording" class="stop-meeting" disabled>
           <span aria-hidden="true">■</span>
-          Stop Meeting
+          Stop Notes
         </button>
       </div>
-      <button type="submit" id="submit-meeting">Submit Meeting</button>
+      <button type="submit" id="submit-meeting">Submit Notes</button>
     </div>
   </form>
   <p id="recording-status" class="muted" role="status">
-    Click Start Meeting and allow microphone access to begin transcription.
+    Click Start Notes and allow microphone access to begin transcription.
   </p>
   <script>
     (() => {
@@ -64,6 +67,12 @@
       let bufferedSamples = 0;
       let committedTranscript = transcript.value.trim();
       let currentSegment = "";
+
+      function showSubmitWarning(message) {
+        status.textContent = message;
+        status.classList.remove("muted");
+        status.classList.add("notes-submit-warning");
+      }
 
       function setTranscript(value) {
         currentSegment = value.trim();
@@ -134,7 +143,7 @@
         isStopping = true;
         stopButton.disabled = true;
         submitButton.disabled = true;
-        status.textContent = "Pausing meeting…";
+        status.textContent = "Pausing notes…";
         processor.disconnect();
         muteGain.disconnect();
         source.disconnect();
@@ -146,7 +155,7 @@
           currentSegment = "";
           audioBuffer = [];
           bufferedSamples = 0;
-          status.textContent = "Meeting paused. Start Meeting to resume or Submit Meeting to finish.";
+          status.textContent = "Notes paused. Start Notes to resume or Submit Notes to finish.";
         } finally {
           await audioContext.close();
           startButton.disabled = false;
@@ -164,7 +173,7 @@
             month: "long",
             year: "numeric",
           });
-          title.value = `${date} - Untitled Meeting`;
+          title.value = `${date} - Untitled Notes`;
         }
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -187,7 +196,7 @@
             bufferedSamples += samples.length;
             if (bufferedSamples >= 16000) {
               flushAudioBuffer().catch((error) => {
-                status.textContent = error.message;
+                showSubmitWarning(error.message);
                 stopRecording();
               });
             }
@@ -231,22 +240,21 @@
         }
         if (isRecording || isPaused) {
           event.preventDefault();
-          showProcessing();
-          status.textContent = "Submitting meeting and finalizing transcript…";
+          status.textContent = "Submitting notes and finalizing transcript…";
           finalizeRecording().then(() => {
             if (!notes.value.trim() && !transcript.value.trim()) {
-              throw new Error("Add officer notes or record part of the meeting before submitting.");
+              throw new Error("No audio was found. Record audio or add officer notes before submitting.");
             }
             allowSubmit = true;
             form.requestSubmit();
           }).catch((error) => {
-            status.textContent = error.message;
+            showSubmitWarning(error.message);
           });
           return;
         }
         if (!notes.value.trim() && !transcript.value.trim()) {
           event.preventDefault();
-          status.textContent = "Add officer notes or record part of the meeting before submitting.";
+          showSubmitWarning("No audio was found. Record audio or add officer notes before submitting.");
           return;
         }
       });

@@ -39,7 +39,8 @@ class MeetingFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Add officer notes or record part of the meeting before submitting.")
+        self.assertContains(response, "Add officer notes or record audio before submitting.")
+        self.assertContains(response, 'class="notes-submit-warning"')
         summarize.assert_not_called()
         self.assertFalse(MeetingDraft.objects.exists())
 
@@ -65,8 +66,8 @@ class MeetingFlowTests(TestCase):
         )
         self.assertRedirects(response, reverse("meetings:processing"))
         page = self.client.get(response.url)
-        self.assertContains(page, "Processing meeting")
-        self.assertContains(page, "Transcribing audio and preparing the summary and action items.")
+        self.assertContains(page, "Processing notes")
+        self.assertContains(page, "Transcribing audio and preparing the notes summary and action items.")
 
     @patch("meetings.models.summarize_meeting")
     def test_processing_page_completes_generation_and_redirects_to_draft(self, summarize):
@@ -170,3 +171,18 @@ class MeetingFlowTests(TestCase):
 
         self.assertEqual(chunk.json(), {"transcript": "partial transcript"})
         self.assertEqual(final.json(), {"transcript": "final transcript"})
+
+    def test_empty_processing_result_warns_that_no_audio_was_found(self):
+        self.client.post(
+            reverse("meetings:processing_start"),
+            {"title": "No audio", "transcript": "temporary", "notes": ""},
+        )
+        session = self.client.session
+        session["meeting_processing"]["transcript"] = ""
+        session.save()
+        response = self.client.post(reverse("meetings:process"))
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.json()["error"],
+            "No audio was found. Record audio or add officer notes before submitting.",
+        )
