@@ -5,7 +5,6 @@
   <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
 {% endblock %}
 {% block content %}
-  <h1>{{ heading }}</h1>
   <form method="post" action="{% url 'meetings:processing_start' %}" class="card meeting-form-card" novalidate id="meeting-form">
     {% csrf_token %}
     {{ form.transcript }}
