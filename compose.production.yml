@@ -32,8 +32,8 @@ x-application: &application
     MONGODB_NAME: ${MONGODB_NAME:?Set the intended database name}
     TIME_ZONE: ${TIME_ZONE:-America/Chicago}
     GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-    OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
     DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
   read_only: true
   tmpfs:

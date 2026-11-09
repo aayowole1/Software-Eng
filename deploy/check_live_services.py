@@ -34,7 +34,7 @@ NOTES = (
     "Action: Send the synthetic agenda. No other work was assigned."
 )
 CONFIG_NAMES = (
-    "OPENAI_API_KEY", "OPENAI_MODEL", "DEEPGRAM_API_KEY", "GOOGLE_CLIENT_ID",
+    "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "DEEPGRAM_API_KEY", "GOOGLE_CLIENT_ID",
     "DJANGO_EMAIL_POLICY", "EMAIL_BACKEND", "EMAIL_HOST", "EMAIL_PORT", "EMAIL_HOST_USER",
     "EMAIL_HOST_PASSWORD", "EMAIL_USE_TLS", "EMAIL_USE_SSL", "DEFAULT_FROM_EMAIL",
 )
@@ -146,7 +146,7 @@ def worker(service, audio_path):
     started = time.perf_counter()
     try:
         if service == "openai":
-            if not config["OPENAI_API_KEY"]:
+            if not config["OPENROUTER_API_KEY"]:
                 return {"status": "blocked", "reason": "openai_key_missing"}
             import openai
 
@@ -154,8 +154,8 @@ def worker(service, audio_path):
             calls = []
 
             def capped_client(**kwargs):
-                kwargs.update(api_key=config["OPENAI_API_KEY"], timeout=20.0, max_retries=0,
-                              base_url="https://api.openai.com/v1")
+                kwargs.update(api_key=config["OPENROUTER_API_KEY"], timeout=20.0, max_retries=0,
+                              base_url="https://openrouter.ai/api/v1")
                 client = original_client(**kwargs)
                 original_create = client.chat.completions.create
 
@@ -170,8 +170,8 @@ def worker(service, audio_path):
                 return client
 
             openai.OpenAI = capped_client
-            os.environ["OPENAI_API_KEY"] = config["OPENAI_API_KEY"]
-            os.environ["OPENAI_MODEL"] = config["OPENAI_MODEL"] or "gpt-4o-mini"
+            os.environ["OPENROUTER_API_KEY"] = config["OPENROUTER_API_KEY"]
+            os.environ["OPENROUTER_MODEL"] = config["OPENROUTER_MODEL"] or "openai/gpt-4o-mini"
             from meetings.ai import summarize_meeting
 
             assert len(NOTES.split()) <= 100
@@ -292,9 +292,9 @@ def main(argv=None):
         "credential_values_redacted": True, "dotenv_status": dotenv_status,
         "configuration_presence": presence, "dependencies_available": available,
         "tls_endpoints": {},
-        "openai": {"status": "ready_for_opt_in" if presence["OPENAI_API_KEY"] and available["openai"] else "blocked",
-                   "live_passed": False, "model_override_present": presence["OPENAI_MODEL"],
-                   "default_model": "gpt-4o-mini", "default_model_deprecated_shutdown": "2027-01-14"},
+        "openai": {"status": "ready_for_opt_in" if presence["OPENROUTER_API_KEY"] and available["openai"] else "blocked",
+                   "live_passed": False, "model_override_present": presence["OPENROUTER_MODEL"],
+                   "default_model": "openai/gpt-4o-mini", "default_model_deprecated_shutdown": "2027-01-14"},
         "deepgram": {"status": "ready_for_opt_in" if presence["DEEPGRAM_API_KEY"] and available["websocket"] else "blocked",
                      "live_passed": False, "model": "nova-3", "format": "linear16_mono_16000hz",
                      "audio": inspect_audio(args.audio, args.synthetic_audio_confirmed)},
