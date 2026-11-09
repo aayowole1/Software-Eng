@@ -20,6 +20,28 @@ from .forms import AnnouncementForm, AnnouncementAttachmentForm
 
 
 # === HELPERS
+def member_can_view_announcement(user, announcement) -> bool:
+    """Return whether a member belongs to the announcement's audience."""
+    return (
+        announcement.committee_id is None
+        or announcement.committee.members.filter(user=user).exists()
+    )
+
+
+def apply_announcement_action(announcement, action: str) -> None:
+    """Set announcement status from an explicit form action."""
+    if action == "draft":
+        announcement.status = "draft"
+    elif action == "archive":
+        announcement.status = "archived"
+    else:
+        announcement.status = (
+            "scheduled" if announcement.scheduled_for else "published"
+        )
+        if announcement.status == "published":
+            announcement.published_at = timezone.now()
+
+
 def is_officer_or_admin(user) -> bool:
     """Check whether user has admin publishing permissions."""
     return (
@@ -53,18 +75,15 @@ def announcement_create(request):
     """Create an announcement."""
     if request.method == "POST":
         form = AnnouncementForm(request.POST)
+        action = request.POST.get("action", "publish")
         # support multi-file upload
         files = request.FILES.getlist("attachments")
 
         if form.is_valid():
             announcement = form.save(commit=False)
             announcement.author = request.user
-
             announcement.author_role = get_author_role(request.user)
-
-            # auto-set published_at if publishing immediately
-            if announcement.status == "published" and not announcement.published_at:
-                announcement.published_at = timezone.now()
+            apply_announcement_action(announcement, action)
 
             announcement.save()
 
@@ -90,9 +109,7 @@ def announcement_create(request):
     else:
         # pre-populate sensible defaults
         form = AnnouncementForm(
-            initial={
-                "status": "published",
-            }
+            initial={}
         )
 
     return render(
@@ -124,15 +141,13 @@ def announcement_edit(request, pk):
 
     if request.method == "POST":
         form = AnnouncementForm(request.POST, instance=announcement)
+        action = request.POST.get("action", "publish")
         files = request.FILES.getlist("attachments")
         delete_attachment_ids = request.POST.getlist("delete_attachments")
 
         if form.is_valid():
             announcement = form.save(commit=False)
-
-            # handle status switch to published
-            if announcement.status == "published" and not announcement.published_at:
-                announcement.published_at = timezone.now()
+            apply_announcement_action(announcement, action)
 
             announcement.save()
 
@@ -189,13 +204,17 @@ def announcements_list(request):
     status_filter = request.GET.get("status", "all")
 
     announcements = Announcement.objects.select_related(
-        "author", "category"
+        "author", "category", "committee"
     ).prefetch_related("attachments")
 
 
     if not is_admin:
-        # regular members can only see published posts
-        announcements = announcements.filter(status="published")
+        announcements = announcements.filter(
+            status="published",
+        ).filter(
+            Q(committee__isnull=True)
+            | Q(committee__members__user=request.user)
+        ).distinct()
     elif status_filter != "all":
         announcements = announcements.filter(status=status_filter)
 
@@ -255,7 +274,7 @@ def announcement_detail(request, pk):
     """Retrieve details about the announcement."""
     announcement = get_object_or_404(
         Announcement.objects.select_related(
-            "author", "category").prefetch_related("attachments"),
+            "author", "category", "committee").prefetch_related("attachments"),
         pk=pk
     )
 
@@ -268,6 +287,11 @@ def announcement_detail(request, pk):
     # permission check: regular members cannot view unpublished/draft posts
     if not is_published and not is_admin:
         raise PermissionDenied("This announcement has not been published yet.")
+    if is_published and not is_admin and not member_can_view_announcement(
+        request.user,
+        announcement,
+    ):
+        raise PermissionDenied("This announcement is not available to your committee.")
 
     # record / check read receipt for telemetry
     receipt_created = False

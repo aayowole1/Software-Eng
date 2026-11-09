@@ -53,6 +53,13 @@ class Announcement(models.Model):
         null=True,
         related_name="announcements",
     )
+    committee = models.ForeignKey(
+        "committees.Committee",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
 
     author = models.ForeignKey(
         User,

@@ -6,12 +6,21 @@
 
 # === IMPORTS
 from django import forms
+from django.utils import timezone
 
-from .models import Announcement, AnnouncementAttachment, Category
+from committees.models import Committee
+
+from .models import Announcement, AnnouncementAttachment
 
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
+    committee = forms.ModelChoiceField(
+        queryset=Committee.objects.all(),
+        required=False,
+        empty_label="All members",
+        help_text="Leave as All members to send this announcement organization-wide.",
+    )
     scheduled_for = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(
@@ -37,8 +46,7 @@ class AnnouncementForm(forms.ModelForm):
         model = Announcement
         fields = [
             "title",
-            "category",
-            "status",
+            "committee",
             "is_pinned",
             "is_urgent",
             "content",
@@ -64,7 +72,7 @@ class AnnouncementForm(forms.ModelForm):
                     "style": "width: 100%; max-width: none;",
                 }
             ),
-            "category": forms.Select(
+            "committee": forms.Select(
                 attrs={
                     "class": (
                         "w-full text-sm bg-white border"
@@ -72,16 +80,6 @@ class AnnouncementForm(forms.ModelForm):
                         " text-slate-800 focus:ring-2"
                         " focus:ring-slate-800 focus:outline-none"
                     ),
-                }
-            ),
-            "status": forms.Select(
-                attrs={
-                    "class": (
-                        "w-full text-sm bg-white border"
-                        " border-slate-200 rounded-lg px-3 py-2"
-                        " text-slate-800 focus:ring-2"
-                        " focus:ring-slate-800 focus:outline-none"
-                    )
                 }
             ),
             "content": forms.Textarea(
@@ -150,13 +148,12 @@ class AnnouncementForm(forms.ModelForm):
     def clean(self):
         """Clean the announcement."""
         cleaned_data = super().clean()
-        status = cleaned_data.get("status")
         scheduled_for = cleaned_data.get("scheduled_for")
 
-        if status == "scheduled" and not scheduled_for:
+        if scheduled_for and scheduled_for <= timezone.now():
             self.add_error(
                 "scheduled_for",
-                "You must specify a date and time for scheduled announcements.",
+                "The scheduled time must be in the future.",
             )
 
         return cleaned_data

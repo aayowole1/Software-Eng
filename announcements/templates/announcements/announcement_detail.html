@@ -12,7 +12,7 @@
       <div class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
         <a href="{% url 'announcements:list' %}" class="hover:text-slate-900 transition">Announcements</a>
         <span>&rsaquo;</span>
-        <span class="text-slate-800 font-semibold truncate max-w-xs">{{ announcement.category.name|default:"General" }}</span>
+        <span class="text-slate-800 font-semibold truncate max-w-xs">{{ announcement.committee.name|default:"All members" }}</span>
       </div>
 
       <div class="flex items-center gap-2">
@@ -40,7 +40,11 @@
           </span>
         {% endif %}
 
-        {% if announcement.category %}
+        {% if announcement.committee %}
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            {{ announcement.committee.name }}
+          </span>
+        {% elif announcement.category %}
           <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
             {{ announcement.category.name }}
           </span>

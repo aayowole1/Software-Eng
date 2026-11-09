@@ -100,30 +100,27 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_scheduled_status_requires_schedule_time(self):
+    def test_scheduled_time_is_required_to_be_in_the_future(self):
         category = self.make_category()
         form = AnnouncementForm(
             data={
                 "title": "Scheduled",
                 "category": category.pk,
-                "status": "scheduled",
                 "content": "Future content",
-                "target_reach": 10,
+                "scheduled_for": "2000-01-01T12:00",
             }
         )
         self.assertFalse(form.is_valid())
         self.assertIn("scheduled_for", form.errors)
 
-    def test_scheduled_status_accepts_schedule_time(self):
+    def test_future_scheduled_time_is_accepted(self):
         category = self.make_category()
         form = AnnouncementForm(
             data={
                 "title": "Scheduled",
                 "category": category.pk,
-                "status": "scheduled",
                 "content": "Future content",
                 "scheduled_for": "2030-01-01T12:00",
-                "target_reach": 10,
             }
         )
         self.assertTrue(form.is_valid(), form.errors)

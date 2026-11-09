@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from accounts.models import Profile, Role
+from committees.models import CommitteeMember
 
 from announcements.models import (
     Announcement,
@@ -60,6 +61,32 @@ class AnnouncementListViewTests(AnnouncementTestDataMixin, TestCase):
         self.assertNotContains(response, "Draft notice")
         self.assertNotContains(response, "Scheduled notice")
 
+    def test_member_only_sees_announcements_for_their_committee_or_whole_org(self):
+        committee = self.make_committee("Events", self.officer)
+        CommitteeMember.objects.create(committee=committee, user=self.member)
+        targeted = self.make_announcement(
+            author=self.officer,
+            title="Committee notice",
+            committee=committee,
+            status="published",
+        )
+        whole_org = self.make_announcement(
+            author=self.officer,
+            title="Whole organization notice",
+            committee=None,
+            status="published",
+        )
+        self.login(self.member)
+        response = self.client.get(self.url)
+        self.assertContains(response, targeted.title)
+        self.assertContains(response, whole_org.title)
+
+        outsider = self.make_user("outsider")
+        self.login(outsider)
+        response = self.client.get(self.url)
+        self.assertNotContains(response, targeted.title)
+        self.assertContains(response, whole_org.title)
+
     def test_officers_can_filter_by_status(self):
         self.login(self.officer)
         response = self.client.get(self.url, {"status": "draft"})
@@ -107,12 +134,56 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
         )
         self.assertRedirects(response, expected_url, msg_prefix=str(response))
 
-    def test_get_prefills_published_defaults_for_officer(self):
+    def test_get_does_not_expose_publishing_state(self):
         self.login(self.make_officer())
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["form"].initial["status"], "published")
+        self.assertNotIn("status", response.context["form"].fields)
         self.assertNotIn("target_reach", response.context["form"].fields)
+
+    def test_officer_can_save_as_draft_or_archive(self):
+        officer = self.make_officer()
+        category = self.make_category()
+        self.login(officer)
+        for action, expected_status in (("draft", "draft"), ("archive", "archived")):
+            response = self.client.post(
+                self.url,
+                {
+                    "title": f"{expected_status.title()} notice",
+                    "category": category.pk,
+                    "content": "Content",
+                    "action": action,
+                },
+            )
+            announcement = Announcement.objects.get(
+                title=f"{expected_status.title()} notice"
+            )
+            self.assertRedirects(
+                response,
+                reverse("announcements:detail", args=[announcement.pk]),
+            )
+            self.assertEqual(announcement.status, expected_status)
+
+    def test_publish_action_with_schedule_requires_a_future_time(self):
+        officer = self.make_officer()
+        category = self.make_category()
+        self.login(officer)
+        response = self.client.post(
+            self.url,
+            {
+                "title": "Future notice",
+                "category": category.pk,
+                "content": "Content",
+                "scheduled_for": "2030-01-01T12:00",
+                "action": "publish",
+            },
+        )
+        announcement = Announcement.objects.get(title="Future notice")
+        self.assertRedirects(
+            response,
+            reverse("announcements:detail", args=[announcement.pk]),
+        )
+        self.assertEqual(announcement.status, "scheduled")
 
     def test_officer_can_create_with_attachment(self):
         officer = self.make_officer()
@@ -124,9 +195,8 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
             {
                 "title": "Created notice",
                 "category": category.pk,
-                "status": "published",
                 "content": "Created content",
-                "target_reach": 20,
+                "action": "publish",
                 "attachments": upload,
             },
         )
@@ -150,9 +220,8 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
             {
                 "title": "Role-labelled notice",
                 "category": category.pk,
-                "status": "published",
                 "content": "Created content",
-                "target_reach": 20,
+                "action": "publish",
             },
         )
 
@@ -173,9 +242,8 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
             {
                 "title": "System notice",
                 "category": category.pk,
-                "status": "published",
                 "content": "Created content",
-                "target_reach": 20,
+                "action": "publish",
             },
         )
 
@@ -186,7 +254,7 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
         self.login(self.make_officer())
         response = self.client.post(
             self.url,
-            {"title": "", "content": "", "status": "published"},
+            {"title": "", "content": "", "action": "publish"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Announcement.objects.exists())
@@ -230,6 +298,14 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         response = self.client.get(self.detail_url)
         self.assertEqual(response.status_code, 403)
 
+    def test_member_outside_target_committee_cannot_view_details(self):
+        committee = self.make_committee("Target committee", self.officer)
+        self.announcement.committee = committee
+        self.announcement.save(update_fields=["committee"])
+        self.login(self.member)
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 403)
+
     def test_officers_can_view_unpublished_details(self):
         self.announcement.status = "draft"
         self.announcement.save(update_fields=["status"])
@@ -256,9 +332,8 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
             {
                 "title": "Updated title",
                 "category": category.pk,
-                "status": "published",
                 "content": "Updated content",
-                "target_reach": 20,
+                "action": "publish",
                 "delete_attachments": [attachment.pk],
             },
         )

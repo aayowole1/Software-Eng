@@ -13,7 +13,11 @@
         </span>
       {% endif %}
 
-      {% if item.category %}
+      {% if item.committee %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+          {{ item.committee.name }}
+        </span>
+      {% elif item.category %}
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
           {{ item.category.name }}
         </span>

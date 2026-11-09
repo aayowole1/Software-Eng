@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import override_settings
 
 from announcements.models import Announcement, Category
+from committees.models import Committee
 
 
 User = get_user_model()
@@ -50,6 +51,10 @@ class AnnouncementTestDataMixin:
         name = name or f"General {suffix}"
         slug = slug or f"general-{suffix}"
         return Category.objects.create(name=name, slug=slug)
+
+    def make_committee(self, name=None, created_by=None):
+        name = name or f"Committee {uuid4().hex[:8]}"
+        return Committee.objects.create(name=name, created_by=created_by)
 
     def make_announcement(self, author=None, **kwargs):
         author = author or self.make_user()
