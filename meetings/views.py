@@ -160,27 +160,37 @@ def meeting_processing(request):
                 {"form": form, "heading": "Take notes"},
                 status=400,
             )
-        request.session["meeting_processing"] = {
+        data = {
             "title": form.cleaned_data["title"],
             "transcript": form.cleaned_data["transcript"],
             "notes": form.cleaned_data["notes"],
         }
+        submission_id = str(ObjectId())
+        submissions = request.session.get("meeting_processing_submissions", {})
+        submissions[submission_id] = data
+        request.session["meeting_processing_submissions"] = submissions
+        request.session["meeting_processing"] = data
+        request.session["meeting_processing_submission_id"] = submission_id
         request.session.save()
-        return redirect("meetings:processing")
+        return redirect(f'{reverse("meetings:processing")}?submission_id={submission_id}')
     return redirect("meetings:create")
 
 
 @role_required(Role.OFFICER)
 def meeting_processing_page(request):
-    if "meeting_processing" not in request.session:
+    submission_id = request.GET.get("submission_id", "").strip()
+    submissions = request.session.get("meeting_processing_submissions", {})
+    if not submission_id or submission_id not in submissions:
         return redirect("meetings:create")
-    return render(request, "meetings/processing.html")
+    return render(request, "meetings/processing.html", {"submission_id": submission_id})
 
 
 @require_POST
 @role_required(Role.OFFICER)
 def meeting_process(request):
-    data = request.session.get("meeting_processing")
+    submission_id = request.GET.get("submission_id", "").strip()
+    submissions = request.session.get("meeting_processing_submissions", {})
+    data = submissions.get(submission_id)
     if not data:
         return JsonResponse({"error": "This notes processing request has expired."}, status=400)
     if not data.get("transcript", "").strip() and not data.get("notes", "").strip():
@@ -192,7 +202,14 @@ def meeting_process(request):
         draft = _create_draft(request.user, data)
     except (RuntimeError, ValueError, DatabaseError):
         return JsonResponse({"error": "The notes could not be processed. Please return and try again."}, status=503)
-    del request.session["meeting_processing"]
+    submissions.pop(submission_id, None)
+    if submissions:
+        request.session["meeting_processing_submissions"] = submissions
+    else:
+        request.session.pop("meeting_processing_submissions", None)
+    if request.session.get("meeting_processing_submission_id") == submission_id:
+        request.session.pop("meeting_processing_submission_id", None)
+        request.session.pop("meeting_processing", None)
     request.session.save()
     return JsonResponse({"redirect": reverse("meetings:detail", args=[draft.pk])})
 

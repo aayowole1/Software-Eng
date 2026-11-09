@@ -16,7 +16,7 @@
     {% csrf_token %}
   </form>
   <script>
-    fetch("{% url 'meetings:process' %}", {
+    fetch("{% url 'meetings:process' %}?submission_id={{ submission_id|urlencode }}", {
       method: "POST",
       headers: {"X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value},
     })
