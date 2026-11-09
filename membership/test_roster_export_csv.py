@@ -50,19 +50,19 @@ class RosterExportAccessTests(TestCase):
         self.assertIn("/accounts/login/", response["Location"])
 
     def test_suspended_admin_is_blocked(self):
-        """A suspended account should not be able to export the roster."""
+        """A suspended account must not be able to export the roster (AC-6).
+
+        EmailOrUsernameBackend.user_can_authenticate returns False for
+        suspended users, so the AuthenticationMiddleware treats them as
+        anonymous and login_required (inside role_required) redirects to login.
+        """
         suspended_admin = make_user("suspended-admin@example.com", Role.ADMIN)
         Profile.objects.filter(user=suspended_admin).update(is_suspended=True)
         self.client.force_login(suspended_admin)
-        # Suspended user's profile still exists; role_required checks the role,
-        # but the view should block based on role (admin is still admin while
-        # suspended). The suspension is surfaced in another layer; the access
-        # control here verifies the role check only. The suspended admin still
-        # has the Admin role, so they get through the decorator -- that is by
-        # design; the status column in the CSV tracks is_suspended separately.
-        # This sub-test confirms no server error occurs.
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
+        # The backend rejects the suspended session → treated as anonymous → login redirect.
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
 
 
 class RosterExportColumnsTests(TestCase):
@@ -192,13 +192,16 @@ class RosterExportFormulaEscapeTests(TestCase):
         cls.admin = make_user("admin@example.com", Role.ADMIN)
         cls.url = reverse("membership:export_roster_csv")
         # Create users whose names start with formula-trigger characters.
+        # Note: accounts/signals.py fires create_profile on post_save, so a
+        # Profile (role=APPLICANT) is auto-created for each new user. We
+        # update it to MEMBER rather than creating a second one.
         for prefix, suffix in [("=cmd", "eq"), ("+cmd", "plus"), ("-cmd", "minus"), ("@cmd", "at")]:
             u = User.objects.create_user(
                 username=f"{prefix}-user-{suffix}",
                 email=f"{prefix}-user-{suffix}@example.com",
                 is_active=True,
             )
-            Profile.objects.create(user=u, role=Role.MEMBER)
+            Profile.objects.filter(user=u).update(role=Role.MEMBER)
 
     def _get_rows(self):
         self.client.force_login(self.admin)
