@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" action="{% url 'meetings:processing_start' %}" class="card meeting-form-card" novalidate id="meeting-form">
+  <form method="post" {% if request.resolver_match.url_name != 'revise' %}action="{% url 'meetings:processing_start' %}"{% endif %} class="card meeting-form-card" novalidate id="meeting-form">
     {% csrf_token %}
     {{ form.transcript }}
     {{ form.expected_generation }}
