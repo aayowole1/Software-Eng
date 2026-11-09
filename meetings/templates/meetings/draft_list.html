@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Notes{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
+{% endblock %}
 {% block content %}
   <div class="note-list-page">
     <header class="note-list-header">
