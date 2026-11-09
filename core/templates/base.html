@@ -90,18 +90,12 @@
                 <!-- Announcement Views -->
 <li>
 <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status != 'draft' and request.GET.status != 'scheduled' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}">
-<span>All announcements</span>
+<span>Announcements</span>
 </a>
 </li>
                     {% if is_admin %}
 <li>
 <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'draft' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}?status=draft">
-<span>Drafts</span>
-</a>
-</li>
-<li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'scheduled' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}?status=scheduled">
-<span>Scheduled</span>
 </a>
 </li>
                     {% endif %}
