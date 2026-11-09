@@ -78,7 +78,7 @@
     {% if is_admin %}
       <!-- Admin Telemetry & Quick Management -->
       <div class="flex items-center gap-3 text-slate-500">
-        <span class="font-medium text-slate-700">{{ item.read_count }} / {{ item.target_reach }} Read ({{ item.read_percentage }}%)</span>
+        <span class="font-medium text-slate-700">{{ item.member_read_count }} / {{ item.member_audience_count }} Members Read ({{ item.read_percentage }}%)</span>
         <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div class="h-full bg-slate-800 rounded-full" style="width: {{ item.read_percentage }}%;"></div>
         </div>

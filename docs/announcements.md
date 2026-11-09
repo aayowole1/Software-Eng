@@ -63,12 +63,13 @@ Stores an announcement category and its URL-friendly slug.
 | `meeting_location` | `CharField` | Optional physical meeting location |
 | `meeting_virtual_url` | `URLField` | Optional virtual meeting link |
 | `read_count` | `PositiveIntegerField` | Number of recorded reads |
-| `target_reach` | `PositiveIntegerField` | Expected audience size |
+| `target_reach` | `PositiveIntegerField` | Legacy expected audience size retained for form compatibility |
 | `comments_count` | `PositiveIntegerField` | Stored comment count |
 
 Announcements are ordered by pinned status and publication time. The
-`read_percentage` property calculates the read percentage without exceeding
-100 percent.
+`read_percentage` property calculates each announcement's current read
+percentage from active roster members and their read receipts, without
+exceeding 100 percent.
 
 ### `AnnouncementAttachment`
 

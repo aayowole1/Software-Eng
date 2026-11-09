@@ -10,9 +10,10 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
+from datetime import timedelta
 from django.db.models import F, Q
 
-from accounts.models import Profile, Role
+from accounts.models import Profile, Role, ROSTER_ROLES
 
 from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
 from .forms import AnnouncementForm, AnnouncementAttachmentForm
@@ -208,14 +209,27 @@ def announcements_list(request):
     if category_slug:
         announcements = announcements.filter(category__slug=category_slug)
 
-    # display summary stats in admin view
+    # Display current roster counts in the admin audience widget.
     stats = {}
     if is_admin:
+        active_members = Profile.objects.filter(
+            role__in=ROSTER_ROLES,
+            is_suspended=False,
+            user__is_active=True,
+        )
+        recent_cutoff = timezone.now() - timedelta(days=30)
         stats = {
             "total_published": Announcement.objects.filter(status="published").count(),
             "active_drafts": Announcement.objects.filter(status="draft").count(),
             "scheduled_queue": Announcement.objects.filter(status="scheduled").count(),
-            "avg_read_rate": 87,  # calculated from read receipts TODO: see if this needs to be changed
+            "audience_total": active_members.count(),
+            "audience_officers": active_members.filter(
+                role__in=[Role.OFFICER, Role.ADMIN]
+            ).count(),
+            "audience_new_recruits": active_members.filter(
+                role=Role.MEMBER,
+                created_at__gte=recent_cutoff,
+            ).count(),
         }
 
     categories = Category.objects.all()

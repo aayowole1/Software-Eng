@@ -13,6 +13,7 @@ from announcements.models import (
     AnnouncementReadReceipt,
     Category,
 )
+from accounts.models import Profile, Role
 
 from .test_support import AnnouncementTestDataMixin
 
@@ -23,15 +24,30 @@ class AnnouncementModelTests(AnnouncementTestDataMixin, TestCase):
         self.assertEqual(str(announcement), "Town hall")
 
     def test_read_percentage_is_calculated(self):
-        announcement = self.make_announcement(read_count=25, target_reach=100)
+        announcement = self.make_announcement()
+        members = [self.make_user() for _ in range(4)]
+        Profile.objects.filter(user__in=members).update(role=Role.MEMBER)
+        AnnouncementReadReceipt.objects.create(
+            announcement=announcement,
+            user=members[0],
+        )
         self.assertEqual(announcement.read_percentage, 25)
+        new_member = self.make_user()
+        Profile.objects.filter(user=new_member).update(role=Role.MEMBER)
+        self.assertEqual(announcement.read_percentage, 20)
 
-    def test_read_percentage_is_zero_when_target_is_zero(self):
-        announcement = self.make_announcement(read_count=10, target_reach=0)
+    def test_read_percentage_is_zero_without_active_members(self):
+        announcement = self.make_announcement()
         self.assertEqual(announcement.read_percentage, 0)
 
     def test_read_percentage_is_capped_at_one_hundred(self):
-        announcement = self.make_announcement(read_count=125, target_reach=100)
+        announcement = self.make_announcement()
+        member = self.make_user()
+        Profile.objects.filter(user=member).update(role=Role.MEMBER)
+        AnnouncementReadReceipt.objects.create(
+            announcement=announcement,
+            user=member,
+        )
         self.assertEqual(announcement.read_percentage, 100)
 
     def test_announcement_ordering_places_pinned_items_first(self):

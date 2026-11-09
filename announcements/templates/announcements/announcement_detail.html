@@ -138,7 +138,7 @@
       <div class="border-t border-slate-100 pt-4 flex items-center justify-between text-xs">
         {% if is_admin %}
           <div class="flex items-center gap-3 text-slate-500">
-            <span class="font-medium text-slate-700">{{ announcement.read_count }} / {{ announcement.target_reach }} Members Read ({{ announcement.read_percentage }}%)</span>
+            <span class="font-medium text-slate-700">{{ announcement.member_read_count }} / {{ announcement.member_audience_count }} Members Read ({{ announcement.read_percentage }}%)</span>
             <div class="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
               <div class="h-full bg-slate-800 rounded-full" style="width: {{ announcement.read_percentage }}%;"></div>
             </div>

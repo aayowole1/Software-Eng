@@ -105,15 +105,35 @@ class Announcement(models.Model):
 
     # === PROPERTIES
     @property
-    def read_percentage(self) -> int:
-        """Return read percentage of announcement post."""
-        if self.target_reach > 0:
-            return min(
-                100,
-                int((self.read_count / self.target_reach) * 100)
-            )
+    def member_audience_count(self) -> int:
+        """Return the current number of active organization members."""
+        from accounts.models import ROSTER_ROLES, Profile
 
-        return 0
+        return Profile.objects.filter(
+            role__in=ROSTER_ROLES,
+            is_suspended=False,
+            user__is_active=True,
+        ).count()
+
+    @property
+    def member_read_count(self) -> int:
+        """Return the current number of members who read this announcement."""
+        from accounts.models import ROSTER_ROLES
+
+        return self.read_receipts.filter(
+            user__profile__role__in=ROSTER_ROLES,
+            user__profile__is_suspended=False,
+            user__is_active=True,
+        ).count()
+
+    @property
+    def read_percentage(self) -> int:
+        """Return this announcement's current member read percentage."""
+        audience_count = self.member_audience_count
+        if audience_count == 0:
+            return 0
+
+        return min(100, int((self.member_read_count / audience_count) * 100))
 
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT
