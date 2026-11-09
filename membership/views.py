@@ -1,5 +1,4 @@
 import csv
-import datetime
 
 from django import forms
 from django.contrib import messages
@@ -8,11 +7,13 @@ from django.db import DatabaseError
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Prefetch
 from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
+from core.csv_safe import escape_csv_cell
 
 from .emails import send_application_approved, send_application_rejected
 from .models import (
@@ -235,15 +236,6 @@ def finish_review_access(request, pk):
 
 
 
-def _escape_csv_cell(value):
-    """Prefix cells that start with formula-trigger characters so spreadsheets
-    don't interpret them as formulas (matches the approach used in reports)."""
-    s = str(value)
-    if s and s[0] in ("=", "+", "-", "@"):
-        return "'" + s
-    return s
-
-
 def _filter_roster_members(search_query, selected_role):
     """Return a filtered, ordered queryset of roster Profile objects.
 
@@ -314,7 +306,8 @@ def export_roster_csv(request):
 
     members = _filter_roster_members(search_query, selected_role)
 
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    # Dates use the organization's time zone, matching the roster page.
+    today = timezone.localdate().strftime("%Y-%m-%d")
     filename = f"orgflow-roster-{today}.csv"
 
     response = HttpResponse(content_type="text/csv")
@@ -329,14 +322,14 @@ def export_roster_csv(request):
             for cm in profile.user.committee_memberships.all()
         )
         status = "suspended" if profile.is_suspended else "active"
-        date_joined = profile.created_at.strftime("%Y-%m-%d")
+        date_joined = timezone.localtime(profile.created_at).strftime("%Y-%m-%d")
         writer.writerow([
-            _escape_csv_cell(profile.user.username),
-            _escape_csv_cell(profile.user.email or ""),
-            _escape_csv_cell(profile.get_role_display()),
-            _escape_csv_cell(committee_names),
-            _escape_csv_cell(date_joined),
-            _escape_csv_cell(status),
+            escape_csv_cell(profile.user.username),
+            escape_csv_cell(profile.user.email or ""),
+            escape_csv_cell(profile.get_role_display()),
+            escape_csv_cell(committee_names),
+            escape_csv_cell(date_joined),
+            escape_csv_cell(status),
         ])
 
     return response

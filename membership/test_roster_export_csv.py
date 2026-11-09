@@ -3,9 +3,11 @@
 import csv
 import datetime
 from io import StringIO
+from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import Profile, Role
 from accounts.testing import make_user
@@ -114,7 +116,7 @@ class RosterExportColumnsTests(TestCase):
 
     def test_date_joined_matches_profile_created_at(self):
         profile = Profile.objects.get(user=self.member)
-        expected = profile.created_at.strftime("%Y-%m-%d")
+        expected = timezone.localtime(profile.created_at).strftime("%Y-%m-%d")
         rows = self._get_rows()
         alice_row = next(r for r in rows[1:] if r[0] == "alice@example.com")
         self.assertEqual(alice_row[4], expected)
@@ -209,6 +211,18 @@ class RosterExportFormulaEscapeTests(TestCase):
         content = b"".join(response.streaming_content if hasattr(response, "streaming_content") else [response.content])
         return list(csv.reader(StringIO(content.decode())))
 
+    def test_every_cell_starting_with_a_trigger_is_escaped(self):
+        rows = self._get_rows()
+        for row in rows[1:]:
+            for cell in row:
+                self.assertFalse(
+                    cell[:1] in {"=", "+", "-", "@", "\t", "\r"},
+                    f"Unescaped formula-trigger character in cell: {cell!r}",
+                )
+        usernames = {row[0] for row in rows[1:]}
+        self.assertIn("'=cmd-user-eq", usernames)
+        self.assertIn("'=cmd-user-eq@example.com", {row[1] for row in rows[1:]})
+
     def test_formula_trigger_characters_are_escaped(self):
         rows = self._get_rows()
         trigger_chars = set("=+-@")
@@ -235,8 +249,20 @@ class RosterExportFileNameTests(TestCase):
         self.client.force_login(admin)
         response = self.client.get(reverse("membership:export_roster_csv"))
         disposition = response.get("Content-Disposition", "")
-        today = datetime.date.today().strftime("%Y-%m-%d")
+        today = timezone.localdate().strftime("%Y-%m-%d")
         self.assertIn(f"orgflow-roster-{today}.csv", disposition)
+
+    # The fake clock is weeks ahead, so keep the test session from expiring.
+    @override_settings(SESSION_COOKIE_AGE=60 * 60 * 24 * 365)
+    def test_filename_uses_the_organization_date_late_in_the_evening(self):
+        """10:30 PM Chicago time is already the next day in UTC; the file keeps the local date."""
+        admin = make_user("late-admin@example.com", Role.ADMIN)
+        self.client.force_login(admin)
+        # 04:30 UTC on Dec 2 is 10:30 PM on Dec 1 in Chicago.
+        utc_moment = datetime.datetime(2026, 12, 2, 4, 30, tzinfo=datetime.timezone.utc)
+        with patch("django.utils.timezone.now", return_value=utc_moment):
+            response = self.client.get(reverse("membership:export_roster_csv"))
+        self.assertIn("orgflow-roster-2026-12-01.csv", response["Content-Disposition"])
 
 
 class RosterExportButtonVisibilityTests(TestCase):
@@ -263,3 +289,31 @@ class RosterExportButtonVisibilityTests(TestCase):
         self.client.force_login(self.member)
         response = self.client.get(self.url)
         self.assertNotContains(response, "Export CSV")
+
+    def test_export_link_keeps_filters_but_not_the_page_number(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(self.url, {"q": "example", "role": "member", "page": "2"})
+        export_url = reverse("membership:export_roster_csv")
+        self.assertContains(response, f'href="{export_url}?q=example&amp;role=member"')
+        self.assertNotContains(response, f"{export_url}?q=example&amp;role=member&amp;page")
+
+
+class RosterExportLocalDateTests(TestCase):
+    """Dates in the CSV use the organization's time zone, like the roster page."""
+
+    def test_late_evening_sign_up_keeps_the_local_date(self):
+        admin = make_user("tz-admin@example.com", Role.ADMIN)
+        member = make_user("tz-member@example.com", Role.MEMBER)
+        # 11:30 PM Chicago on Nov 3 is 05:30 UTC on Nov 4.
+        late = datetime.datetime(2026, 11, 4, 5, 30, tzinfo=datetime.timezone.utc)
+        Profile.objects.filter(user=member).update(created_at=late)
+        self.client.force_login(admin)
+
+        rows = list(csv.reader(StringIO(
+            self.client.get(reverse("membership:export_roster_csv")).content.decode()
+        )))
+        member_row = next(r for r in rows[1:] if r[1] == "tz-member@example.com")
+        self.assertEqual(member_row[4], "2026-11-03")
+
+        page = self.client.get(reverse("membership:roster"), {"q": "tz-member"})
+        self.assertContains(page, "Nov 3, 2026")
