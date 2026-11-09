@@ -72,10 +72,6 @@ class AnnouncementForm(forms.ModelForm):
                         " text-slate-800 focus:ring-2"
                         " focus:ring-slate-800 focus:outline-none"
                     ),
-                    "style": (
-                        "width: 100%; max-width: none; height: 16rem;"
-                        " resize: none; overflow-y: auto;"
-                    ),
                 }
             ),
             "status": forms.Select(
@@ -89,22 +85,26 @@ class AnnouncementForm(forms.ModelForm):
                 }
             ),
             "content": forms.Textarea(
-                    attrs={
-                        "rows": 6,
-                        "placeholder": (
-                            "Write announcement details,"
-                            " agenda items, voting procedures,"
-                            " or guidelines..."
-                        ),
-                        "class": (
-                            "w-full text-sm bg-white border"
-                            " border-slate-200 rounded-lg p-3.5"
-                            " text-slate-800 placeholder:text-slate-400"
-                            " focus:ring-2 focus:ring-slate-800"
-                            " focus:outline-none"
-                        )
-                    }
-                ),
+                attrs={
+                    "rows": 6,
+                    "placeholder": (
+                        "Write announcement details,"
+                        " agenda items, voting procedures,"
+                        " or guidelines..."
+                    ),
+                    "class": (
+                        "w-full text-sm bg-white border"
+                        " border-slate-200 rounded-lg p-3.5"
+                        " text-slate-800 placeholder:text-slate-400"
+                        " focus:ring-2 focus:ring-slate-800"
+                        " focus:outline-none"
+                    ),
+                    "style": (
+                        "width: 100%; max-width: none; height: 16rem;"
+                        " resize: none; overflow-y: auto;"
+                    ),
+                }
+            ),
             "meeting_location": forms.TextInput(
                 attrs={
                     "placeholder": "e.g., Student Union Auditorium (Rm 204)",
