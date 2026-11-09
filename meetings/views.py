@@ -23,11 +23,16 @@ logger = logging.getLogger(__name__)
 
 def _action_item_parts(description):
     parts = {}
+    current_key = None
     for segment in description.removeprefix("Action:").strip().split(";"):
-        if "=" in segment:
-            key, value = segment.split("=", 1)
-            parts[key.strip().lower()] = value.strip()
-    return parts
+        key, separator, value = segment.partition("=")
+        key = key.strip().lower()
+        if separator and key in {"owner", "task", "due", "priority"}:
+            current_key = key
+            parts[key] = value.strip()
+        elif current_key is not None:
+            parts[current_key] += ";" + segment
+    return {key: value.strip() for key, value in parts.items()}
 
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
