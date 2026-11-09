@@ -52,6 +52,9 @@
   {% endif %}
 
   {% if is_member %}
+    {% if role == "member" %}
+      <p><a class="button" href="{% url 'membership:apply_for_officer' %}">Apply to become an officer</a></p>
+    {% endif %}
     <div class="card">
       <h2>Recent announcements</h2>
       <ul>

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "accounts.apps.AccountsConfig",
     "membership.apps.MembershipConfig",
+    "officer_applications",
     "committees.apps.CommitteesConfig",
     "meetings.apps.MeetingsConfig",
     "tasks.apps.TasksConfig",
