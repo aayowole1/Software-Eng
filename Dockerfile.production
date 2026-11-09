@@ -19,6 +19,7 @@ COPY --chown=root:root orgflow_project ./orgflow_project
 COPY --chown=root:root accounts ./accounts
 COPY --chown=root:root membership ./membership
 COPY --chown=root:root committees ./committees
+COPY --chown=root:root reports ./reports
 COPY --chown=root:root meetings ./meetings
 COPY --chown=root:root tasks ./tasks
 COPY --chown=root:root core ./core
