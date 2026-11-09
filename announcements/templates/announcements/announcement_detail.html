@@ -6,6 +6,8 @@
 <h1>{{ announcement.title }}</h1>
 <p class="muted">{{ announcement.author.get_full_name|default:announcement.author.username }} · {{ announcement.author_role }} · {{ announcement.published_at|date:"M j, Y" }}</p>
 <p>{{ announcement.category|default:"General" }}{% if can_publish %} · {{ announcement.get_status_display }}{% endif %}</p>
+<p>Audience: {% if announcement.committee %}{{ announcement.committee.name }}{% else %}Organization-wide{% endif %}</p>
+{% for tag in announcement.tags %}<a class="badge" href="{% url 'announcements:list' %}?tag={{ tag|urlencode }}">{{ tag }}</a> {% endfor %}
 {{ announcement.content|linebreaks }}
 {% if announcement.meeting_location %}<p>Location: {{ announcement.meeting_location }}</p>{% endif %}
 {% if announcement.meeting_virtual_url %}<p><a href="{{ announcement.meeting_virtual_url }}" rel="noopener noreferrer">Join meeting</a></p>{% endif %}

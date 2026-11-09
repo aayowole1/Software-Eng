@@ -6,8 +6,28 @@
 
 # === IMPORTS
 from django import forms
+from committees.models import Committee
 
 from .models import Announcement, AnnouncementAttachment, Category, Resource
+
+
+class TagsField(forms.CharField):
+    def __init__(self):
+        super().__init__(
+            required=False,
+            max_length=500,
+            help_text="Separate up to 10 tags with commas. Each tag can be up to 32 characters.",
+        )
+
+    def prepare_value(self, value):
+        return ", ".join(value) if isinstance(value, list) else value
+
+    def clean(self, value):
+        value = super().clean(value)
+        tags = list(dict.fromkeys(part.strip().casefold() for part in value.split(",") if part.strip()))
+        if len(tags) > 10 or any(len(tag) > 32 for tag in tags):
+            raise forms.ValidationError("Use up to 10 tags of 32 characters each.")
+        return tags
 
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
@@ -15,6 +35,13 @@ class AnnouncementForm(forms.ModelForm):
     category = forms.ModelChoiceField(
         queryset=Category.objects.all(), required=False, empty_label="General",
     )
+    committee = forms.ModelChoiceField(
+        queryset=Committee.objects.all(),
+        required=False,
+        label="Audience",
+        empty_label="Organization-wide",
+    )
+    tags = TagsField()
     scheduled_for = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(
@@ -41,6 +68,8 @@ class AnnouncementForm(forms.ModelForm):
         fields = [
             "title",
             "category",
+            "committee",
+            "tags",
             "status",
             "is_pinned",
             "is_urgent",
@@ -175,6 +204,13 @@ class AnnouncementForm(forms.ModelForm):
             raise forms.ValidationError("Use an HTTP or HTTPS meeting link.")
         return value
 
+    def clean_committee(self):
+        # Older edit forms may omit the field. An explicit empty selection
+        # is required to change a committee notice to organization-wide.
+        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
+            return self.instance.committee
+        return self.cleaned_data["committee"]
+
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT FORM
 class AnnouncementAttachmentForm(forms.ModelForm):
@@ -212,10 +248,11 @@ class AnnouncementAttachmentForm(forms.ModelForm):
 
 class ResourceForm(forms.ModelForm):
     remove_file = forms.BooleanField(required=False, label="Remove the existing file")
+    tags = TagsField()
 
     class Meta:
         model = Resource
-        fields = ["title", "description", "category", "file", "remove_file", "url"]
+        fields = ["title", "description", "category", "tags", "file", "remove_file", "url"]
         labels = {"url": "External link", "file": "Upload a document"}
         help_texts = {
             "file": "Maximum 25 MB. To switch to a link, clear the existing file.",

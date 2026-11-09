@@ -8,6 +8,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django_mongodb_backend.fields import ArrayField
 
 
 # === CONFIG
@@ -53,6 +54,14 @@ class Announcement(models.Model):
         null=True,
         related_name="announcements",
     )
+    committee = models.ForeignKey(
+        "committees.Committee",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
+    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
 
     author = models.ForeignKey(
         User,
@@ -164,6 +173,7 @@ class Resource(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, max_length=5000)
     category = models.CharField(max_length=64, blank=True)
+    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
     file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
     url = models.URLField(max_length=2000, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
