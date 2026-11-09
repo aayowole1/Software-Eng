@@ -3,25 +3,13 @@
 {% block content %}
   <div class="note-list-page">
     <header class="note-list-header">
-      <div>
-        <p class="eyebrow">Officer workspace</p>
-        <h1>Notes</h1>
-        <p class="note-list-intro">Review transcriptions, summaries, and action items from recorded meetings.</p>
-      </div>
+      <h1>Notes</h1>
       <a class="button button-primary note-list-create" href="{% url 'meetings:create' %}">Start Note Transcription</a>
     </header>
 
-    <section class="card note-list-panel" aria-labelledby="notes-list-heading">
-      <div class="note-list-panel-header">
-        <div>
-          <h2 id="notes-list-heading">All notes</h2>
-          <p class="muted">Select a note to review its details and proposed actions.</p>
-        </div>
-        <span class="note-list-count">{{ drafts|length }} note{{ drafts|length|pluralize }}</span>
-      </div>
+    <section class="card note-list-panel">
       <div class="table-wrap">
         <table class="note-list-table">
-          <caption class="visually-hidden">Recorded notes and their review status</caption>
           <thead>
             <tr>
               <th scope="col">Title</th>
@@ -45,9 +33,7 @@
               <tr>
                 <td colspan="4">
                   <div class="note-list-empty">
-                    <strong>No notes yet</strong>
-                    <span class="muted">Start a transcription to create the first note.</span>
-                    <a class="button button-primary" href="{% url 'meetings:create' %}">Start Note Transcription</a>
+                    <span class="muted">No notes yet.</span>
                   </div>
                 </td>
               </tr>

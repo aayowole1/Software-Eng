@@ -97,21 +97,14 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 24px;
-    margin-bottom: 28px;
+    margin-bottom: 32px;
 }
 
 .note-list-header h1 {
-    margin-bottom: 6px;
-}
-
-.note-list-intro {
-    max-width: 620px;
     margin: 0;
-    color: #64748b;
 }
 
-.note-list-create,
-.note-list-empty .button {
+.note-list-create {
     min-height: 44px;
     font-weight: 700;
 }
@@ -122,35 +115,6 @@
     border-color: #c9d2e3;
     border-radius: 12px;
     box-shadow: 0 4px 14px rgba(31, 50, 81, 0.08);
-}
-
-.note-list-panel-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 24px 24px 20px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.note-list-panel-header h2 {
-    margin: 0 0 4px;
-    color: #23395d;
-}
-
-.note-list-panel-header p {
-    margin: 0;
-}
-
-.note-list-count {
-    padding: 6px 10px;
-    color: #475569;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    white-space: nowrap;
 }
 
 .note-list-table {
@@ -203,18 +167,9 @@
     display: flex;
     align-items: center;
     flex-direction: column;
-    gap: 10px;
-    padding: 56px 24px;
+    gap: 16px;
+    padding: 40px 24px;
     text-align: center;
-}
-
-.note-list-empty strong {
-    color: #23395d;
-    font-size: 1rem;
-}
-
-.note-list-empty .button {
-    margin-top: 8px;
 }
 
 .note-review-header {
@@ -443,11 +398,6 @@
 
     .note-list-create {
         align-self: flex-start;
-    }
-
-    .note-list-panel-header {
-        flex-direction: column;
-        padding: 20px;
     }
 
     .note-list-table thead {
