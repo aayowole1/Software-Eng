@@ -252,7 +252,7 @@
           status.classList.add("muted");
         } catch (error) {
           stream?.getTracks().forEach((track) => track.stop());
-          status.textContent = error.message || "Microphone access is required.";
+          showSubmitWarning(error.message || "Microphone access is required.");
         }
       }
 
