@@ -69,6 +69,21 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, "Add your own notes below.")
         self.assertNotContains(response, "until an officer approves it.")
 
+    def test_creation_page_prefills_from_processing_session_payload(self):
+        session = self.client.session
+        session["meeting_processing"] = {
+            "title": "Recovered title",
+            "transcript": "Recovered transcript",
+            "notes": "Recovered notes",
+        }
+        session.save()
+
+        response = self.client.get(reverse("meetings:create"))
+
+        self.assertContains(response, 'value="Recovered title"')
+        self.assertContains(response, 'value="Recovered transcript"')
+        self.assertContains(response, "Recovered notes")
+
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
         self.assertContains(response, "<h1>Notes</h1>")

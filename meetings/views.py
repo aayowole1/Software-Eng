@@ -90,7 +90,8 @@ def draft_list(request):
 
 @role_required(Role.OFFICER)
 def draft_create(request):
-    form = MeetingNotesForm(request.POST or None)
+    initial = request.session.get("meeting_processing") if request.method == "GET" else None
+    form = MeetingNotesForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
