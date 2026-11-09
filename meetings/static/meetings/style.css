@@ -110,6 +110,7 @@
 }
 
 .note-list-panel {
+    margin-top: 40px;
     padding: 0;
     overflow: hidden;
     border-color: #c9d2e3;
