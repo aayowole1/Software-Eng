@@ -22,10 +22,7 @@ class Migration(migrations.Migration):
             name="transcript",
             field=models.TextField(blank=True),
         ),
-        migrations.RunPython(
-            _move_legacy_notes,
-            migrations.RunPython.noop,
-        ),
+        migrations.RunPython(_move_legacy_notes),
         migrations.AlterField(
             model_name="meetingdraft",
             name="notes",
