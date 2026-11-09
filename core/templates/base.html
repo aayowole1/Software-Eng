@@ -87,29 +87,24 @@
 </li>
 
               {% if is_member %}
-                <!-- Announcements Main Link -->
+                <!-- Announcement Views -->
 <li>
-<a class="flex items-center justify-between px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' %}bg-slate-900 text-white shadow-xs font-semibold{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}">
-<div class="flex items-center gap-2.5">
-<svg class="w-4 h-4 {% if request.resolver_match.namespace == 'announcements' %}text-amber-400{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Announcements</span>
-</div>
-</a>
-<!-- Announcement Views Subgroup -->
-<div class="mt-1 ml-4 pl-3 border-l-2 border-slate-100 space-y-0.5">
-<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status != 'draft' and request.GET.status != 'scheduled' %}text-slate-900 bg-slate-100 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}">
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status != 'draft' and request.GET.status != 'scheduled' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}">
 <span>All announcements</span>
 </a>
+</li>
                     {% if is_admin %}
-                      <a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'draft' %}text-amber-900 bg-amber-50 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}?status=draft">
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'draft' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}?status=draft">
 <span>Drafts</span>
 </a>
-<a class="flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'scheduled' %}text-cyan-900 bg-cyan-50 font-semibold{% else %}text-slate-500 hover:text-slate-900 hover:bg-slate-50{% endif %}" href="{% url 'announcements:list' %}?status=scheduled">
+</li>
+<li>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'announcements' and request.GET.status == 'scheduled' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'announcements:list' %}?status=scheduled">
 <span>Scheduled</span>
 </a>
-                    {% endif %}
-                  </div>
 </li>
+                    {% endif %}
 <!-- Roster -->
 <li>
 <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium transition {% if request.resolver_match.namespace == 'membership' %}bg-slate-900 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900 hover:bg-slate-100{% endif %}" href="{% url 'membership:roster' %}">
