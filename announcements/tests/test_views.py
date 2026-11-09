@@ -112,7 +112,7 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["form"].initial["status"], "published")
-        self.assertEqual(response.context["form"].initial["target_reach"], 165)
+        self.assertNotIn("target_reach", response.context["form"].fields)
 
     def test_officer_can_create_with_attachment(self):
         officer = self.make_officer()

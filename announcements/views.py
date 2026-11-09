@@ -92,7 +92,6 @@ def announcement_create(request):
         form = AnnouncementForm(
             initial={
                 "status": "published",
-                "target_reach": 165,
             }
         )
 

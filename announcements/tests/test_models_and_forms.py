@@ -149,19 +149,18 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("meeting_virtual_url", form.errors)
 
-    def test_negative_target_reach_is_rejected(self):
+    def test_target_reach_is_not_part_of_the_announcement_form(self):
         category = self.make_category()
         form = AnnouncementForm(
             data={
-                "title": "Invalid reach",
+                "title": "Dynamic reach",
                 "category": category.pk,
                 "status": "published",
                 "content": "Details",
-                "target_reach": -1,
             }
         )
-        self.assertFalse(form.is_valid())
-        self.assertIn("target_reach", form.errors)
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertNotIn("target_reach", form.fields)
 
     def test_attachment_form_requires_a_name(self):
         form = AnnouncementAttachmentForm(

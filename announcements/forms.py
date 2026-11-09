@@ -45,7 +45,6 @@ class AnnouncementForm(forms.ModelForm):
             "scheduled_for",
             "meeting_location",
             "meeting_virtual_url",
-            "target_reach",
         ]
         widgets = {
             "title": forms.TextInput(
@@ -61,7 +60,8 @@ class AnnouncementForm(forms.ModelForm):
                         " placeholder:text-slate-400"
                         " focus:ring-2 focus:ring-slate-800"
                         " focus:outline-none"
-                    )
+                    ),
+                    "style": "width: 100%; max-width: none;",
                 }
             ),
             "category": forms.Select(
@@ -71,7 +71,11 @@ class AnnouncementForm(forms.ModelForm):
                         " border-slate-200 rounded-lg px-3 py-2"
                         " text-slate-800 focus:ring-2"
                         " focus:ring-slate-800 focus:outline-none"
-                    )
+                    ),
+                    "style": (
+                        "width: 100%; max-width: none; height: 16rem;"
+                        " resize: none; overflow-y: auto;"
+                    ),
                 }
             ),
             "status": forms.Select(
@@ -119,15 +123,6 @@ class AnnouncementForm(forms.ModelForm):
                         "w-full text-sm bg-white border border-slate-200"
                         " rounded-lg px-3 py-2 text-slate-800"
                         " placeholder:text-slate-400 focus:ring-2"
-                        " focus:ring-slate-800 focus:outline-none"
-                    )
-                }
-            ),
-            "target_reach": forms.NumberInput(
-                attrs={
-                    "class": (
-                        "w-32 text-sm bg-white border border-slate-200"
-                        " rounded-lg px-3 py-2 text-slate-800 focus:ring-2"
                         " focus:ring-slate-800 focus:outline-none"
                     )
                 }
