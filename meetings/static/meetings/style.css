@@ -87,6 +87,9 @@
 }
 
 .note-list-page {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
     max-width: 1120px;
     margin: 0 auto;
     padding: 8px 0 32px;
@@ -97,7 +100,7 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 24px;
-    margin-bottom: 40px;
+    margin-bottom: 0;
 }
 
 .note-list-header h1 {
@@ -110,7 +113,7 @@
 }
 
 .note-list-panel {
-    margin-top: 40px;
+    margin-top: 0;
     padding: 0;
     overflow: hidden;
     border-color: #c9d2e3;
