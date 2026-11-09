@@ -19,7 +19,7 @@ class AnnouncementForm(forms.ModelForm):
         queryset=Committee.objects.all(),
         required=False,
         empty_label="All members",
-        help_text="Leave as All members to send this announcement organization-wide.",
+        help_text="Select who should view this announcement",
     )
     scheduled_for = forms.DateTimeField(
         required=False,
