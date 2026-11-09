@@ -339,7 +339,7 @@ def draft_revise(request, pk):
         try:
             draft.revise(
                 form.cleaned_data["notes"], transcript=form.cleaned_data["transcript"],
-                title=form.cleaned_data["title"],
+                title=form.cleaned_data["title"] or form.initial["title"],
                 expected_generation=form.cleaned_data["expected_generation"],
             )
         except MeetingReviewConflict:
