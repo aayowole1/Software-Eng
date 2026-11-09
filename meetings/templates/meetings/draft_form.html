@@ -145,7 +145,7 @@
       }
 
       function upload(audio, isFinal = false) {
-        const request = pendingUploads.catch(() => {}).then(async () => {
+        const request = pendingUploads.then(async () => {
           const response = await fetch(transcribeUrl, {
             method: "POST",
             headers: {
