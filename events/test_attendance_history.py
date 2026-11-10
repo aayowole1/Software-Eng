@@ -345,3 +345,31 @@ class AttendanceCountsFromApprovalTests(TestCase):
         self.event("After sign-up", -20)
 
         self.assertEqual(self.summary()["total"], 1)
+
+
+class MemberSinceByUserTests(TestCase):
+    """member_since_by_user returns each user's own latest approval, or their sign-up date."""
+
+    def test_latest_approval_per_user_and_sign_up_fallback(self):
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        from .models import member_since_by_user
+
+        officer = make_user("since-officer@example.com", Role.OFFICER)
+        approved = make_user("since-approved@example.com", Role.MEMBER)
+        never = make_user("since-never@example.com", Role.MEMBER)
+        older = timezone.now() - timedelta(days=9)
+        newer = timezone.now() - timedelta(days=3)
+        for when in (older, newer):
+            MembershipApplication.objects.create(
+                user=approved, statement="Joining.", status=ApplicationStatus.APPROVED,
+                reviewed_by=officer, reviewed_at=when,
+            )
+        MembershipApplication.objects.create(
+            user=never, statement="Pending.", status=ApplicationStatus.PENDING,
+        )
+
+        result = member_since_by_user([approved, never])
+
+        self.assertEqual(abs((result[approved.pk] - newer).total_seconds()) < 1, True)
+        self.assertEqual(result[never.pk], never.date_joined)

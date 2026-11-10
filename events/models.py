@@ -12,27 +12,35 @@ from django.db import models
 from django.utils import timezone
 
 
-def member_since(user):
-    """When the user's current membership started (US-13).
+def member_since_by_user(users):
+    """When each user's current membership started, as {user_pk: datetime} (US-13).
 
     This is the most recent approval of their membership application, so
     events held while the account was still pending, or before a later
     re-approval, don't count. Accounts never approved through an application
     (for example the createsuperuser admin, or members whose role was set
-    directly) fall back to the account's creation date.
+    directly) fall back to the account's creation date. Uses one query for
+    all users.
     """
     # Imported here because membership imports account models at load time.
     from membership.models import ApplicationStatus, MembershipApplication
 
-    approved_at = (
-        MembershipApplication.objects.filter(
-            user=user, status=ApplicationStatus.APPROVED, reviewed_at__isnull=False,
-        )
-        .order_by("-reviewed_at")
-        .values_list("reviewed_at", flat=True)
-        .first()
-    )
-    return approved_at or user.date_joined
+    users = list(users)
+    latest_approval = {}
+    approvals = MembershipApplication.objects.filter(
+        user_id__in=[u.pk for u in users],
+        status=ApplicationStatus.APPROVED,
+        reviewed_at__isnull=False,
+    ).values_list("user_id", "reviewed_at")
+    for user_id, reviewed_at in approvals:
+        if user_id not in latest_approval or reviewed_at > latest_approval[user_id]:
+            latest_approval[user_id] = reviewed_at
+    return {u.pk: latest_approval.get(u.pk) or u.date_joined for u in users}
+
+
+def member_since(user):
+    """When one user's current membership started; see member_since_by_user."""
+    return member_since_by_user([user])[user.pk]
 
 
 class EventQuerySet(models.QuerySet):
