@@ -1,5 +1,6 @@
 """Authorized task mutations with a single-document compare-and-set audit."""
 
+import logging
 from hashlib import sha256
 
 from bson import BSON
@@ -12,7 +13,10 @@ from meetings.models import DraftStatus, MeetingDraft
 from .models import (
     Task, TaskStatus, can_claim_task, can_manage_tasks,
 )
+
 from .permissions import can_manage_committee_tasks, can_update_task
+
+logger = logging.getLogger(__name__)
 
 
 class TaskConflict(Exception):
@@ -25,6 +29,24 @@ EDITABLE_FIELDS = {"title", "description", "committee", "assignee", "due_date", 
 MAX_HISTORY_BSON_BYTES = 8 * 1024 * 1024
 DESCRIPTION_AUDIT_THRESHOLD = 240
 DESCRIPTION_AUDIT_PREVIEW = 160
+
+
+def _notify_if_assigned(task, previous_assignee_id):
+    """Fire a notification when the task gains a new assignee (not via self-claim).
+
+    previous_assignee_id may be an ObjectId or its string representation (from _snapshot).
+    """
+    new_id = task.assignee_id
+    if new_id is None:
+        return
+    # Normalise both sides to str for a safe cross-type comparison.
+    if str(new_id) == str(previous_assignee_id) if previous_assignee_id is not None else False:
+        return
+    try:
+        from notifications.services import notify_task_assigned
+        notify_task_assigned(task, task.assignee)
+    except Exception:
+        logger.exception("Failed to notify user %s of task assignment", new_id)
 
 
 def _snapshot(task):
@@ -95,6 +117,8 @@ def _create(actor, fields, *, origin_key=None, source_action_item=None, action="
     if not can_manage_committee_tasks(actor, task.committee_id):
         raise PermissionDenied("Your permission to manage this committee's tasks has changed.")
     task.save(force_insert=True)
+    if action != "claimed":
+        _notify_if_assigned(task, None)
     return task
 
 
@@ -143,6 +167,8 @@ def _persist(actor, task, changes, expected_version, action, *, authorize=None):
     if updated != 1:
         raise TaskConflict("This task changed while you were working. Reload it before trying again.")
     task.refresh_from_db()
+    if action != "claimed":
+        _notify_if_assigned(task, before.get("assignee"))
     return task
 
 

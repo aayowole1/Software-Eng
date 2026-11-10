@@ -23,4 +23,5 @@ urlpatterns = [
     path('events/', include('events.urls')),
     path('announcements/', include('announcements.urls')),
     path('resources/', include('announcements.resource_urls')),
+    path('notifications/', include('notifications.urls')),
 ]

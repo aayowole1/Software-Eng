@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST, require_http_methods
 from bson import ObjectId
 
 from accounts.models import Profile, Role, has_minimum_role
+from notifications.services import notify_announcement_published
 
 from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
 from .forms import AnnouncementForm
@@ -70,6 +71,9 @@ def announcement_create(request):
                 announcement.published_at = timezone.now()
 
             announcement.save()
+
+            if announcement.status == "published":
+                notify_announcement_published(announcement)
 
             # handle file attachments
             for uploaded_file in files:
@@ -138,10 +142,14 @@ def announcement_edit(request, pk):
         if validate_uploads(form, files) and valid and valid_ids:
             announcement = form.save(commit=False)
 
+            is_newly_published = announcement.status == "published" and not was_published
             if announcement.status == "published" and (not was_published or not announcement.published_at):
                 announcement.published_at = timezone.now()
 
             announcement.save()
+
+            if is_newly_published:
+                notify_announcement_published(announcement)
 
             # delete selected attachments
             if delete_attachment_ids:
