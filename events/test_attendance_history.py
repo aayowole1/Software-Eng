@@ -14,7 +14,7 @@ from datetime import timedelta
 
 from django.test import TestCase
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import dateformat, timezone
 
 from accounts.models import Role
 from accounts.testing import make_user
@@ -290,7 +290,8 @@ class AttendanceCountsFromApprovalTests(TestCase):
         self.assertEqual((summary["attended"], summary["total"], summary["rate"]), (1, 1, 100))
 
     def test_profile_and_dashboard_use_the_approval_date(self):
-        self.approve(days_ago=10)
+        application = self.approve(days_ago=10)
+        application.refresh_from_db()  # use the stored approval time
         self.event("While pending", -20)
         attended = self.event("After approval", -5)
         Attendance.objects.create(event=attended, user=self.member, marked_by=self.officer)
@@ -299,7 +300,9 @@ class AttendanceCountsFromApprovalTests(TestCase):
         profile = self.client.get(reverse("accounts:profile"))
         self.assertNotContains(profile, "While pending")
         self.assertContains(profile, "Attended 1 of 1 event (100%)")
-        approved_on = timezone.localtime(timezone.now() - timedelta(days=10)).strftime("%b %-d, %Y")
+        # Format the saved approval date the same way the template does
+        # ("M j, Y"); strftime's "%-d" isn't supported on Windows.
+        approved_on = dateformat.format(timezone.localtime(application.reviewed_at), "M j, Y")
         self.assertContains(profile, f"Counting events since your membership started on {approved_on}.")
 
         dashboard = self.client.get(reverse("core:dashboard"))
