@@ -29,13 +29,21 @@
 
 {% if data %}
 
-<section aria-label="Download CSV">
-  <h2>Download CSV</h2>
-  <ul>
-    <li><a href="{% url 'reports:csv_events' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Events</a></li>
-    <li><a href="{% url 'reports:csv_members' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Members</a></li>
-    <li><a href="{% url 'reports:csv_committees' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Committees</a></li>
-  </ul>
+<section aria-labelledby="download-heading">
+  <h2 id="download-heading">Download CSV</h2>
+  <form method="get" action="{% url 'reports:download' %}" class="report-download">
+    <input type="hidden" name="start_date" value="{{ data.start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="end_date" value="{{ data.end_date|date:'Y-m-d' }}">
+    <label for="report-choice">Report</label>
+    <select id="report-choice" name="report">
+      <option value="all">All reports (ZIP)</option>
+      <option value="events">Events</option>
+      <option value="members">Members</option>
+      <option value="committees">Committees</option>
+    </select>
+    <button type="submit">Download</button>
+  </form>
+  <p class="muted">Downloads use the date range above. "All reports" is a ZIP file with the Events, Members and Committees CSVs.</p>
 </section>
 
 <section aria-label="Definitions">

@@ -2,6 +2,7 @@
 
 import csv
 import io
+import zipfile
 from datetime import date, timedelta
 
 from django.test import TestCase, override_settings
@@ -593,7 +594,7 @@ class MembersCsvTests(TestCase):
         response = self.client.get(CSV_MEMBERS_URL)
         headers, _ = _parse_csv(response)
         self.assertEqual(headers, [
-            "Member", "Email", "Role", "Attended", "Events held",
+            "Member", "Email", "Role", "Status", "Attended", "Events held",
             "Attendance %", "Tasks assigned", "Tasks completed", "Tasks overdue",
         ])
 
@@ -831,12 +832,14 @@ class DefinitionsOnPageTests(TestCase):
         self.assertContains(response, "Overdue")
 
     def test_download_csv_heading_present(self):
-        """The 'Download CSV' heading and all three download links appear on the report page."""
+        """The 'Download CSV' heading and the report dropdown appear on the report page."""
         response = self.client.get(REPORT_URL)
         self.assertContains(response, "Download CSV")
-        self.assertContains(response, reverse("reports:csv_events"))
-        self.assertContains(response, reverse("reports:csv_members"))
-        self.assertContains(response, reverse("reports:csv_committees"))
+        self.assertContains(response, f'action="{reverse("reports:download")}"')
+        self.assertContains(response, '<label for="report-choice">Report</label>', html=True)
+        for value, label in [("all", "All reports (ZIP)"), ("events", "Events"),
+                             ("members", "Members"), ("committees", "Committees")]:
+            self.assertContains(response, f'<option value="{value}">{label}</option>', html=True)
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -1050,3 +1053,109 @@ class SuspendedOfficerAccessTests(TestCase):
         response = self.client.get(CSV_COMMITTEES_URL)
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response["Location"])
+
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ReportDownloadChoiceTests(TestCase):
+    """The Download dropdown returns one CSV or all three as a ZIP."""
+
+    def setUp(self):
+        self.officer = make_user("dl-officer@example.com", Role.OFFICER)
+        self.member = make_user("dl-member@example.com", Role.MEMBER)
+        self.client.force_login(self.officer)
+        self.url = reverse("reports:download")
+        today = _today()
+        self.range = {"start_date": (today - timedelta(days=5)).isoformat(), "end_date": today.isoformat()}
+
+    def test_all_returns_a_zip_with_the_three_csvs(self):
+        response = self.client.get(self.url, {**self.range, "report": "all"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/zip")
+        start, end = self.range["start_date"], self.range["end_date"]
+        self.assertIn(f'filename="orgflow-report-all-{start}_{end}.zip"', response["Content-Disposition"])
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = sorted(archive.namelist())
+            self.assertEqual(names, sorted(
+                f"orgflow-report-{t}-{start}_{end}.csv" for t in ("events", "members", "committees")
+            ))
+            members = archive.read(f"orgflow-report-members-{start}_{end}.csv")
+            self.assertTrue(members.startswith(b"\xef\xbb\xbf"))
+            self.assertIn(b"Member,Email,Role,Status", members)
+
+    def test_all_is_the_default_choice(self):
+        response = self.client.get(self.url, self.range)
+        self.assertEqual(response["Content-Type"], "application/zip")
+
+    def test_single_choice_matches_the_per_table_download(self):
+        for table, per_table_url in [("events", CSV_EVENTS_URL), ("members", CSV_MEMBERS_URL),
+                                     ("committees", CSV_COMMITTEES_URL)]:
+            with self.subTest(table=table):
+                chosen = self.client.get(self.url, {**self.range, "report": table})
+                direct = self.client.get(per_table_url, self.range)
+                self.assertEqual(chosen.status_code, 200)
+                self.assertEqual(chosen.content, direct.content)
+                self.assertEqual(chosen["Content-Disposition"], direct["Content-Disposition"])
+
+    def test_unknown_choice_returns_400(self):
+        response = self.client.get(self.url, {**self.range, "report": "everything"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_range_returns_400_for_zip(self):
+        response = self.client.get(self.url, {"start_date": "2026-11-10", "end_date": "2026-11-01", "report": "all"})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("End date cannot be before start date.", response.content.decode())
+
+    def test_members_and_signed_out_users_cannot_download(self):
+        self.client.force_login(self.member)
+        self.assertEqual(self.client.get(self.url, self.range).status_code, 403)
+        self.client.logout()
+        response = self.client.get(self.url, self.range)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class MembersCsvNameAndStatusTests(TestCase):
+    """Members CSV is sorted by name and shows each account's actual access."""
+
+    def setUp(self):
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        self.officer = make_user("zz-officer@example.com", Role.OFFICER)
+        self.client.force_login(self.officer)
+        User = type(self.officer)
+
+        def named(email, first, last, role=Role.MEMBER):
+            user = make_user(email, role)
+            User.objects.filter(pk=user.pk).update(first_name=first, last_name=last)
+            return user
+
+        named("a-zed@example.com", "Zed", "Zulu")
+        named("b-amy@example.com", "amy", "Able")  # lower-case first name sorts by name, not case
+        suspended = named("c-sus@example.com", "Sue", "Spended")
+        Profile.objects.filter(user=suspended).update(is_suspended=True)
+        disabled = named("d-dis@example.com", "Dee", "Sabled")
+        User.objects.filter(pk=disabled.pk).update(is_active=False)
+        pending = named("e-pen@example.com", "Pat", "Ending")
+        MembershipApplication.objects.create(
+            user=pending, statement="Joining.", status=ApplicationStatus.APPROVED, access_update_pending=True,
+        )
+        User.objects.filter(pk=self.officer.pk).update(first_name="Olu", last_name="Officer")
+
+    def _rows(self):
+        _, rows = _parse_csv(self.client.get(CSV_MEMBERS_URL))
+        return rows
+
+    def test_rows_are_sorted_by_member_name(self):
+        names = [row["Member"] for row in self._rows()]
+        self.assertEqual(names, sorted(names, key=str.casefold))
+        self.assertEqual(names[0], "amy Able")
+
+    def test_status_reflects_actual_account_access(self):
+        status = {row["Email"]: row["Status"] for row in self._rows()}
+        self.assertEqual(status["a-zed@example.com"], "active")
+        self.assertEqual(status["c-sus@example.com"], "suspended")
+        self.assertEqual(status["d-dis@example.com"], "disabled")
+        self.assertEqual(status["e-pen@example.com"], "pending")
+        self.assertEqual(status["zz-officer@example.com"], "active")

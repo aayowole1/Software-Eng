@@ -1,6 +1,8 @@
 """Participation and engagement reports for leadership (FR-6.2, FR-6.3; SCRUM-64)."""
 
 import csv
+import io
+import zipfile
 from datetime import date, datetime, time, timedelta
 
 from django import forms
@@ -238,34 +240,67 @@ def _validate_csv_range(request):
     return _build_report(start_date, end_date), None
 
 
-def _make_csv_response(table_name, start_date, end_date):
-    """Return an HttpResponse ready for CSV writing (UTF-8 with BOM)."""
-    filename = f"orgflow-report-{table_name}-{start_date}_{end_date}.csv"
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    response.write("\ufeff")  # UTF-8 byte-order mark so Excel reads accents correctly
-    return response
+REPORT_TABLES = {"events": "Events", "members": "Members", "committees": "Committees"}
 
 
-@role_required(Role.OFFICER)
-def report_csv_events(request):
-    """Events CSV: one row per event, columns Event/Date/Start time/Location/RSVPs going/Attended."""
-    data, error = _validate_csv_range(request)
-    if error:
-        return error
+def _report_filename(name, start_date, end_date, extension="csv"):
+    return f"orgflow-report-{name}-{start_date}_{end_date}.{extension}"
 
-    response = _make_csv_response("events", data["start_date"], data["end_date"])
-    writer = csv.writer(response)
-    tz = timezone.get_current_timezone()
 
-    def row(*cells):
+def _csv_text(rows):
+    """Write rows to CSV text with formula escaping and a UTF-8 byte-order mark."""
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    for cells in rows:
         writer.writerow([_escape_csv(c) for c in cells])
+    # Byte-order mark so Excel reads accented names correctly.
+    return "\ufeff" + buffer.getvalue()
 
-    row("Event", "Date", "Start time", "Location", "RSVPs going", "Attended")
+
+def _account_details(users):
+    """Return ({user_pk: profile}, {user_pk: status}) for the members CSV, in a few queries.
+
+    Status describes actual account access: "active" uses the same rule as
+    the dashboard's Active members count and task assignment
+    (tasks.models.eligible_assignees); otherwise suspended (including a
+    suspension still being applied), pending (a membership approval still
+    updating) or disabled (the account is switched off).
+    """
+    from accounts.models import Profile
+    from membership.models import MembershipApplication
+    from tasks.models import eligible_assignees
+
+    users = list(users)
+    ids = [u.pk for u in users]
+    profiles = {p.user_id: p for p in Profile.objects.filter(user_id__in=ids)}
+    active_ids = set(eligible_assignees().values_list("pk", flat=True))
+    pending_ids = set(
+        MembershipApplication.objects.filter(user_id__in=ids, access_update_pending=True)
+        .values_list("user_id", flat=True)
+    )
+    statuses = {}
+    for user in users:
+        profile = profiles.get(user.pk)
+        if user.pk in active_ids:
+            statuses[user.pk] = "active"
+        elif profile and (profile.is_suspended or profile.suspension_update_pending):
+            statuses[user.pk] = "suspended"
+        elif user.pk in pending_ids:
+            statuses[user.pk] = "pending"
+        elif not user.is_active:
+            statuses[user.pk] = "disabled"
+        else:
+            statuses[user.pk] = "inactive"
+    return profiles, statuses
+
+
+def _events_rows(data):
+    tz = timezone.get_current_timezone()
+    yield ("Event", "Date", "Start time", "Location", "RSVPs going", "Attended")
     for item in data["per_event"]:
         event = item["event"]
         local_dt = event.starts_at.astimezone(tz)
-        row(
+        yield (
             event.title,
             local_dt.strftime("%Y-%m-%d"),
             local_dt.strftime("%H:%M"),
@@ -274,31 +309,25 @@ def report_csv_events(request):
             item["attended"],
         )
 
-    return response
+
+def _member_name(user):
+    return user.get_full_name() or user.username
 
 
-@role_required(Role.OFFICER)
-def report_csv_members(request):
-    """Members CSV: one row per roster member, columns Member/Email/Role/Attended/Events held/Attendance %/Tasks assigned/Tasks completed/Tasks overdue."""
-    data, error = _validate_csv_range(request)
-    if error:
-        return error
-
-    response = _make_csv_response("members", data["start_date"], data["end_date"])
-    writer = csv.writer(response)
-
-    def row(*cells):
-        writer.writerow([_escape_csv(c) for c in cells])
-
-    row("Member", "Email", "Role", "Attended", "Events held", "Attendance %",
-        "Tasks assigned", "Tasks completed", "Tasks overdue")
-    for item in data["per_member"]:
+def _members_rows(data):
+    yield ("Member", "Email", "Role", "Status", "Attended", "Events held", "Attendance %",
+           "Tasks assigned", "Tasks completed", "Tasks overdue")
+    items = sorted(data["per_member"], key=lambda item: (_member_name(item["user"]).casefold(), item["user"].pk))
+    profiles, statuses = _account_details(item["user"] for item in items)
+    for item in items:
         user = item["user"]
+        profile = profiles.get(user.pk)
         pct = item["attendance_pct"]
-        row(
-            user.get_full_name() or user.username,
+        yield (
+            _member_name(user),
             user.email,
-            user.profile.get_role_display(),
+            "Admin" if user.is_superuser else (profile.get_role_display() if profile else ""),
+            statuses[user.pk],
             item["attended"],
             item["events_held"],
             "" if pct is None else pct,
@@ -307,26 +336,12 @@ def report_csv_members(request):
             item["tasks_overdue"],
         )
 
-    return response
 
-
-@role_required(Role.OFFICER)
-def report_csv_committees(request):
-    """Committees CSV: one row per committee, columns Committee/Members/Attendance %/Tasks total/Tasks completed/Tasks overdue."""
-    data, error = _validate_csv_range(request)
-    if error:
-        return error
-
-    response = _make_csv_response("committees", data["start_date"], data["end_date"])
-    writer = csv.writer(response)
-
-    def row(*cells):
-        writer.writerow([_escape_csv(c) for c in cells])
-
-    row("Committee", "Members", "Attendance %", "Tasks total", "Tasks completed", "Tasks overdue")
+def _committees_rows(data):
+    yield ("Committee", "Members", "Attendance %", "Tasks total", "Tasks completed", "Tasks overdue")
     for item in data["per_committee"]:
         pct = item["attendance_pct"]
-        row(
+        yield (
             item["committee"].name,
             item["num_members"],
             "" if pct is None else pct,
@@ -335,4 +350,66 @@ def report_csv_committees(request):
             item["tasks_overdue"],
         )
 
+
+_ROW_BUILDERS = {"events": _events_rows, "members": _members_rows, "committees": _committees_rows}
+
+
+def _csv_response(table, data):
+    response = HttpResponse(_csv_text(_ROW_BUILDERS[table](data)), content_type="text/csv; charset=utf-8")
+    filename = _report_filename(table, data["start_date"], data["end_date"])
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+def _zip_response(data):
+    """All three report CSVs in one ZIP file."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for table in REPORT_TABLES:
+            archive.writestr(
+                _report_filename(table, data["start_date"], data["end_date"]),
+                _csv_text(_ROW_BUILDERS[table](data)).encode("utf-8"),
+            )
+    response = HttpResponse(buffer.getvalue(), content_type="application/zip")
+    filename = _report_filename("all", data["start_date"], data["end_date"], extension="zip")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@role_required(Role.OFFICER)
+def report_download(request):
+    """Download one report CSV, or all three as a ZIP, for the selected range.
+
+    The `report` parameter is "all" (default), "events", "members" or
+    "committees". An unknown choice or invalid date range returns HTTP 400.
+    """
+    choice = request.GET.get("report", "all")
+    if choice != "all" and choice not in REPORT_TABLES:
+        return HttpResponseBadRequest(
+            "Choose all, events, members or committees.", content_type="text/plain; charset=utf-8"
+        )
+    data, error = _validate_csv_range(request)
+    if error:
+        return error
+    return _zip_response(data) if choice == "all" else _csv_response(choice, data)
+
+
+@role_required(Role.OFFICER)
+def report_csv_events(request):
+    """Events CSV: one row per event held in the range."""
+    data, error = _validate_csv_range(request)
+    return error or _csv_response("events", data)
+
+
+@role_required(Role.OFFICER)
+def report_csv_members(request):
+    """Members CSV: one row per roster member, sorted by name, with account status."""
+    data, error = _validate_csv_range(request)
+    return error or _csv_response("members", data)
+
+
+@role_required(Role.OFFICER)
+def report_csv_committees(request):
+    """Committees CSV: one row per committee."""
+    data, error = _validate_csv_range(request)
+    return error or _csv_response("committees", data)
