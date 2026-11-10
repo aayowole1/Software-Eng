@@ -38,13 +38,13 @@ def dashboard(request):
             context["pending_drafts"] = MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
             # FR-6.1: summary cards for officers and admins. Imported here so
             # this change doesn't touch the module import lines other PRs edit.
-            from accounts.models import ROSTER_ROLES, Profile
+            from tasks.models import eligible_assignees
 
-            context["summary_active_members"] = Profile.objects.filter(
-                role__in=ROSTER_ROLES,
-                is_suspended=False,
-                suspension_update_pending=False,
-            ).count()
+            # Active members are roster members whose accounts can be used
+            # now: switched on, not suspended or mid-suspension, and with no
+            # unfinished membership approval. This is the same rule that
+            # decides who can be assigned tasks.
+            context["summary_active_members"] = eligible_assignees().count()
             context["summary_upcoming_events"] = Event.objects.filter(
                 starts_at__gte=timezone.now(),
                 cancelled=False,

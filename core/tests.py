@@ -123,6 +123,40 @@ class DashboardSummaryCardsTests(TestCase):
         response = self._dashboard(officer)
         self.assertContains(response, ">1<")
 
+    def _active_members(self, viewer):
+        return self._dashboard(viewer).context["summary_active_members"]
+
+    def test_active_members_excludes_disabled_accounts(self):
+        """Review: switched-off accounts aren't active, even with a member role."""
+        disabled = make_user("disabled@example.com", Role.MEMBER)
+        type(disabled).objects.filter(pk=disabled.pk).update(is_active=False)
+        make_user("active@example.com", Role.MEMBER)
+        officer = make_user("count-officer@example.com", Role.OFFICER)
+        self.assertEqual(self._active_members(officer), 2)  # active member + officer
+
+    def test_active_members_excludes_unfinished_membership_approvals(self):
+        """Review: an approval whose account access is still updating isn't active yet."""
+        pending = make_user("pending-access@example.com", Role.MEMBER)
+        MembershipApplication.objects.create(
+            user=pending, statement="Joining.", status=ApplicationStatus.APPROVED,
+            access_update_pending=True,
+        )
+        officer = make_user("count-officer@example.com", Role.OFFICER)
+        self.assertEqual(self._active_members(officer), 1)  # only the officer
+
+    def test_active_members_excludes_suspension_in_progress(self):
+        member = make_user("mid-suspension@example.com", Role.MEMBER)
+        Profile.objects.filter(user=member).update(suspension_update_pending=True)
+        officer = make_user("count-officer@example.com", Role.OFFICER)
+        self.assertEqual(self._active_members(officer), 1)
+
+    def test_active_members_counts_each_usable_role_once(self):
+        make_user("count-member@example.com", Role.MEMBER)
+        make_user("count-admin@example.com", Role.ADMIN)
+        make_user("count-applicant@example.com")  # applicants never count
+        officer = make_user("count-officer@example.com", Role.OFFICER)
+        self.assertEqual(self._active_members(officer), 3)
+
     # --- upcoming events count ---
 
     def test_upcoming_events_count(self):
