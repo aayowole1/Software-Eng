@@ -24,6 +24,7 @@ TASK_DESCRIPTION_LIMIT = 5000
 class TaskStatus(models.TextChoices):
     TODO = "todo", "To do"
     IN_PROGRESS = "in_progress", "In progress"
+    UNDER_REVIEW = "under_review", "Under Review"
     DONE = "done", "Done"
 
 
@@ -31,6 +32,7 @@ class TaskPriority(models.TextChoices):
     LOW = "low", "Low"
     MEDIUM = "medium", "Medium"
     HIGH = "high", "High"
+    URGENT = "urgent", "Urgent"
 
 
 def manual_origin_key():

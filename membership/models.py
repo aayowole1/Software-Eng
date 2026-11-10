@@ -70,6 +70,11 @@ class MembershipApplication(models.Model):
         default=False,
         help_text="A recorded review still needs its account access update completed.",
     )
+    history = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Audit log of membership application events (submission and review).",
+    )
 
     class Meta:
         ordering = ["-submitted_at"]
@@ -81,6 +86,19 @@ class MembershipApplication(models.Model):
     def is_pending(self):
         return self.status == ApplicationStatus.PENDING
 
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            try:
+                username = self.user.get_username()
+            except AttributeError:
+                username = str(self.user_id)
+            self.history = [{
+                "at": timezone.now().isoformat(),
+                "actor_id": str(self.user_id),
+                "actor": username,
+                "action": "submitted",
+            }]
+        super().save(*args, **kwargs)
 
     def review(self, reviewer, approve, note=""):
         """Approve or reject a pending membership application.
@@ -127,11 +145,20 @@ class MembershipApplication(models.Model):
         # Recording both the decision and its unfinished access intent in one
         # conditional document update prevents competing stale reviewers from
         # replacing each other's decisions. No MongoDB transaction is assumed.
+        now = timezone.now()
+        review_entry = {
+            "at": now.isoformat(),
+            "actor_id": str(reviewer.pk),
+            "actor": reviewer.get_username(),
+            "action": "approved" if approve else "rejected",
+            "note": note,
+        }
+        new_history = [*current.history, review_entry]
         changed = type(self).objects.filter(
             pk=self.pk, status=ApplicationStatus.PENDING
         ).update(
-            status=decision, reviewed_by=reviewer.pk, reviewed_at=timezone.now(),
-            review_note=note, access_update_pending=True,
+            status=decision, reviewed_by=reviewer.pk, reviewed_at=now,
+            review_note=note, access_update_pending=True, history=new_history,
         )
         if changed != 1:
             raise ValueError("This application has already been reviewed.")

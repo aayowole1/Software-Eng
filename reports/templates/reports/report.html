@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Participation Report{% endblock %}
+{% block content %}
+<h1>Participation &amp; Engagement Report</h1>
+
+<section aria-label="Date range">
+  <form method="get" action="">
+    <div>
+      <label for="{{ form.start_date.id_for_label }}">Start date</label>
+      {{ form.start_date }}
+      {% if form.start_date.errors %}
+        <ul class="errorlist" role="alert">
+          {% for error in form.start_date.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+    <div>
+      <label for="{{ form.end_date.id_for_label }}">End date</label>
+      {{ form.end_date }}
+      {% if form.end_date.errors %}
+        <ul class="errorlist" role="alert">
+          {% for error in form.end_date.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+    <button type="submit">Generate report</button>
+    {% if data %}
+      <a href="{% url 'reports:csv' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">
+        Download CSV
+      </a>
+    {% endif %}
+  </form>
+</section>
+
+{% if data %}
+
+<section aria-label="Definitions">
+  <h2>How numbers are calculated</h2>
+  <ul>
+    <li><strong>Attendance %</strong> = events attended ÷ events held in range × 100</li>
+    <li><strong>Committee attendance %</strong> = total attendances by committee members ÷ (members × events held) × 100</li>
+    <li><strong>Overdue tasks</strong> = tasks with a past due date that are not yet Done, as of today</li>
+    <li>Events held are non-cancelled events that started within the selected range and have already taken place. Cancelled and upcoming events are not counted.</li>
+    <li>Only tasks created within the selected date range are counted.</li>
+    <li>Dates use the organization's time zone and include the whole start and end day.</li>
+  </ul>
+</section>
+
+<section aria-label="Events in range">
+  <h2>Events ({{ data.start_date }} – {{ data.end_date }})</h2>
+  <p>Events held (non-cancelled): <strong>{{ data.events_held }}</strong></p>
+  {% if data.per_event %}
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Date</th>
+          <th>RSVPs (Going)</th>
+          <th>Attended</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in data.per_event %}
+          <tr>
+            <td>{{ item.event.title }}</td>
+            <td>{{ item.event.starts_at|date:"Y-m-d" }}</td>
+            <td>{{ item.rsvps_going }}</td>
+            <td>{{ item.attended }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No events were held in this range.</p>
+  {% endif %}
+</section>
+
+<section aria-label="Per-member report">
+  <h2>Per-member report</h2>
+  {% if data.per_member %}
+    <table>
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Events attended</th>
+          <th>Events held</th>
+          <th>Attendance %</th>
+          <th>Tasks assigned</th>
+          <th>Tasks completed</th>
+          <th>Tasks overdue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in data.per_member %}
+          <tr>
+            <td>{{ item.user.get_full_name|default:item.user.username }}</td>
+            <td>{{ item.attended }}</td>
+            <td>{{ item.events_held }}</td>
+            <td>{% if item.attendance_pct is not None %}{{ item.attendance_pct }}%{% else %}N/A{% endif %}</td>
+            <td>{{ item.tasks_assigned }}</td>
+            <td>{{ item.tasks_completed }}</td>
+            <td>{{ item.tasks_overdue }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No roster members found.</p>
+  {% endif %}
+</section>
+
+<section aria-label="Per-committee report">
+  <h2>Per-committee report</h2>
+  {% if data.per_committee %}
+    <table>
+      <thead>
+        <tr>
+          <th>Committee</th>
+          <th>Members</th>
+          <th>Attendance %</th>
+          <th>Tasks (total)</th>
+          <th>Tasks completed</th>
+          <th>Tasks overdue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in data.per_committee %}
+          <tr>
+            <td>{{ item.committee.name }}</td>
+            <td>{{ item.num_members }}</td>
+            <td>{% if item.attendance_pct is not None %}{{ item.attendance_pct }}%{% else %}N/A{% endif %}</td>
+            <td>{{ item.tasks_total }}</td>
+            <td>{{ item.tasks_completed }}</td>
+            <td>{{ item.tasks_overdue }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No committees found.</p>
+  {% endif %}
+</section>
+
+{% endif %}
+{% endblock %}

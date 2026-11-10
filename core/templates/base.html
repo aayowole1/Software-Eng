@@ -112,6 +112,7 @@
             <h3>Admin</h3>
             <ul>
               <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
+              <li><a href="{% url 'core:audit_history' %}">Audit history</a></li>
             </ul>
           </div>
         {% endif %}
@@ -125,6 +126,8 @@
               <li><a href="{% url 'committees:list' %}">Committees</a></li>
               <li><a href="{% url 'tasks:list' %}">Tasks</a></li>
               <li><a href="{% url 'events:list' %}">Events</a></li>
+              <li><a href="{% url 'announcements:list' %}">Announcements</a></li>
+              <li><a href="{% url 'resources:list' %}">Resources</a></li>
             {% else %}
               <li><a href="{% url 'membership:apply' %}">Apply</a></li>
             {% endif %}
@@ -135,6 +138,7 @@
           <div class="sidebar-group">
             <h3>Officer Tools</h3>
             <ul>
+              <li><a href="{% url 'reports:report' %}">Reports</a></li>
               <li><a href="{% url 'membership:application_list' %}">Applications</a></li>
               <li><a href="{% url 'meetings:list' %}">Meeting drafts</a></li>
             </ul>

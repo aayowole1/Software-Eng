@@ -53,6 +53,15 @@
 
   {% if is_member %}
     <div class="card">
+      <h2>Recent announcements</h2>
+      <ul>
+        {% for announcement in recent_announcements %}
+          <li><a href="{% url 'announcements:detail' announcement.pk %}">{{ announcement.title }}</a> <span class="muted">{{ announcement.published_at|date:"M j, Y" }}</span></li>
+        {% empty %}<li>No published announcements yet.</li>{% endfor %}
+      </ul>
+      <p><a href="{% url 'announcements:list' %}">All announcements</a></p>
+    </div>
+    <div class="card">
       <h2>My tasks</h2>
       <p>{{ my_task_counts.total }} assigned · {{ my_task_counts.completed }} completed · {{ my_task_counts.overdue }} overdue</p>
       <ul>
