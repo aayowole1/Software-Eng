@@ -24,15 +24,19 @@
       {% endif %}
     </div>
     <button type="submit">Generate report</button>
-    {% if data %}
-      <a href="{% url 'reports:csv' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">
-        Download CSV
-      </a>
-    {% endif %}
   </form>
 </section>
 
 {% if data %}
+
+<section aria-label="Download CSV">
+  <h2>Download CSV</h2>
+  <ul>
+    <li><a href="{% url 'reports:csv_events' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Events</a></li>
+    <li><a href="{% url 'reports:csv_members' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Members</a></li>
+    <li><a href="{% url 'reports:csv_committees' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">Committees</a></li>
+  </ul>
+</section>
 
 <section aria-label="Definitions">
   <h2>How numbers are calculated</h2>

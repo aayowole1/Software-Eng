@@ -18,7 +18,7 @@ from tasks.models import Task, TaskStatus
 User = get_user_model()
 
 # Characters that can trigger formula injection in spreadsheet software.
-_FORMULA_TRIGGERS = ("=", "+", "-", "@")
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _escape_csv(value):
@@ -215,8 +215,11 @@ def report(request):
     return render(request, "reports/report.html", {"form": form, "data": data})
 
 
-@role_required(Role.OFFICER)
-def report_csv(request):
+def _validate_csv_range(request):
+    """Validate the date range from request GET params.
+
+    Returns (data, None) on success or (None, error_response) on failure.
+    """
     start_default, end_default = _default_dates()
     if request.GET.get("start_date") or request.GET.get("end_date"):
         form = DateRangeForm(request.GET)
@@ -226,49 +229,110 @@ def report_csv(request):
     if not form.is_valid():
         # Never silently export a different range than the one requested.
         errors = "; ".join(str(e) for errs in form.errors.values() for e in errs)
-        return HttpResponseBadRequest(
+        return None, HttpResponseBadRequest(
             f"Invalid date range: {errors}", content_type="text/plain; charset=utf-8"
         )
 
     start_date = form.cleaned_data["start_date"]
     end_date = form.cleaned_data["end_date"]
-    data = _build_report(start_date, end_date)
+    return _build_report(start_date, end_date), None
 
-    response = HttpResponse(content_type="text/csv")
-    filename = f"participation_report_{start_date}_{end_date}.csv"
+
+def _make_csv_response(table_name, start_date, end_date):
+    """Return an HttpResponse ready for CSV writing (UTF-8 with BOM)."""
+    filename = f"orgflow-report-{table_name}-{start_date}_{end_date}.csv"
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("\ufeff")  # UTF-8 byte-order mark so Excel reads accents correctly
+    return response
 
+
+@role_required(Role.OFFICER)
+def report_csv_events(request):
+    """Events CSV: one row per event, columns Event/Date/Start time/Location/RSVPs going/Attended."""
+    data, error = _validate_csv_range(request)
+    if error:
+        return error
+
+    response = _make_csv_response("events", data["start_date"], data["end_date"])
+    writer = csv.writer(response)
+    tz = timezone.get_current_timezone()
+
+    def row(*cells):
+        writer.writerow([_escape_csv(c) for c in cells])
+
+    row("Event", "Date", "Start time", "Location", "RSVPs going", "Attended")
+    for item in data["per_event"]:
+        event = item["event"]
+        local_dt = event.starts_at.astimezone(tz)
+        row(
+            event.title,
+            local_dt.strftime("%Y-%m-%d"),
+            local_dt.strftime("%H:%M"),
+            event.location,
+            item["rsvps_going"],
+            item["attended"],
+        )
+
+    return response
+
+
+@role_required(Role.OFFICER)
+def report_csv_members(request):
+    """Members CSV: one row per roster member, columns Member/Email/Role/Attended/Events held/Attendance %/Tasks assigned/Tasks completed/Tasks overdue."""
+    data, error = _validate_csv_range(request)
+    if error:
+        return error
+
+    response = _make_csv_response("members", data["start_date"], data["end_date"])
     writer = csv.writer(response)
 
     def row(*cells):
         writer.writerow([_escape_csv(c) for c in cells])
 
-    row("section", "name", "metric", "value")
-
-    # Events section
-    row("events", "summary", "events_held", data["events_held"])
-    for item in data["per_event"]:
-        name = item["event"].title
-        row("event", name, "rsvps_going", item["rsvps_going"])
-        row("event", name, "attended", item["attended"])
-
-    # Per-member section
+    row("Member", "Email", "Role", "Attended", "Events held", "Attendance %",
+        "Tasks assigned", "Tasks completed", "Tasks overdue")
     for item in data["per_member"]:
-        name = item["user"].get_full_name() or item["user"].username
-        row("member", name, "attended", item["attended"])
-        row("member", name, "events_held", item["events_held"])
-        row("member", name, "attendance_pct", item["attendance_pct"] if item["attendance_pct"] is not None else "N/A")
-        row("member", name, "tasks_assigned", item["tasks_assigned"])
-        row("member", name, "tasks_completed", item["tasks_completed"])
-        row("member", name, "tasks_overdue", item["tasks_overdue"])
+        user = item["user"]
+        pct = item["attendance_pct"]
+        row(
+            user.get_full_name() or user.username,
+            user.email,
+            user.profile.get_role_display(),
+            item["attended"],
+            item["events_held"],
+            "" if pct is None else pct,
+            item["tasks_assigned"],
+            item["tasks_completed"],
+            item["tasks_overdue"],
+        )
 
-    # Per-committee section
+    return response
+
+
+@role_required(Role.OFFICER)
+def report_csv_committees(request):
+    """Committees CSV: one row per committee, columns Committee/Members/Attendance %/Tasks total/Tasks completed/Tasks overdue."""
+    data, error = _validate_csv_range(request)
+    if error:
+        return error
+
+    response = _make_csv_response("committees", data["start_date"], data["end_date"])
+    writer = csv.writer(response)
+
+    def row(*cells):
+        writer.writerow([_escape_csv(c) for c in cells])
+
+    row("Committee", "Members", "Attendance %", "Tasks total", "Tasks completed", "Tasks overdue")
     for item in data["per_committee"]:
-        name = item["committee"].name
-        row("committee", name, "num_members", item["num_members"])
-        row("committee", name, "attendance_pct", item["attendance_pct"] if item["attendance_pct"] is not None else "N/A")
-        row("committee", name, "tasks_total", item["tasks_total"])
-        row("committee", name, "tasks_completed", item["tasks_completed"])
-        row("committee", name, "tasks_overdue", item["tasks_overdue"])
+        pct = item["attendance_pct"]
+        row(
+            item["committee"].name,
+            item["num_members"],
+            "" if pct is None else pct,
+            item["tasks_total"],
+            item["tasks_completed"],
+            item["tasks_overdue"],
+        )
 
     return response
