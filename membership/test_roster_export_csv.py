@@ -317,3 +317,56 @@ class RosterExportLocalDateTests(TestCase):
 
         page = self.client.get(reverse("membership:roster"), {"q": "tz-member"})
         self.assertContains(page, "Nov 3, 2026")
+
+
+class RosterExportAccountStatusTests(TestCase):
+    """The status column reflects actual account access (review)."""
+
+    def setUp(self):
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        self.ApplicationStatus = ApplicationStatus
+        self.MembershipApplication = MembershipApplication
+        self.admin = make_user("status-admin@example.com", Role.ADMIN)
+        self.url = reverse("membership:export_roster_csv")
+
+    def _statuses(self):
+        self.client.force_login(self.admin)
+        rows = list(csv.reader(StringIO(self.client.get(self.url).content.decode())))
+        return {row[1]: row[5] for row in rows[1:]}  # email -> status
+
+    def test_disabled_account_is_disabled_not_active(self):
+        user = make_user("status-disabled@example.com", Role.MEMBER)
+        type(user).objects.filter(pk=user.pk).update(is_active=False)
+        self.assertEqual(self._statuses()["status-disabled@example.com"], "disabled")
+
+    def test_unfinished_approval_is_pending_not_active(self):
+        user = make_user("status-pending@example.com", Role.MEMBER)
+        self.MembershipApplication.objects.create(
+            user=user, statement="Joining.", status=self.ApplicationStatus.APPROVED,
+            access_update_pending=True,
+        )
+        self.assertEqual(self._statuses()["status-pending@example.com"], "pending")
+
+    def test_suspension_in_progress_is_suspended(self):
+        user = make_user("status-mid@example.com", Role.MEMBER)
+        Profile.objects.filter(user=user).update(suspension_update_pending=True)
+        self.assertEqual(self._statuses()["status-mid@example.com"], "suspended")
+
+    def test_usable_account_is_active(self):
+        make_user("status-ok@example.com", Role.MEMBER)
+        self.assertEqual(self._statuses()["status-ok@example.com"], "active")
+
+    def test_active_rows_match_the_dashboard_active_members_rule(self):
+        from tasks.models import eligible_assignees
+
+        make_user("status-ok@example.com", Role.MEMBER)
+        disabled = make_user("status-disabled@example.com", Role.OFFICER)
+        type(disabled).objects.filter(pk=disabled.pk).update(is_active=False)
+        suspended = make_user("status-suspended@example.com", Role.MEMBER)
+        Profile.objects.filter(user=suspended).update(is_suspended=True)
+
+        statuses = self._statuses()
+        active_emails = {email for email, status in statuses.items() if status == "active"}
+        self.assertEqual(active_emails, set(eligible_assignees().values_list("email", flat=True)))
+        self.assertEqual(statuses["status-suspended@example.com"], "suspended")

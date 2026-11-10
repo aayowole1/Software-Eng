@@ -295,9 +295,35 @@ def roster(request):
 
 
 
+def _account_status(profile, active_ids, pending_access_ids):
+    """The account's actual access, for the roster CSV.
+
+    "active" uses the same rule as the dashboard's Active members count and
+    task assignment (tasks.models.eligible_assignees). Otherwise the status
+    says why the account can't be used: suspended (or a suspension still
+    being applied), pending (a membership approval still updating) or
+    disabled (the account is switched off).
+    """
+    if profile.user_id in active_ids:
+        return "active"
+    if profile.is_suspended or profile.suspension_update_pending:
+        return "suspended"
+    if profile.user_id in pending_access_ids:
+        return "pending"
+    if not profile.user.is_active:
+        return "disabled"
+    return "inactive"
+
+
 @role_required(Role.ADMIN)
 def export_roster_csv(request):
-    """Download the current roster as a CSV file (Admins only, FR-2.4)."""
+    """Download the current roster as a CSV file (Admins only, FR-2.4).
+
+    The status column is active, suspended, pending or disabled; see
+    _account_status.
+    """
+    # Imported here to keep the shared import lines unchanged.
+    from tasks.models import eligible_assignees
 
     search_query = request.GET.get("q", "").strip()[:100]
     selected_role = request.GET.get("role", "").strip().lower()
@@ -305,6 +331,10 @@ def export_roster_csv(request):
         selected_role = ""
 
     members = _filter_roster_members(search_query, selected_role)
+    active_ids = set(eligible_assignees().values_list("pk", flat=True))
+    pending_access_ids = set(
+        MembershipApplication.objects.filter(access_update_pending=True).values_list("user_id", flat=True)
+    )
 
     # Dates use the organization's time zone, matching the roster page.
     today = timezone.localdate().strftime("%Y-%m-%d")
@@ -321,7 +351,7 @@ def export_roster_csv(request):
             cm.committee.name
             for cm in profile.user.committee_memberships.all()
         )
-        status = "suspended" if profile.is_suspended else "active"
+        status = _account_status(profile, active_ids, pending_access_ids)
         date_joined = timezone.localtime(profile.created_at).strftime("%Y-%m-%d")
         writer.writerow([
             escape_csv_cell(profile.user.username),
