@@ -13,7 +13,6 @@ from django.db.models import Q, Prefetch
 from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
-from core.csv_safe import escape_csv_cell
 
 from .emails import send_application_approved, send_application_rejected
 from .models import (
@@ -322,7 +321,9 @@ def export_roster_csv(request):
     The status column is active, suspended, pending or disabled; see
     _account_status.
     """
-    # Imported here to keep the shared import lines unchanged.
+    # Imported here to keep the shared import lines unchanged (other open
+    # PRs add imports next to them).
+    from core.csv_safe import escape_csv_cell
     from tasks.models import eligible_assignees
 
     search_query = request.GET.get("q", "").strip()[:100]
