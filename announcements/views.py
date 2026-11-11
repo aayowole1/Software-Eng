@@ -299,6 +299,7 @@ def announcements_list(request):
     stats = {}
     if is_admin:
         stats = {
+            "total": Announcement.objects.count(),
             "total_published": Announcement.objects.filter(
                 status="published"
             ).count(),

@@ -51,44 +51,20 @@
           <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
             <span>+</span> Create Announcement
           </a>
-          <a href="?status=draft" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
-            Drafts ({{ stats.active_drafts }})
-          </a>
-          <a href="?status=scheduled" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
-            Scheduled ({{ stats.scheduled_queue }})
-          </a>
         </div>
       {% endif %}
     </div>
 
-    {% if is_admin %}
-      <!-- Admin Metric KPI Cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span class="text-xs text-slate-500 block mb-1">Total Published</span>
-          <span class="text-2xl font-bold text-slate-900">{{ stats.total_published }}</span>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span class="text-xs text-slate-500 block mb-1">Active Drafts</span>
-          <span class="text-2xl font-bold text-slate-900">{{ stats.active_drafts }}</span>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span class="text-xs text-slate-500 block mb-1">Scheduled Queue</span>
-          <span class="text-2xl font-bold text-slate-900">{{ stats.scheduled_queue }}</span>
-        </div>
-      </div>
-    {% endif %}
-
     <!-- Filter & Category Pills Bar -->
     <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
       {% if is_admin %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All statuses</a>
-        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Drafts</a>
-        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Scheduled</a>
+        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ stats.total }})</a>
+        <a href="?status=published" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'published' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Published ({{ stats.total_published }})</a>
+        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Drafts ({{ stats.active_drafts }})</a>
+        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Scheduled ({{ stats.scheduled_queue }})</a>
+      {% else %}
+        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ announcements|length }})</a>
       {% endif %}
-      <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
-        All Announcements ({{ announcements|length }})
-      </a>
       {% for cat in categories %}
         <a href="?category={{ cat.slug }}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_category == cat.slug %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
           {{ cat.name }}

@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.http import urlencode
 from django.utils import timezone
 
@@ -110,9 +110,18 @@ class AnnouncementListViewTests(AnnouncementTestDataMixin, TestCase):
     def test_admin_context_contains_status_counts(self):
         self.login(self.officer)
         response = self.client.get(self.url)
+        self.assertEqual(response.context["stats"]["total"], 3)
         self.assertEqual(response.context["stats"]["total_published"], 1)
         self.assertEqual(response.context["stats"]["active_drafts"], 1)
         self.assertEqual(response.context["stats"]["scheduled_queue"], 1)
+
+    def test_member_read_url_resolves_to_read_view(self):
+        self.assertEqual(
+            resolve(
+                reverse("announcements:mark_read", args=[self.published.pk])
+            ).url_name,
+            "mark_read",
+        )
 
     def test_due_scheduled_announcement_is_published(self):
         due = self.make_announcement(
