@@ -92,10 +92,9 @@ def publish_due_announcements() -> int:
     )
     published_count = 0
     for announcement in due_announcements:
-        announcement.status = "published"
-        announcement.published_at = now
-        announcement.save(update_fields=["status", "published_at", "updated_at"])
-        published_count += 1
+        published_count += Announcement.objects.filter(
+            pk=announcement.pk, status="scheduled", scheduled_for__lte=now,
+        ).update(status="published", published_at=now, updated_at=now)
     return published_count
 
 
