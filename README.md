@@ -199,10 +199,28 @@ organization's time zone. The page shows:
   and overdue (tasks created in the range).
 * **Committees:** members, attendance % across those events, and task totals.
 
-**Download CSV** exports the same figures with a `section` column. Cells that
-start with `=`, `+`, `-` or `@` are escaped so spreadsheets don't run them as
-formulas. An end date before the start date is rejected on the page and in the
-download. Charts are not included yet (SCRUM-37).
+Under the **Download CSV** heading, pick a report from the **Report** dropdown
+and click **Download**. The download uses the date range currently selected.
+**All reports (ZIP)** (the default) downloads one ZIP file,
+`orgflow-report-all-{start}_{end}.zip`, containing the three CSVs below; or
+choose a single report:
+
+| Download | File name pattern | Columns |
+|---|---|---|
+| Events | `orgflow-report-events-{start}_{end}.csv` | Event, Date, Start time, Location, RSVPs going, Attended |
+| Members | `orgflow-report-members-{start}_{end}.csv` | Member, Email, Role, Status, Attended, Events held, Attendance %, Tasks assigned, Tasks completed, Tasks overdue |
+| Committees | `orgflow-report-committees-{start}_{end}.csv` | Committee, Members, Attendance %, Tasks total, Tasks completed, Tasks overdue |
+
+Members are sorted by name. **Status** shows actual account access: `active`
+(the same rule as the dashboard's Active members count), `suspended`, `pending`
+(a membership approval still updating) or `disabled` (the account is switched
+off). Each file is UTF-8 with a byte-order mark so that names with accents open
+correctly in Excel. Attendance % is a plain number with one decimal place
+(e.g. `66.7`), and cells with no value are blank rather than `N/A`. Cells that
+start with `=`, `+`, `-`, `@`, tab or carriage return are escaped so
+spreadsheets do not interpret them as formulas. An end date before the start
+date, or an unknown report choice, is rejected with HTTP 400. Charts are not
+included yet (SCRUM-37).
 
 ### Tasks and committee work
 
