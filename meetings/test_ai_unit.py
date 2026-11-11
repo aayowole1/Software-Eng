@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 from openai import OpenAIError
 
-from .ai import MeetingSummary, build_summary_messages, summarize_meeting
+from .ai import MeetingSummary, build_summary_messages, get_summary_model, summarize_meeting
 
 
 def provider_returning(content):
@@ -84,6 +84,10 @@ class SummarizeMeetingTests(SimpleTestCase):
     def test_model_can_be_overridden(self):
         _, _, client = self.summarize(self.payload())
         self.assertEqual(client.chat.completions.create.call_args.kwargs["model"], "gpt-test")
+
+    @patch.dict(os.environ, {"OPENROUTER_MODEL": "   "})
+    def test_blank_model_uses_default(self):
+        self.assertEqual(get_summary_model(), "openai/gpt-4o-mini")
 
     # ---- inputs rejected before calling the provider ----
 

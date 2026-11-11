@@ -32,6 +32,21 @@ class MeetingFlowTests(TestCase):
         self.assertEqual(draft.title, "Officer Notes Meeting")
         generate_title.assert_called_once()
 
+    @patch("meetings.models.generate_meeting_title", side_effect=RuntimeError("provider failure"))
+    @patch("meetings.models.summarize_meeting")
+    def test_title_generation_failure_keeps_default_title(self, summarize, generate_title):
+        summarize.return_value = MeetingSummary("Summary", [])
+
+        response = self.client.post(
+            reverse("meetings:create"),
+            {"title": "", "transcript": "", "notes": "Officer notes from the meeting"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        draft = MeetingDraft.objects.get()
+        self.assertTrue(draft.title.endswith(" - Untitled Notes"))
+        generate_title.assert_called_once()
+
     @patch("meetings.models.summarize_meeting")
     def test_submit_requires_notes_or_transcript(self, summarize):
         response = self.client.post(

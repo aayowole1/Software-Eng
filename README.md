@@ -167,7 +167,9 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
 `meetings/ai.py` uses OpenRouter to produce a concise discussion summary and
-proposed action items. Set `OPENROUTER_API_KEY` in `.env`;
+proposed action items. Set `OPENROUTER_API_KEY` in `.env`; this replaces the
+previous `OPENAI_API_KEY` integration, so existing deployments must add the
+OpenRouter key before meeting summaries will work again.
 `OPENROUTER_MODEL` is optional and defaults to `openai/gpt-4o-mini`. The
 response must be valid JSON with validated summary and action-item fields.
 Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
