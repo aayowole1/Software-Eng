@@ -37,7 +37,7 @@
           </span>
         </div>
         <p class="text-sm text-slate-500">
-          {% if is_admin %}
+          {% if is_officer %}
             Create, broadcast, schedule, and manage club-wide announcements, meeting reminders, and council communications.
           {% else %}
             Official updates, executive briefings, meeting agendas, and institutional records from MyOrg leadership.
@@ -45,11 +45,11 @@
         </p>
       </div>
 
-      {% if is_admin %}
+      {% if is_officer %}
         <!-- Admin Primary Action Buttons -->
         <div class="flex items-center gap-3">
           <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
-            <span>+</span> Create Announcement
+            <span>+</span> Create announcement
           </a>
         </div>
       {% endif %}

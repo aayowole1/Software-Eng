@@ -8,14 +8,16 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.http import FileResponse, JsonResponse, Http404
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.db.models import F, Q
+from django.views.decorators.http import require_POST
 
-from accounts.models import Profile, ROSTER_ROLES, Role
+from accounts.models import Profile, ROSTER_ROLES, Role, get_role
 
 from .models import (
     Announcement,
@@ -25,6 +27,7 @@ from .models import (
     Category,
 )
 from .forms import AnnouncementForm, AnnouncementAttachmentForm, AnnouncementCommentForm
+from .permissions import announcement_access, effective_role
 
 
 # === HELPERS
@@ -33,10 +36,28 @@ def is_officer_or_admin(user) -> bool:
     return (
         user.is_authenticated
         and (
-            user.is_staff
-            or user.groups.filter(name="Officer").exists()
+            get_role(user) in {Role.OFFICER, Role.ADMIN}
         )
     )
+
+
+def officer_view_access(view):
+    """Require officer privileges while preserving member redirect behavior."""
+    @login_required
+    def checked(request, *args, **kwargs):
+        if not request.user.is_superuser and (
+            request.user.is_staff
+            or request.user.groups.filter(name="Officer").exists()
+        ):
+            raise PermissionDenied("Legacy account flags do not grant access.")
+        if effective_role(request.user) not in {Role.OFFICER, Role.ADMIN}:
+            if not hasattr(request, "session"):
+                raise PermissionDenied("You do not have officer access.")
+            return redirect(
+                f"{reverse('announcements:list')}?next={request.get_full_path()}"
+            )
+        return view(request, *args, **kwargs)
+    return checked
 
 
 def get_author_role(user) -> str:
@@ -78,7 +99,7 @@ def publish_due_announcements() -> int:
     return published_count
 
 
-@login_required
+@announcement_access(Role.MEMBER)
 def announcement_attachment_download(request, pk):
     """Serve an attachment to users who can access its announcement."""
     attachment = get_object_or_404(
@@ -98,12 +119,12 @@ def announcement_attachment_download(request, pk):
         attachment.file.open("rb"),
         as_attachment=True,
         filename=attachment.name,
+        headers={"Cache-Control": "private, no-store"},
     )
 
 
 # === [ADMIN] CREATE ANNOUNCEMENT
-@login_required
-@user_passes_test(is_officer_or_admin, login_url="announcements:list")
+@officer_view_access
 def announcement_create(request):
     """Create an announcement."""
     if request.method == "POST":
@@ -111,6 +132,18 @@ def announcement_create(request):
         save_action = request.POST.get("save_action", "publish")
         # support multi-file upload
         files = request.FILES.getlist("attachments")
+
+        if len(files) > 5:
+            messages.error(request, "Upload up to 5 files.")
+            return render(
+                request,
+                "announcements/announcement_form.html",
+                {
+                    "form": form,
+                    "action_title": "Create New Announcement",
+                    "is_edit": False,
+                },
+            )
 
         if form.is_valid():
             announcement = form.save(commit=False)
@@ -166,8 +199,7 @@ def announcement_create(request):
 
 
 # === [ADMIN] EDIT ANNOUNCEMENT
-@login_required
-@user_passes_test(is_officer_or_admin, login_url="announcements:list")
+@officer_view_access
 def announcement_edit(request, pk):
     announcement = get_object_or_404(
         Announcement.objects.prefetch_related("attachments"),
@@ -177,6 +209,7 @@ def announcement_edit(request, pk):
     # Editing is limited to the announcement author and superusers.
     if not (
         request.user.is_superuser
+        or get_role(request.user) == Role.ADMIN
         or announcement.author == request.user
     ):
         raise PermissionDenied("You do not have permission to edit this announcement.")
@@ -190,6 +223,20 @@ def announcement_edit(request, pk):
         save_action = request.POST.get("save_action", "publish")
         files = request.FILES.getlist("attachments")
         delete_attachment_ids = request.POST.getlist("delete_attachments")
+
+        if len(files) > 5:
+            messages.error(request, "Upload up to 5 files.")
+            return render(
+                request,
+                "announcements/announcement_form.html",
+                {
+                    "form": form,
+                    "announcement": announcement,
+                    "action_title": f"Edit Announcement: {announcement.title}",
+                    "is_edit": True,
+                    "existing_attachments": announcement.attachments.all(),
+                },
+            )
 
         if form.is_valid():
             announcement = form.save(commit=False)
@@ -245,13 +292,10 @@ def announcement_edit(request, pk):
     )
 
 # === [ALL] LIST ANNOUNCEMENTS
-@login_required
+@announcement_access(Role.MEMBER)
 def announcements_list(request):
     publish_due_announcements()
-    is_admin = (
-        request.user.is_staff
-        or request.user.groups.filter(name="Officer").exists()
-    )
+    is_admin = is_officer_or_admin(request.user)
 
     # define filtering and search feature
     query = request.GET.get("q", "")
@@ -343,7 +387,7 @@ def announcements_list(request):
     )
 
 # === [ALL] DISPLAY ANNOUNCEMENT DETAIL
-@login_required
+@announcement_access(Role.MEMBER)
 def announcement_detail(request, pk):
     """Retrieve details about the announcement."""
     publish_due_announcements()
@@ -387,6 +431,7 @@ def announcement_detail(request, pk):
         "is_admin": is_admin,
         "can_edit": is_admin and (
             request.user.is_superuser
+            or get_role(request.user) == Role.ADMIN
             or announcement.author == request.user
         ),
         "is_read_by_user": is_read_by_user,
@@ -399,46 +444,69 @@ def announcement_detail(request, pk):
 
 
 # === [DISPLAY] MARK AS READ TOGGLE
-@login_required
+@announcement_access(Role.MEMBER)
+@require_POST
 def announcement_mark_read(request, pk):
-    if request.method == "POST":
-        try:
-            pk = ObjectId(str(pk))
-        except (InvalidId, TypeError):
-            raise Http404("Announcement not found.")
-        announcement = get_object_or_404(
-            Announcement,
-            pk=pk,
-            status="published",
+    try:
+        pk = ObjectId(str(pk))
+    except (InvalidId, TypeError):
+        raise Http404("Announcement not found.")
+    announcement = get_object_or_404(
+        Announcement,
+        pk=pk,
+    )
+    if announcement.status != "published":
+        raise PermissionDenied("Only published announcements can be marked read.")
+    is_admin = is_officer_or_admin(request.user)
+    if announcement.author_id == request.user.id:
+        raise PermissionDenied("Authors cannot mark their own announcements as read.")
+    if not is_admin and not can_receive_announcement(request.user, announcement):
+        raise PermissionDenied(
+            "This announcement is not available to your audience."
         )
-        is_admin = is_officer_or_admin(request.user)
-        if announcement.author_id == request.user.id:
-            raise PermissionDenied("Authors cannot mark their own announcements as read.")
-        if not is_admin and not can_receive_announcement(request.user, announcement):
-            raise PermissionDenied(
-                "This announcement is not available to your audience."
-            )
-        action = request.POST.get("action", "read")
-        receipt = AnnouncementReadReceipt.objects.filter(
+    action = request.POST.get("action", "read")
+    receipt = AnnouncementReadReceipt.objects.filter(
+        user=request.user,
+        announcement=announcement,
+    ).first()
+    if action == "unread" and receipt:
+        receipt.delete()
+        Announcement.objects.filter(
+            pk=pk,
+            read_count__gt=0,
+        ).update(read_count=F("read_count") - 1)
+    elif action != "unread" and receipt is None:
+        AnnouncementReadReceipt.objects.create(
             user=request.user,
             announcement=announcement,
-        ).first()
-        if action == "unread" and receipt:
-            receipt.delete()
-            Announcement.objects.filter(
-                pk=pk,
-                read_count__gt=0,
-            ).update(read_count=F("read_count") - 1)
-        elif action != "unread" and receipt is None:
-            AnnouncementReadReceipt.objects.create(
-                user=request.user,
-                announcement=announcement,
-            )
-            Announcement.objects.filter(pk=pk).update(read_count=F("read_count") + 1)
+        )
+        Announcement.objects.filter(pk=pk).update(read_count=F("read_count") + 1)
 
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse({"is_read": action != "unread"})
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"is_read": action != "unread"})
+    return redirect("announcements:list")
+
+
+@login_required
+def announcement_delete(request, pk):
+    announcement = get_object_or_404(Announcement, pk=pk)
+    if not is_officer_or_admin(request.user):
+        raise PermissionDenied("You do not have permission to delete this announcement.")
+    if request.user != announcement.author and get_role(request.user) != Role.ADMIN:
+        raise PermissionDenied("Only the author or an admin can delete this announcement.")
+    if request.method == "POST":
+        announcement.delete()
+        messages.success(request, "Announcement deleted.")
         return redirect("announcements:list")
+    return render(
+        request,
+        "announcements/confirm_delete.html",
+        {
+            "object": announcement,
+            "kind": "announcement",
+            "cancel_url": "announcements:list",
+        },
+    )
 
 
 @login_required

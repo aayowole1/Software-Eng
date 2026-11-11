@@ -150,7 +150,7 @@
           {% endif %}
 
           <!-- Group: Admin Actions -->
-          {% if is_admin %}
+          {% if user_role == 'admin' %}
             <div class="space-y-1">
 <span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Administration</span>
 <ul class="space-y-1">

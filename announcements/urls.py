@@ -23,6 +23,7 @@ urlpatterns = [
         name="attachment_download",
     ),
     path("<str:pk>/edit/", views.announcement_edit, name="edit"),
+    path("<str:pk>/delete/", views.announcement_delete, name="delete"),
     path("<str:pk>/read/", views.announcement_mark_read, name="mark_read"),
     path("<str:pk>/comments/", views.announcement_comment_create, name="comment_create"),
     path("<str:pk>/", views.announcement_detail, name="detail"),

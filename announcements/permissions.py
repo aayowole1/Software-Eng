@@ -8,18 +8,33 @@ from django.core.exceptions import PermissionDenied
 
 from accounts.backends import EmailOrUsernameBackend
 from accounts.models import Profile, Role, has_minimum_role
+from membership.models import MembershipApplication
 
 
 def effective_role(user):
     if not user.is_authenticated:
         return None
     current = get_user_model().objects.filter(pk=user.pk).first()
-    if current is None or not EmailOrUsernameBackend().user_can_authenticate(current):
+    if current is None:
         return None
     if current.is_superuser:
         return Role.ADMIN
+    if not EmailOrUsernameBackend().user_can_authenticate(current):
+        return None
+    if current.is_staff or current.groups.filter(name="Officer").exists():
+        return None
     profile = Profile.objects.filter(user_id=current.pk).first()
-    return profile.role if profile else None
+    if (
+        profile is None
+        or profile.is_suspended
+        or profile.suspension_update_pending
+        or MembershipApplication.objects.filter(
+            user_id=current.pk,
+            access_update_pending=True,
+        ).exists()
+    ):
+        return None
+    return profile.role
 
 
 def announcement_access(minimum):

@@ -15,6 +15,7 @@ from .models import (
     Announcement,
     AnnouncementAttachment,
     AnnouncementComment,
+    Category,
     Resource,
 )
 
@@ -26,6 +27,11 @@ class AnnouncementForm(forms.ModelForm):
         queryset=Committee.objects.none(),
         required=False,
         empty_label="All members",
+    )
+    category = forms.ModelChoiceField(
+        queryset=Category.objects.all(),
+        required=False,
+        empty_label="Select a category",
     )
     scheduled_for = forms.DateTimeField(
         required=False,
@@ -61,6 +67,7 @@ class AnnouncementForm(forms.ModelForm):
         model = Announcement
         fields = [
             "title",
+            "category",
             "audience",
             "is_pinned",
             "is_urgent",
@@ -229,6 +236,10 @@ class ResourceForm(forms.ModelForm):
     """Validate a resource backed by either a safe URL or uploaded file."""
 
     remove_file = forms.BooleanField(required=False)
+    file = forms.FileField(
+        required=False,
+        widget=forms.FileInput,
+    )
     url = forms.URLField(
         required=False,
         validators=[URLValidator(schemes=["http", "https"])],
@@ -240,7 +251,7 @@ class ResourceForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        file = cleaned_data.get("file")
+        file = self.files.get("file")
         url = cleaned_data.get("url")
         has_existing_file = bool(self.instance and self.instance.file)
 
@@ -252,8 +263,13 @@ class ResourceForm(forms.ModelForm):
             has_existing_file and not cleaned_data.get("remove_file")
         ):
             raise forms.ValidationError("Provide either a file or a link.")
-        if file and file.size > 25 * 1024 * 1024:
-            self.add_error("file", "Files must be 25 MB or smaller.")
+        if file:
+            try:
+                file_size = file.size
+            except OSError:
+                file_size = 0
+            if file_size > 25 * 1024 * 1024:
+                self.add_error("file", "Files must be 25 MB or smaller.")
         return cleaned_data
 
     def save(self, commit=True):

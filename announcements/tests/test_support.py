@@ -5,6 +5,7 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
+from accounts.models import Profile, Role
 from announcements.models import Announcement, Category
 
 
@@ -37,13 +38,16 @@ class AnnouncementTestDataMixin:
             shutil.rmtree(cls._test_media_root, ignore_errors=True)
 
     def make_user(self, username=None, **kwargs):
+        role = kwargs.pop("role", Role.MEMBER)
         username = f"{username or 'member'}-{uuid4().hex[:8]}"
-        return User.objects.create_user(
+        user = User.objects.create_user(
             username=username,
             email=f"{username}@example.com",
             password="test-password",
             **kwargs,
         )
+        Profile.objects.filter(user=user).update(role=role)
+        return user
 
     def make_category(self, name=None, slug=None):
         suffix = uuid4().hex[:8]
@@ -63,7 +67,7 @@ class AnnouncementTestDataMixin:
         return Announcement.objects.create(**defaults)
 
     def make_officer(self, username=None):
-        return self.make_user(username=username, is_staff=True)
+        return self.make_user(username=username, role=Role.OFFICER)
 
     def login(self, user):
         self.client.force_login(user)
