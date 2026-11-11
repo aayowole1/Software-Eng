@@ -14,6 +14,7 @@ urlpatterns = [
     path("google/apply/", google_apply, name="google_apply"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", views.profile, name="profile"),
+    path("me/edit/", views.edit_profile, name="edit_profile"),
     path("users/", views.user_list, name="user_list"),
     path("users/<oid:pk>/role/", views.change_role, name="change_role"),
     # Forgot password (Django's built-in reset flow). Accounts without a

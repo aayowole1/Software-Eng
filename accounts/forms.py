@@ -4,6 +4,8 @@ from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
 from django.db import DatabaseError
+from django.db.models import Q
+from django.utils import timezone
 
 from membership.models import MembershipApplication, inactive_account_message
 
@@ -16,6 +18,54 @@ from .provisioning import (
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def email_in_use(email, *, exclude_user=None):
+    accounts = User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email))
+    if exclude_user is not None:
+        accounts = accounts.exclude(pk=exclude_user.pk)
+    return accounts.exists()
+
+
+class ProfileEditForm(forms.ModelForm):
+    email = forms.EmailField(label="Contact email", max_length=254)
+    graduation_year = forms.RegexField(
+        regex=r"^[0-9]{4}$",
+        required=False,
+        label="Graduation year",
+        error_messages={"invalid": "Enter a four-digit year."},
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 4}),
+    )
+
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "email")
+
+    def __init__(self, *args, profile, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.initial["graduation_year"] = profile.graduation_year
+        if hasattr(self.instance, "google_identity"):
+            self.fields["email"].disabled = True
+            self.fields["email"].required = False
+            self.fields["email"].help_text = "This email is managed by your Google sign-in."
+
+    def clean_email(self):
+        if self.fields["email"].disabled:
+            return self.instance.email
+        email = self.cleaned_data["email"].lower()
+        if email_in_use(email, exclude_user=self.instance):
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
+
+    def clean_graduation_year(self):
+        value = self.cleaned_data["graduation_year"]
+        if not value:
+            return None
+        year = int(value)
+        latest_year = timezone.localdate().year + 10
+        if not 1900 <= year <= latest_year:
+            raise forms.ValidationError(f"Enter a year between 1900 and {latest_year}.")
+        return year
 
 
 class PasswordSignupRetryError(Exception):
@@ -70,10 +120,7 @@ class RegisterForm(forms.Form):
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
         # Older accounts used their email as the username, so check both fields.
-        if (
-            User.objects.filter(email__iexact=email).exists()
-            or User.objects.filter(username__iexact=email).exists()
-        ):
+        if email_in_use(email):
             raise forms.ValidationError("An account with this email already exists.")
         return email
 
