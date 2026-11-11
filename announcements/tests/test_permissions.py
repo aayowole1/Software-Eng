@@ -127,7 +127,7 @@ class AnnouncementPermissionTests(AnnouncementTestDataMixin, TestCase):
         files = [SimpleUploadedFile(f"{i}.txt", b"test") for i in range(6)]
         response = self.client.post(self.create, {
             "title": "Too many files", "content": "Notice", "status": "published",
-            "category": self.notice.category_id, "target_reach": 20, "attachments": files,
+            "category": self.notice.category_id, "attachments": files,
         })
         self.assertContains(response, "Upload up to 5 files")
         self.assertFalse(type(self.notice).objects.filter(title="Too many files").exists())
