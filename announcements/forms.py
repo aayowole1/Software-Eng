@@ -6,11 +6,17 @@
 
 # === IMPORTS
 from django import forms
+from django.core.validators import URLValidator
 from django.utils import timezone
 
 from committees.models import Committee
 
-from .models import Announcement, AnnouncementAttachment, AnnouncementComment
+from .models import (
+    Announcement,
+    AnnouncementAttachment,
+    AnnouncementComment,
+    Resource,
+)
 
 
 # === [CLASS] ANNOUNCEMENT FORM
@@ -217,3 +223,43 @@ class AnnouncementAttachmentForm(forms.ModelForm):
                 }
             )
         }
+
+
+class ResourceForm(forms.ModelForm):
+    """Validate a resource backed by either a safe URL or uploaded file."""
+
+    remove_file = forms.BooleanField(required=False)
+    url = forms.URLField(
+        required=False,
+        validators=[URLValidator(schemes=["http", "https"])],
+    )
+
+    class Meta:
+        model = Resource
+        fields = ["title", "description", "category", "file", "url"]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        url = cleaned_data.get("url")
+        has_existing_file = bool(self.instance and self.instance.file)
+
+        if file and url:
+            raise forms.ValidationError(
+                "Choose either a file or a link, not both."
+            )
+        if not file and not url and not (
+            has_existing_file and not cleaned_data.get("remove_file")
+        ):
+            raise forms.ValidationError("Provide either a file or a link.")
+        if file and file.size > 25 * 1024 * 1024:
+            self.add_error("file", "Files must be 25 MB or smaller.")
+        return cleaned_data
+
+    def save(self, commit=True):
+        resource = super().save(commit=False)
+        if self.cleaned_data.get("remove_file") or self.cleaned_data.get("url"):
+            resource.file = ""
+        if commit:
+            resource.save()
+        return resource

@@ -37,6 +37,28 @@ class Category(models.Model):
         return self.name
 
 
+class Resource(models.Model):
+    """Define a member-accessible resource library item."""
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, max_length=5000)
+    category = models.CharField(max_length=64, blank=True)
+    file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
+    url = models.URLField(max_length=2000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    class Meta:
+        ordering = ["title", "id"]
+
+    def __str__(self) -> str:
+        return self.title
+
+
 # === [CLASS] ANNOUNCEMENT
 class Announcement(models.Model):
     """Define a single announcement object."""
