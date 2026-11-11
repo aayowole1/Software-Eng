@@ -420,6 +420,15 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {"is_read": True})
 
+    def test_read_forms_use_explicit_slash_terminated_urls(self):
+        self.login(self.member)
+        response = self.client.get(self.detail_url)
+
+        self.assertContains(
+            response,
+            f'action="/announcements/{self.announcement.pk}/read/"',
+        )
+
     def test_malformed_mark_read_id_returns_not_found(self):
         self.login(self.member)
         response = self.client.post(

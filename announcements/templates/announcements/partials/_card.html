@@ -139,7 +139,7 @@
     button.textContent = markingUnread ? "Marking as unread..." : "✓ Marking as read...";
     button.classList.add("opacity-75", "cursor-wait");
 
-    fetch(form.action, {
+    fetch(form.getAttribute("action"), {
       method: "POST",
       body: new FormData(form),
       headers: {"X-Requested-With": "XMLHttpRequest"},
