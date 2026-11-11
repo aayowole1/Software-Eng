@@ -58,7 +58,6 @@ INSTALLED_APPS = [
     "announcements.apps.AnnouncementsConfig",
     "tasks.apps.TasksConfig",
     "events.apps.EventsConfig",
-    "announcements.apps.AnnouncementsConfig",
 ]
 
 MIDDLEWARE = [
