@@ -39,7 +39,7 @@ services:
       MONGODB_URI: mongodb://mongo:27017
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
 
     depends_on:
       mongo:

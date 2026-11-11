@@ -35,7 +35,7 @@
   <div class="meeting-review-columns">
     <div class="card note-review-panel note-review-notes">
       <h2>Officer notes</h2>
-      <textarea name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
+      <textarea aria-label="Officer notes" name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
     </div>
     <div class="card note-review-panel">
       <h2>AI summary</h2>
@@ -53,7 +53,7 @@
           {% if can_review %}
             <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
             <label for="item-{{ item.pk }}-accepted" class="action-item-keep">Keep</label>
-            <input class="action-item-input" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
+            <input class="action-item-input" aria-label="Action item text" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
           {% else %}
             {% if parts %}
               <span class="action-item-pretty">
@@ -87,7 +87,7 @@
       <div class="meeting-review-actions">
         <button type="submit" class="button button-primary">Submit review</button>
         {% if is_admin %}
-          <button type="submit" class="button button-danger" formaction="{% url 'meetings:delete' draft.pk %}" formmethod="post" onclick="return confirm('Delete this draft?');">Delete draft</button>
+          <button type="submit" class="danger" formaction="{% url 'meetings:delete' draft.pk %}" formmethod="post" formnovalidate onclick="return confirm('Delete this draft?');">Delete draft</button>
         {% endif %}
       </div>
       </div>

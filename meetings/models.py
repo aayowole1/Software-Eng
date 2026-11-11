@@ -111,7 +111,10 @@ class MeetingDraft(models.Model):
         self._publication_uncertain = False
         result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
         if title.endswith(" - Untitled Notes"):
-            title = generate_meeting_title(transcript, notes)
+            try:
+                title = generate_meeting_title(transcript, notes)
+            except (RuntimeError, ValueError):
+                logger.warning("Meeting title generation failed; retaining the default title.")
         self.pk = self.pk or ObjectId()
         token = uuid4().hex
         self._staged_generation = token

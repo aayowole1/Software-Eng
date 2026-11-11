@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 from django.test import TestCase
 from django.urls import reverse
@@ -29,6 +30,21 @@ class MeetingFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         draft = MeetingDraft.objects.get()
         self.assertEqual(draft.title, "Officer Notes Meeting")
+        generate_title.assert_called_once()
+
+    @patch("meetings.models.generate_meeting_title", side_effect=RuntimeError("provider failure"))
+    @patch("meetings.models.summarize_meeting")
+    def test_title_generation_failure_keeps_default_title(self, summarize, generate_title):
+        summarize.return_value = MeetingSummary("Summary", [])
+
+        response = self.client.post(
+            reverse("meetings:create"),
+            {"title": "", "transcript": "", "notes": "Officer notes from the meeting"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        draft = MeetingDraft.objects.get()
+        self.assertTrue(draft.title.endswith(" - Untitled Notes"))
         generate_title.assert_called_once()
 
     @patch("meetings.models.summarize_meeting")
@@ -69,6 +85,21 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, "Add your own notes below.")
         self.assertNotContains(response, "until an officer approves it.")
 
+    def test_creation_page_prefills_from_processing_session_payload(self):
+        session = self.client.session
+        session["meeting_processing"] = {
+            "title": "Recovered title",
+            "transcript": "Recovered transcript",
+            "notes": "Recovered notes",
+        }
+        session.save()
+
+        response = self.client.get(reverse("meetings:create"))
+
+        self.assertContains(response, 'value="Recovered title"')
+        self.assertContains(response, 'value="Recovered transcript"')
+        self.assertContains(response, "Recovered notes")
+
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
         self.assertContains(response, "Start Note Transcription")
@@ -79,25 +110,54 @@ class MeetingFlowTests(TestCase):
             reverse("meetings:processing_start"),
             {"title": "Processing test", "transcript": "Transcript", "notes": ""},
         )
-        self.assertRedirects(response, reverse("meetings:processing"))
+        submission_id = parse_qs(urlparse(response.url).query).get("submission_id", [""])[0]
+        self.assertTrue(submission_id)
+        self.assertRedirects(response, f'{reverse("meetings:processing")}?submission_id={submission_id}')
         page = self.client.get(response.url)
         self.assertContains(page, "Processing notes")
         self.assertContains(page, "Transcribing audio and preparing the notes summary and action items.")
+        self.assertContains(page, f"submission_id={submission_id}")
 
     @patch("meetings.models.summarize_meeting")
     def test_processing_page_completes_generation_and_redirects_to_draft(self, summarize):
         summarize.return_value = MeetingSummary("Processed summary", ["Action: Follow up"])
 
-        self.client.post(
+        processing_url = self.client.post(
             reverse("meetings:processing_start"),
             {"title": "Async meeting", "transcript": "Deepgram text", "notes": "Officer notes"},
-        )
-        response = self.client.post(reverse("meetings:process"))
+        ).url
+        response = self.client.post(processing_url.replace(reverse("meetings:processing"), reverse("meetings:process")))
 
         self.assertEqual(response.status_code, 200)
         draft = MeetingDraft.objects.get(title="Async meeting")
         self.assertEqual(response.json()["redirect"], reverse("meetings:detail", args=[draft.pk]))
         self.assertEqual(draft.summary, "Processed summary")
+
+    @patch("meetings.models.summarize_meeting")
+    def test_processing_uses_submission_specific_payload(self, summarize):
+        summarize.return_value = MeetingSummary("Processed summary", [])
+
+        first_processing_url = self.client.post(
+            reverse("meetings:processing_start"),
+            {"title": "First tab", "transcript": "First transcript", "notes": "First notes"},
+        ).url
+        second_processing_url = self.client.post(
+            reverse("meetings:processing_start"),
+            {"title": "Second tab", "transcript": "Second transcript", "notes": "Second notes"},
+        ).url
+
+        first_response = self.client.post(
+            first_processing_url.replace(reverse("meetings:processing"), reverse("meetings:process"))
+        )
+        self.assertEqual(first_response.status_code, 200)
+        self.assertTrue(MeetingDraft.objects.filter(title="First tab").exists())
+        self.assertFalse(MeetingDraft.objects.filter(title="Second tab").exists())
+
+        second_response = self.client.post(
+            second_processing_url.replace(reverse("meetings:processing"), reverse("meetings:process"))
+        )
+        self.assertEqual(second_response.status_code, 200)
+        self.assertTrue(MeetingDraft.objects.filter(title="Second tab").exists())
 
     def test_review_submission_saves_officer_notes(self):
         draft = MeetingDraft.objects.create(
@@ -255,14 +315,17 @@ class MeetingFlowTests(TestCase):
         self.assertEqual(response.json()["error"], "Deepgram timed out")
 
     def test_empty_processing_result_warns_that_no_audio_was_found(self):
-        self.client.post(
+        processing_url = self.client.post(
             reverse("meetings:processing_start"),
             {"title": "No audio", "transcript": "temporary", "notes": ""},
-        )
+        ).url
+        submission_id = parse_qs(urlparse(processing_url).query).get("submission_id", [""])[0]
         session = self.client.session
-        session["meeting_processing"]["transcript"] = ""
+        session["meeting_processing_submissions"][submission_id]["transcript"] = ""
         session.save()
-        response = self.client.post(reverse("meetings:process"))
+        response = self.client.post(
+            f'{reverse("meetings:process")}?submission_id={submission_id}'
+        )
         self.assertEqual(response.status_code, 422)
         self.assertEqual(
             response.json()["error"],

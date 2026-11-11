@@ -170,7 +170,9 @@ not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
 `meetings/ai.py` uses OpenRouter to produce a concise discussion summary and
-proposed action items. Set `OPENROUTER_API_KEY` in `.env`;
+proposed action items. Set `OPENROUTER_API_KEY` in `.env`; this replaces the
+previous `OPENAI_API_KEY` integration, so existing deployments must add the
+OpenRouter key before meeting summaries will work again.
 `OPENROUTER_MODEL` is optional and defaults to `openai/gpt-4o-mini`. The
 response must be valid JSON with validated summary and action-item fields.
 Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
@@ -192,8 +194,9 @@ organization's time zone. The page shows:
 
 * **Events held:** non-cancelled events in the range that have already started,
   with RSVPs going and attendance for each. Upcoming events are not counted.
-* **Members:** events attended out of events held, attendance %, and tasks
-  assigned, completed and overdue (tasks created in the range).
+* **Members:** events attended out of the events held since their membership
+  started (their latest approval), attendance %, and tasks assigned, completed
+  and overdue (tasks created in the range).
 * **Committees:** members, attendance % across those events, and task totals.
 
 **Download CSV** exports the same figures with a `section` column. Cells that
@@ -265,6 +268,33 @@ an organization-wide audit system remains separate. Live OpenAI summarization an
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
 deployment needs its own Google client configuration and live check.
+
+## About page settings
+
+The signed-out dashboard shows a public **About** section with the organization's
+name, mission, benefits and a leadership contact link. Configure these in `.env`:
+
+| Setting | Environment variable | Default |
+|---------|----------------------|---------|
+| Organization name | `ORG_NAME` | Placeholder text |
+| Mission statement | `ORG_MISSION` | Placeholder text |
+| Benefits of joining | `ORG_BENEFITS` | Pipe-separated list, e.g. `Networking\|Leadership skills` |
+| Contact email | `ORG_CONTACT_EMAIL` | Empty (shows "Contact an officer after you sign in") |
+
+Example `.env` entries:
+
+```env
+ORG_NAME=Acme Student Association
+ORG_MISSION=We bring students together to build real-world skills.
+ORG_BENEFITS=Professional networking|Leadership opportunities|Community events
+ORG_CONTACT_EMAIL=officers@acme.edu
+```
+
+Restart the web container after changing these values:
+
+```bash
+docker compose restart web
+```
 
 ## Running Tests
 

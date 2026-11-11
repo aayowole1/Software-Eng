@@ -67,6 +67,17 @@ def _make_task(created_by, assignee=None, committee=None, status=TaskStatus.TODO
     return task
 
 
+def _joined_long_ago(*users, days=60):
+    """Backdate accounts so past test events fall within their membership.
+
+    Members only count for events since their membership started (US-13), so
+    members created "today" would otherwise have no past events to attend.
+    """
+    for user in users:
+        type(user).objects.filter(pk=user.pk).update(date_joined=timezone.now() - timedelta(days=days))
+        user.refresh_from_db()
+
+
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class ReportAccessTests(TestCase):
     """AC-1: Access control by role."""
@@ -253,6 +264,7 @@ class PerMemberCountsTests(TestCase):
     def setUp(self):
         self.officer = make_user("officer@example.com", Role.OFFICER)
         self.member = make_user("member@example.com", Role.MEMBER)
+        _joined_long_ago(self.officer, self.member)
         self.client.force_login(self.officer)
 
     def _report(self, start_offset=-5, end_offset=0):
@@ -315,6 +327,7 @@ class PerCommitteeCountsTests(TestCase):
         self.officer = make_user("officer@example.com", Role.OFFICER)
         self.member1 = make_user("m1@example.com", Role.MEMBER)
         self.member2 = make_user("m2@example.com", Role.MEMBER)
+        _joined_long_ago(self.officer, self.member1, self.member2)
         self.committee = Committee.objects.create(name="Events", created_by=self.officer)
         CommitteeMember.objects.create(committee=self.committee, user=self.member1)
         CommitteeMember.objects.create(committee=self.committee, user=self.member2)
@@ -373,6 +386,7 @@ class CsvDownloadTests(TestCase):
     def setUp(self):
         self.officer = make_user("officer@example.com", Role.OFFICER)
         self.member = make_user("m@example.com", Role.MEMBER)
+        _joined_long_ago(self.officer, self.member)
         self.client.force_login(self.officer)
 
     def _csv(self, start_offset=-5, end_offset=0):
@@ -531,6 +545,7 @@ class ReviewDateBoundaryTests(TestCase):
     def setUp(self):
         self.officer = make_user("boundary-officer@example.com", Role.OFFICER)
         self.member = make_user("boundary-member@example.com", Role.MEMBER)
+        _joined_long_ago(self.officer, self.member)
         self.client.force_login(self.officer)
         self.tz = timezone.get_current_timezone()
 
@@ -687,3 +702,97 @@ class SuspendedOfficerAccessTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(reverse("accounts:login"), response["Location"])
         self.assertNotIn("attachment", response.get("Content-Disposition", ""))
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AttendanceFromMembershipStartTests(TestCase):
+    """Members only count for events since their membership started (US-13)."""
+
+    def setUp(self):
+        from membership.models import ApplicationStatus, MembershipApplication
+
+        self.ApplicationStatus = ApplicationStatus
+        self.MembershipApplication = MembershipApplication
+        self.officer = make_user("start-officer@example.com", Role.OFFICER)
+        self.veteran = make_user("start-veteran@example.com", Role.MEMBER)
+        self.newcomer = make_user("start-newcomer@example.com", Role.MEMBER)
+        _joined_long_ago(self.officer, self.veteran, self.newcomer)
+        self.client.force_login(self.officer)
+        self.early = _make_event(self.officer, days_offset=-4, title="Early")
+        self.late = _make_event(self.officer, days_offset=-1, title="Late")
+
+    def approve(self, user, days_ago):
+        return self.MembershipApplication.objects.create(
+            user=user, statement="Joining.", status=self.ApplicationStatus.APPROVED,
+            reviewed_by=self.officer, reviewed_at=timezone.now() - timedelta(days=days_ago),
+        )
+
+    def _params(self):
+        today = _today()
+        return {"start_date": (today - timedelta(days=5)).isoformat(), "end_date": today.isoformat()}
+
+    def _row(self, data, user):
+        return next(r for r in data["per_member"] if r["user"] == user)
+
+    def test_events_before_approval_are_not_counted_for_that_member(self):
+        self.approve(self.newcomer, days_ago=2)  # approved between Early and Late
+        _attend(self.late, self.newcomer, self.officer)
+
+        data = self.client.get(REPORT_URL, self._params()).context["data"]
+
+        self.assertEqual(data["events_held"], 2)  # organization-wide count is unchanged
+        row = self._row(data, self.newcomer)
+        self.assertEqual((row["attended"], row["events_held"], row["attendance_pct"]), (1, 1, 100.0))
+        veteran = self._row(data, self.veteran)
+        self.assertEqual(veteran["events_held"], 2)
+
+    def test_attendance_before_approval_is_not_counted(self):
+        self.approve(self.newcomer, days_ago=2)
+        _attend(self.early, self.newcomer, self.officer)  # recorded before approval
+
+        row = self._row(self.client.get(REPORT_URL, self._params()).context["data"], self.newcomer)
+
+        self.assertEqual((row["attended"], row["events_held"], row["attendance_pct"]), (0, 1, 0.0))
+
+    def test_latest_approval_is_used(self):
+        self.approve(self.newcomer, days_ago=10)
+        self.approve(self.newcomer, days_ago=2)
+
+        row = self._row(self.client.get(REPORT_URL, self._params()).context["data"], self.newcomer)
+
+        self.assertEqual(row["events_held"], 1)
+
+    def test_member_with_no_events_since_joining_has_no_percentage(self):
+        self.approve(self.newcomer, days_ago=0)  # approved after both events
+
+        row = self._row(self.client.get(REPORT_URL, self._params()).context["data"], self.newcomer)
+
+        self.assertEqual((row["events_held"], row["attendance_pct"]), (0, None))
+
+    def test_committee_attendance_uses_each_members_own_events(self):
+        committee = Committee.objects.create(name="Welcome", created_by=self.officer)
+        CommitteeMember.objects.create(committee=committee, user=self.veteran)
+        CommitteeMember.objects.create(committee=committee, user=self.newcomer)
+        self.approve(self.newcomer, days_ago=2)
+        _attend(self.early, self.veteran, self.officer)
+        _attend(self.late, self.veteran, self.officer)
+        _attend(self.late, self.newcomer, self.officer)
+
+        data = self.client.get(REPORT_URL, self._params()).context["data"]
+
+        row = next(r for r in data["per_committee"] if r["committee"] == committee)
+        # 3 attendances out of 2 (veteran) + 1 (newcomer) possible = 100%, not 3/4.
+        self.assertEqual(row["attendance_pct"], 100.0)
+
+    def test_csv_uses_each_members_own_events(self):
+        self.approve(self.newcomer, days_ago=2)
+        rows = list(csv.reader(io.StringIO(
+            self.client.get(CSV_URL, self._params()).content.decode()
+        )))
+        name = self.newcomer.get_full_name() or self.newcomer.username
+        self.assertIn(["member", name, "events_held", "1"], rows)
+        self.assertIn(["events", "summary", "events_held", "2"], rows)
+
+    def test_definitions_explain_membership_start(self):
+        response = self.client.get(REPORT_URL)
+        self.assertContains(response, "since the member's membership started")

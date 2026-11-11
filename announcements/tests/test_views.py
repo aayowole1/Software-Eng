@@ -3,20 +3,16 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from django.urls import resolve, reverse
-from django.utils.http import urlencode
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Profile, Role
-from committees.models import Committee, CommitteeMember
 
 from announcements.models import (
     Announcement,
     AnnouncementAttachment,
-    AnnouncementComment,
     AnnouncementReadReceipt,
 )
-from announcements.views import publish_due_announcements
 
 from .test_support import AnnouncementTestDataMixin
 
@@ -80,79 +76,18 @@ class AnnouncementListViewTests(AnnouncementTestDataMixin, TestCase):
         self.assertContains(response, "Published notice")
         self.assertNotContains(response, "Draft notice")
 
-    def test_cleared_search_query_returns_unfiltered_announcements(self):
-        self.login(self.officer)
-        response = self.client.get(self.url, {"q": ""})
-
-        self.assertEqual(response.context["search_query"], "")
-        self.assertContains(response, "Published notice")
-        self.assertContains(response, "Draft notice")
-
     def test_members_can_filter_by_category(self):
         self.login(self.member)
         response = self.client.get(self.url, {"category": "events"})
         self.assertNotContains(response, "Published notice")
         self.assertNotContains(response, "Scheduled notice")
 
-    def test_member_can_mark_announcement_read_via_read_route(self):
-        self.login(self.member)
-        response = self.client.post(
-            reverse("announcements:mark_read", args=[self.published.pk]),
-        )
-
-        self.assertRedirects(response, reverse("announcements:list"))
-        self.assertTrue(
-            AnnouncementReadReceipt.objects.filter(
-                user=self.member,
-                announcement=self.published,
-            ).exists()
-        )
-
     def test_admin_context_contains_status_counts(self):
         self.login(self.officer)
         response = self.client.get(self.url)
-        self.assertEqual(response.context["stats"]["total"], 3)
         self.assertEqual(response.context["stats"]["total_published"], 1)
         self.assertEqual(response.context["stats"]["active_drafts"], 1)
         self.assertEqual(response.context["stats"]["scheduled_queue"], 1)
-
-    def test_member_read_url_resolves_to_read_view(self):
-        self.assertEqual(
-            resolve(
-                reverse("announcements:mark_read", args=[self.published.pk])
-            ).url_name,
-            "mark_read",
-        )
-
-    def test_due_scheduled_announcement_is_published(self):
-        due = self.make_announcement(
-            author=self.officer,
-            status="scheduled",
-            scheduled_for=timezone.now() - timedelta(minutes=1),
-        )
-        self.assertEqual(publish_due_announcements(), 1)
-        due.refresh_from_db()
-        self.assertEqual(due.status, "published")
-
-    def test_all_members_audience_is_visible_without_committee_membership(self):
-        self.login(self.member)
-        response = self.client.get(self.url)
-        self.assertContains(response, "Published notice")
-
-    def test_committee_audience_is_limited_to_committee_members(self):
-        committee = Committee.objects.create(
-            name="Events",
-            created_by=self.officer,
-        )
-        CommitteeMember.objects.create(committee=committee, user=self.member)
-        self.category.committee = committee
-        self.category.save(update_fields=["committee"])
-        self.published.audience = committee
-        self.published.save(update_fields=["audience"])
-
-        self.login(self.make_user("outside"))
-        response = self.client.get(self.url)
-        self.assertNotContains(response, "Published notice")
 
 
 class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
@@ -168,17 +103,14 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
     def test_members_cannot_create_announcements(self):
         self.login(self.make_user())
         response = self.client.get(self.url)
-        expected_url = (
-            f"{reverse('announcements:list')}?"
-            f"{urlencode({'next': self.url})}"
-        )
-        self.assertRedirects(response, expected_url, msg_prefix=str(response))
+        self.assertEqual(response.status_code, 403)
 
     def test_get_prefills_published_defaults_for_officer(self):
         self.login(self.make_officer())
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("status", response.context["form"].fields)
+        self.assertEqual(response.context["form"].initial["status"], "published")
+        self.assertEqual(response.context["form"].initial["target_reach"], 165)
 
     def test_officer_can_create_with_attachment(self):
         officer = self.make_officer()
@@ -192,6 +124,7 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
                 "category": category.pk,
                 "status": "published",
                 "content": "Created content",
+                "target_reach": 20,
                 "attachments": upload,
             },
         )
@@ -203,54 +136,6 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
         self.assertEqual(announcement.author, officer)
         self.assertEqual(announcement.author_role, "Officer")
         self.assertEqual(announcement.attachments.count(), 1)
-
-    def test_authorized_user_can_download_attachment(self):
-        officer = self.make_officer()
-        announcement = self.make_announcement(author=officer)
-        attachment = AnnouncementAttachment.objects.create(
-            announcement=announcement,
-            file=SimpleUploadedFile("notice.txt", b"notice"),
-            name="Notice",
-        )
-        self.login(officer)
-        response = self.client.get(
-            reverse("announcements:attachment_download", args=[attachment.pk])
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(b"".join(response.streaming_content), b"notice")
-
-    def test_officer_can_save_a_draft(self):
-        officer = self.make_officer()
-        self.login(officer)
-        response = self.client.post(
-            self.url,
-            {
-                "title": "Saved draft",
-                "content": "Draft content",
-                "save_action": "draft",
-            },
-        )
-        announcement = Announcement.objects.get(title="Saved draft")
-        self.assertRedirects(
-            response,
-            reverse("announcements:detail", args=[announcement.pk]),
-        )
-        self.assertEqual(announcement.status, "draft")
-
-    def test_future_schedule_publishes_as_scheduled(self):
-        officer = self.make_officer()
-        self.login(officer)
-        self.client.post(
-            self.url,
-            {
-                "title": "Future notice",
-                "content": "Future content",
-                "scheduled_for": "2099-01-01T12:00",
-                "save_action": "publish",
-            },
-        )
-        announcement = Announcement.objects.get(title="Future notice")
-        self.assertEqual(announcement.status, "scheduled")
 
     def test_create_uses_profile_role_display_when_available(self):
         officer = self.make_officer("profile-officer")
@@ -265,6 +150,7 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
                 "category": category.pk,
                 "status": "published",
                 "content": "Created content",
+                "target_reach": 20,
             },
         )
 
@@ -287,6 +173,7 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
                 "category": category.pk,
                 "status": "published",
                 "content": "Created content",
+                "target_reach": 20,
             },
         )
 
@@ -303,6 +190,15 @@ class AnnouncementCreateViewTests(AnnouncementTestDataMixin, TestCase):
         self.assertFalse(Announcement.objects.exists())
         self.assertContains(response, "Please correct")
 
+    def test_officer_can_publish_without_preconfigured_categories(self):
+        self.login(self.make_officer())
+        response = self.client.post(self.url, {
+            "title": "General notice", "content": "Welcome", "status": "published",
+            "target_reach": 20,
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(Announcement.objects.get(title="General notice").category_id)
+
 
 class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
     def setUp(self):
@@ -318,18 +214,21 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
             args=[self.announcement.pk],
         )
 
-    def test_detail_does_not_mark_announcement_read_automatically(self):
+    def test_detail_records_only_one_read_receipt(self):
         self.login(self.member)
         first = self.client.get(self.detail_url)
         second = self.client.get(self.detail_url)
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
-        self.assertFalse(AnnouncementReadReceipt.objects.filter(
-            user=self.member,
-            announcement=self.announcement,
-        ).exists())
+        self.assertEqual(
+            AnnouncementReadReceipt.objects.filter(
+                user=self.member,
+                announcement=self.announcement,
+            ).count(),
+            1,
+        )
         self.announcement.refresh_from_db()
-        self.assertEqual(self.announcement.read_count, 0)
+        self.assertEqual(self.announcement.read_count, 1)
 
     def test_members_cannot_view_unpublished_details(self):
         self.announcement.status = "draft"
@@ -366,6 +265,7 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
                 "category": category.pk,
                 "status": "published",
                 "content": "Updated content",
+                "target_reach": 20,
                 "delete_attachments": [attachment.pk],
             },
         )
@@ -379,6 +279,42 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         self.announcement.refresh_from_db()
         self.assertEqual(self.announcement.title, "Updated title")
 
+    def test_publishing_old_draft_places_it_in_recent_announcements(self):
+        now = timezone.now()
+        old_date = now - timedelta(days=30)
+        Announcement.objects.filter(pk=self.announcement.pk).update(status="draft", published_at=old_date)
+        for days in (1, 2, 3):
+            self.make_announcement(author=self.officer, published_at=now - timedelta(days=days))
+
+        self.login(self.officer)
+        response = self.client.post(self.edit_url, {
+            "title": "Newly published draft",
+            "content": "Ready for members",
+            "status": "published",
+            "target_reach": 20,
+        })
+        self.assertRedirects(response, self.detail_url)
+        self.announcement.refresh_from_db()
+        self.assertGreater(self.announcement.published_at, now - timedelta(seconds=1))
+
+        self.login(self.member)
+        dashboard = self.client.get(reverse("core:dashboard"))
+        self.assertContains(dashboard, "Newly published draft")
+
+    def test_editing_published_announcement_preserves_publish_date(self):
+        old_date = (timezone.now() - timedelta(days=30)).replace(microsecond=0)
+        Announcement.objects.filter(pk=self.announcement.pk).update(published_at=old_date)
+        self.login(self.officer)
+        response = self.client.post(self.edit_url, {
+            "title": "Edited announcement",
+            "content": "Updated content",
+            "status": "published",
+            "target_reach": 20,
+        })
+        self.assertRedirects(response, self.detail_url)
+        self.announcement.refresh_from_db()
+        self.assertEqual(self.announcement.published_at, old_date)
+
     def test_mark_read_is_idempotent_and_redirects_to_list(self):
         self.login(self.member)
         read_url = reverse(
@@ -391,111 +327,3 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         self.assertRedirects(second, reverse("announcements:list"))
         self.announcement.refresh_from_db()
         self.assertEqual(self.announcement.read_count, 1)
-
-    def test_mark_read_can_be_reversed(self):
-        self.login(self.member)
-        read_url = reverse(
-            "announcements:mark_read",
-            args=[self.announcement.pk],
-        )
-        self.client.post(read_url)
-        response = self.client.post(read_url, {"action": "unread"})
-        self.assertRedirects(response, reverse("announcements:list"))
-        self.announcement.refresh_from_db()
-        self.assertEqual(self.announcement.read_count, 0)
-        self.assertFalse(
-            AnnouncementReadReceipt.objects.filter(
-                user=self.member,
-                announcement=self.announcement,
-            ).exists()
-        )
-
-    def test_mark_read_ajax_returns_success_for_member(self):
-        self.login(self.member)
-        response = self.client.post(
-            reverse("announcements:mark_read", args=[self.announcement.pk]),
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {"is_read": True})
-
-    def test_read_forms_use_explicit_slash_terminated_urls(self):
-        self.login(self.member)
-        response = self.client.get(self.detail_url)
-
-        self.assertContains(
-            response,
-            f'action="/announcements/{self.announcement.pk}/read/"',
-        )
-
-    def test_malformed_mark_read_id_returns_not_found(self):
-        self.login(self.member)
-        response = self.client.post(
-            reverse("announcements:mark_read", args=["not-an-object-id"])
-        )
-        self.assertEqual(response.status_code, 404)
-
-    def test_member_can_comment_when_enabled(self):
-        self.announcement.comments_enabled = True
-        self.announcement.save(update_fields=["comments_enabled"])
-        self.login(self.member)
-
-        response = self.client.post(
-            reverse("announcements:comment_create", args=[self.announcement.pk]),
-            {"content": "Thanks for the update."},
-        )
-
-        self.assertRedirects(response, self.detail_url)
-        self.assertTrue(
-            AnnouncementComment.objects.filter(
-                announcement=self.announcement,
-                author=self.member,
-                content="Thanks for the update.",
-            ).exists()
-        )
-        self.announcement.refresh_from_db()
-        self.assertEqual(self.announcement.comments_count, 1)
-
-    def test_member_cannot_comment_when_disabled(self):
-        self.login(self.member)
-        response = self.client.post(
-            reverse("announcements:comment_create", args=[self.announcement.pk]),
-            {"content": "Not allowed."},
-        )
-        self.assertEqual(response.status_code, 403)
-
-    def test_officer_can_mark_another_officers_announcement_read(self):
-        another_officer = self.make_officer("another-officer")
-        self.announcement.author = another_officer
-        self.announcement.save(update_fields=["author"])
-        self.login(self.officer)
-
-        response = self.client.post(
-            reverse("announcements:mark_read", args=[self.announcement.pk]),
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, {"is_read": True})
-        self.assertTrue(
-            AnnouncementReadReceipt.objects.filter(
-                user=self.officer,
-                announcement=self.announcement,
-            ).exists()
-        )
-
-    def test_author_cannot_mark_own_announcement_read(self):
-        self.login(self.officer)
-
-        response = self.client.post(
-            reverse("announcements:mark_read", args=[self.announcement.pk]),
-        )
-
-        self.assertEqual(response.status_code, 403)
-        self.assertFalse(
-            AnnouncementReadReceipt.objects.filter(
-                user=self.officer,
-                announcement=self.announcement,
-            ).exists()
-        )

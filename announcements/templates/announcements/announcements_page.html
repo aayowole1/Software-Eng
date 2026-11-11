@@ -1,121 +1,24 @@
 {% extends "base.html" %}
-
-{% block title %}Announcements - MyOrg{% endblock %}
-
+{% block title %}Announcements{% endblock %}
 {% block content %}
-<div class="announcement-page min-h-screen bg-slate-50 text-slate-800">
-  <div class="p-6 lg:p-8 max-w-7xl mx-auto">
-    
-    <!-- Top Breadcrumbs & Search Bar -->
-    <div class="flex items-center justify-between pb-6 border-b border-slate-200 mb-6">
-      <div class="text-xs text-slate-500 font-medium">
-        <span>Portal</span> &rsaquo; <span class="text-slate-800">Workspace</span>
-      </div>
-      <form method="get" class="relative w-72 flex items-center gap-2">
-        {% if is_admin and status_filter != "all" %}
-          <input type="hidden" name="status" value="{{ status_filter }}">
-        {% endif %}
-        {% if current_category %}
-          <input type="hidden" name="category" value="{{ current_category }}">
-        {% endif %}
-        <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements..." class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
-        {% if search_query %}
-          <button type="button" class="text-xs font-medium text-slate-500 hover:text-slate-900" onclick="this.form.querySelector('[name=q]').value=''; this.form.submit();">Clear</button>
-        {% endif %}
-      </form>
-    </div>
-
-    <!-- Header Block: Admin View vs Member View -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <h1 class="text-2xl font-bold text-slate-900">
-            {% if is_admin %}Announcements Management{% else %}Announcements{% endif %}
-          </h1>
-          <span class="text-xs px-2 py-0.5 rounded-full font-medium {% if is_admin %}bg-blue-100 text-blue-800{% else %}bg-slate-100 text-slate-600{% endif %}">
-            {% if is_admin %}Admin Portal{% else %}Member View (Read Only){% endif %}
-          </span>
-        </div>
-        <p class="text-sm text-slate-500">
-          {% if is_officer %}
-            Create, broadcast, schedule, and manage club-wide announcements, meeting reminders, and council communications.
-          {% else %}
-            Official updates, executive briefings, meeting agendas, and institutional records from MyOrg leadership.
-          {% endif %}
-        </p>
-      </div>
-
-      {% if is_officer %}
-        <!-- Admin Primary Action Buttons -->
-        <div class="flex items-center gap-3">
-          <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
-            <span>+</span> Create announcement
-          </a>
-        </div>
-      {% endif %}
-    </div>
-
-    <!-- Filter & Category Pills Bar -->
-    <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
-      {% if is_admin %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ stats.total }})</a>
-        <a href="?status=published" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'published' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Published ({{ stats.total_published }})</a>
-        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Drafts ({{ stats.active_drafts }})</a>
-        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Scheduled ({{ stats.scheduled_queue }})</a>
-      {% else %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ announcements|length }})</a>
-      {% endif %}
-      {% for cat in categories %}
-        <a href="?category={{ cat.slug }}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_category == cat.slug %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
-          {{ cat.name }}
-        </a>
-      {% endfor %}
-    </div>
-
-    <!-- Main Grid: Announcement Cards + Side Rail -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      
-      <!-- Primary Announcements Feed Column -->
-      <div class="lg:col-span-2">
-        {% for announcement in announcements %}
-          {% include "announcements/partials/_card.html" with item=announcement is_admin=is_admin %}
-        {% empty %}
-          <div class="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500">
-            <p class="font-medium text-slate-700">No announcements found</p>
-            <p class="text-xs mt-1">There are no updates matching your current query or filters.</p>
-          </div>
-        {% endfor %}
-      </div>
-
-      <!-- Right Utility Rail -->
-      <aside class="space-y-6">
-        {% if is_admin %}
-          <!-- Admin Audience Reach Widget -->
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
-              <span>Organization Audience</span>
-              <span class="text-xs font-normal text-slate-500">{{ stats.audience_total }} Members</span>
-            </h3>
-            <ul class="text-xs space-y-2 text-slate-600">
-              <li class="flex justify-between py-1 border-b border-slate-100">
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Active roster</span>
-                <strong>{{ stats.audience_total }}</strong>
-              </li>
-              <li class="flex justify-between py-1 border-b border-slate-100">
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Officers and admins</span>
-                <strong>{{ stats.officer_total }}</strong>
-              </li>
-              <li class="flex justify-between py-1">
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Applicants</span>
-                <strong>{{ stats.applicant_total }}</strong>
-              </li>
-            </ul>
-          </div>
-        {% endif %}
-      </aside>
-
-    </div>
-
-  </div>
-</div>
+<h1>Announcements</h1>
+<p>Updates and documents from your organization.</p>
+{% if can_publish %}
+<p><a class="button" href="{% url 'announcements:create' %}">Create announcement</a></p>
+<p class="muted">{{ stats.total_published }} published · {{ stats.active_drafts }} drafts · {{ stats.scheduled_queue }} scheduled</p>
+{% endif %}
+<form method="get" class="card" role="search">
+  <p><label for="announcement-search">Search announcements</label><input id="announcement-search" name="q" value="{{ search_query }}" maxlength="100"></p>
+  <p><label for="announcement-category">Category</label><select id="announcement-category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></p>
+  {% if can_publish %}<p><label for="announcement-status">Status</label><select id="announcement-status" name="status"><option value="all">All statuses</option><option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option><option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option><option value="scheduled" {% if status_filter == 'scheduled' %}selected{% endif %}>Scheduled</option><option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option></select></p>{% endif %}
+  <button type="submit">Apply filters</button> <a href="{% url 'announcements:list' %}">Clear filters</a>
+</form>
+{% for announcement in announcements %}
+<article class="card">
+  <h2><a href="{% url 'announcements:detail' announcement.pk %}">{{ announcement.title }}</a></h2>
+  <p class="muted">{{ announcement.category|default:"General" }} · {{ announcement.published_at|date:"M j, Y" }}{% if can_publish %} · {{ announcement.get_status_display }}{% endif %}</p>
+  {% if announcement.is_pinned %}<span class="badge">Pinned</span>{% endif %} {% if announcement.is_urgent %}<span class="badge">Urgent</span>{% endif %}
+  <p>{{ announcement.content|truncatechars:240 }}</p>
+</article>
+{% empty %}<p>No announcements match these filters.</p>{% endfor %}
 {% endblock %}

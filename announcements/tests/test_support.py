@@ -5,8 +5,8 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 
-from accounts.models import Profile, Role
 from announcements.models import Announcement, Category
+from accounts.models import Profile, Role
 
 
 User = get_user_model()
@@ -38,8 +38,8 @@ class AnnouncementTestDataMixin:
             shutil.rmtree(cls._test_media_root, ignore_errors=True)
 
     def make_user(self, username=None, **kwargs):
-        role = kwargs.pop("role", Role.MEMBER)
         username = f"{username or 'member'}-{uuid4().hex[:8]}"
+        role = kwargs.pop("role", Role.MEMBER)
         user = User.objects.create_user(
             username=username,
             email=f"{username}@example.com",

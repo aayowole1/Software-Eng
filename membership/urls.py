@@ -10,5 +10,6 @@ urlpatterns = [
     path("applications/<oid:pk>/review/", views.review_application, name="review_application"),
     path("applications/<oid:pk>/finish-access/", views.finish_review_access, name="finish_review_access"),
     path("roster/", views.roster, name="roster"),
+    path("roster/export.csv", views.export_roster_csv, name="export_roster_csv"),
     path("roster/<oid:pk>/", views.member_detail, name="member_detail"),
 ]
