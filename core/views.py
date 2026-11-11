@@ -54,6 +54,10 @@ def dashboard(request):
                 "completed": assigned.filter(status=TaskStatus.DONE).count(),
                 "overdue": assigned.exclude(status=TaskStatus.DONE).filter(due_date__lt=timezone.localdate()).count(),
             }
+            # US-13: the member's own attendance summary, linking to My account.
+            attendance = Event.objects.attendance_summary_for(request.user)
+            if attendance["total"]:
+                context["attendance_summary"] = attendance
     return render(request, "core/dashboard.html", context)
 
 

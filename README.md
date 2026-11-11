@@ -186,8 +186,9 @@ organization's time zone. The page shows:
 
 * **Events held:** non-cancelled events in the range that have already started,
   with RSVPs going and attendance for each. Upcoming events are not counted.
-* **Members:** events attended out of events held, attendance %, and tasks
-  assigned, completed and overdue (tasks created in the range).
+* **Members:** events attended out of the events held since their membership
+  started (their latest approval), attendance %, and tasks assigned, completed
+  and overdue (tasks created in the range).
 * **Committees:** members, attendance % across those events, and task totals.
 
 **Download CSV** exports the same figures with a `section` column. Cells that

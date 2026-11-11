@@ -7,11 +7,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
+from events.models import Event
 
 from .decorators import role_required
 from .google_auth import apply_google_login_headers, google_login_context
 from .lifecycle import apply_suspension
-from .models import Profile, Role, get_role, set_role
+from .models import Profile, Role, get_role, has_minimum_role, set_role
 
 User = get_user_model()
 
@@ -65,12 +66,20 @@ class EmailLoginView(LoginView):
 
 @login_required
 def profile(request):
+    role = get_role(request.user)
     committees = CommitteeMember.objects.filter(user=request.user).select_related("committee")
-    return render(
-        request,
-        "accounts/profile.html",
-        {"role": get_role(request.user), "committees": committees},
-    )
+    context = {"role": role, "committees": committees}
+    if has_minimum_role(role, Role.MEMBER):
+        attendance = Event.objects.attendance_summary_for(request.user)
+        context.update(
+            show_attendance=True,
+            attendance_history=attendance["history"],
+            attendance_total=attendance["total"],
+            attendance_count=attendance["attended"],
+            attendance_rate=attendance["rate"],
+            attendance_since=attendance["since"],
+        )
+    return render(request, "accounts/profile.html", context)
 
 
 @role_required(Role.ADMIN)
