@@ -82,6 +82,9 @@ class ChartDataEmbeddedTests(TestCase):
         self.member = make_user("chart-member@example.com", Role.MEMBER)
         self.committee = Committee.objects.create(name="Finance", created_by=self.officer)
         CommitteeMember.objects.create(committee=self.committee, user=self.member)
+        # Attendance counts from membership start (#25), so join before the past test events.
+        for user in (self.officer, self.member):
+            type(user).objects.filter(pk=user.pk).update(date_joined=timezone.now() - timedelta(days=60))
         self.client.force_login(self.officer)
 
     def _report(self, start_offset=-5, end_offset=0):
