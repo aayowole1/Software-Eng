@@ -256,6 +256,10 @@ class ResourceForm(forms.ModelForm):
         url = cleaned_data.get("url")
         has_existing_file = bool(self.instance and self.instance.file)
 
+        if file and cleaned_data.get("remove_file"):
+            raise forms.ValidationError(
+                "Choose either a replacement file or removal of the existing file."
+            )
         if file and url:
             raise forms.ValidationError(
                 "Choose either a file or a link, not both."
