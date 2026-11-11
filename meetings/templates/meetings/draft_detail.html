@@ -29,7 +29,7 @@
   <div class="meeting-review-columns">
     <div class="card">
       <h2>Officer notes</h2>
-      <textarea name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
+      <textarea aria-label="Officer notes" name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
     </div>
     <div class="card">
       <h2>AI summary</h2>
