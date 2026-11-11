@@ -1,9 +1,13 @@
+import csv
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError
 from django.core.paginator import Paginator
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Prefetch
 from committees.models import CommitteeMember
@@ -231,39 +235,41 @@ def finish_review_access(request, pk):
 
 
 
-@role_required(Role.MEMBER)
-def roster(request):
-    """Display the member roster with search, role, and committee information."""
+def _filter_roster_members(search_query, selected_role):
+    """Return a filtered, ordered queryset of roster Profile objects.
 
-    search_query = request.GET.get("q", "").strip()[:100]
-    selected_role = request.GET.get("role", "").strip().lower()
+    Both the roster page and the CSV export use this so the two always show
+    the same set of members.
+    """
+    members = Profile.objects.filter(role__in=ROSTER_ROLES).select_related("user")
 
-    members = Profile.objects.filter(
-        role__in=ROSTER_ROLES
-    ).select_related("user")
-
-    # Search members by username or email.
     if search_query:
         members = members.filter(
             Q(user__username__icontains=search_query)
             | Q(user__email__icontains=search_query)
         )
 
-    # Only allow valid roster roles as filters.
     if selected_role in ROSTER_ROLES:
         members = members.filter(role=selected_role)
-    else:
+
+    committee_memberships = CommitteeMember.objects.select_related("committee")
+    members = members.prefetch_related(
+        Prefetch("user__committee_memberships", queryset=committee_memberships)
+    ).order_by("user__username", "pk")
+
+    return members
+
+
+@role_required(Role.MEMBER)
+def roster(request):
+    """Display the member roster with search, role, and committee information."""
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_role = request.GET.get("role", "").strip().lower()
+    if selected_role not in ROSTER_ROLES:
         selected_role = ""
 
-    # Retrieve committee memberships efficiently.
-    committee_memberships = CommitteeMember.objects.select_related("committee")
-
-    members = members.prefetch_related(
-        Prefetch(
-            "user__committee_memberships",
-            queryset=committee_memberships,
-        )
-    ).order_by("user__username", "pk")
+    members = _filter_roster_members(search_query, selected_role)
 
     # Filter and paginate before fetching profiles/committee memberships. Large
     # rosters should not render every member on each request (SCRUM-80).
@@ -286,6 +292,78 @@ def roster(request):
 
     return render(request, "membership/roster.html", context)
 
+
+
+def _account_status(profile, active_ids, pending_access_ids):
+    """The account's actual access, for the roster CSV.
+
+    "active" uses the same rule as the dashboard's Active members count and
+    task assignment (tasks.models.eligible_assignees). Otherwise the status
+    says why the account can't be used: suspended (or a suspension still
+    being applied), pending (a membership approval still updating) or
+    disabled (the account is switched off).
+    """
+    if profile.user_id in active_ids:
+        return "active"
+    if profile.is_suspended or profile.suspension_update_pending:
+        return "suspended"
+    if profile.user_id in pending_access_ids:
+        return "pending"
+    if not profile.user.is_active:
+        return "disabled"
+    return "inactive"
+
+
+@role_required(Role.ADMIN)
+def export_roster_csv(request):
+    """Download the current roster as a CSV file (Admins only, FR-2.4).
+
+    The status column is active, suspended, pending or disabled; see
+    _account_status.
+    """
+    # Imported here to keep the shared import lines unchanged (other open
+    # PRs add imports next to them).
+    from core.csv_safe import escape_csv_cell
+    from tasks.models import eligible_assignees
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_role = request.GET.get("role", "").strip().lower()
+    if selected_role not in ROSTER_ROLES:
+        selected_role = ""
+
+    members = _filter_roster_members(search_query, selected_role)
+    active_ids = set(eligible_assignees().values_list("pk", flat=True))
+    pending_access_ids = set(
+        MembershipApplication.objects.filter(access_update_pending=True).values_list("user_id", flat=True)
+    )
+
+    # Dates use the organization's time zone, matching the roster page.
+    today = timezone.localdate().strftime("%Y-%m-%d")
+    filename = f"orgflow-roster-{today}.csv"
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow(["username", "email", "role", "committees", "date_joined", "status"])
+
+    for profile in members:
+        committee_names = ";".join(
+            cm.committee.name
+            for cm in profile.user.committee_memberships.all()
+        )
+        status = _account_status(profile, active_ids, pending_access_ids)
+        date_joined = timezone.localtime(profile.created_at).strftime("%Y-%m-%d")
+        writer.writerow([
+            escape_csv_cell(profile.user.username),
+            escape_csv_cell(profile.user.email or ""),
+            escape_csv_cell(profile.get_role_display()),
+            escape_csv_cell(committee_names),
+            escape_csv_cell(date_joined),
+            escape_csv_cell(status),
+        ])
+
+    return response
 
 
 @role_required(Role.MEMBER)
