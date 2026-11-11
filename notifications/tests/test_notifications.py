@@ -340,3 +340,50 @@ class ReviewFollowUpTests(TestCase):
         CommitteeMember.objects.filter(committee=self.committee, user=self.member).delete()
         self.client.force_login(self.member)
         self.assertNotContains(self.client.get(reverse("notifications:list")), "Committee-only task")
+
+
+def _has_committee_audience():
+    return any(field.name == "committee" for field in Announcement._meta.get_fields())
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class AnnouncementAudienceNotificationTests(TestCase):
+    """Announcement notifications follow who can open the announcement."""
+
+    def setUp(self):
+        self.officer = make_user("aud-officer@example.com", Role.OFFICER)
+        self.insider = make_user("aud-insider@example.com", Role.MEMBER)
+        self.outsider = make_user("aud-outsider@example.com", Role.MEMBER)
+        self.committee = Committee.objects.create(name="Budget", created_by=self.officer)
+        CommitteeMember.objects.create(committee=self.committee, user=self.insider)
+
+    def _headline_shown_to(self, user, text):
+        self.client.force_login(user)
+        return text in self.client.get(reverse("notifications:list")).content.decode()
+
+    def test_unpublished_announcement_notification_is_hidden_from_members(self):
+        announcement = _make_announcement(self.officer, title="Withdrawn notice")
+        notify_announcement_published(announcement)
+        Announcement.objects.filter(pk=announcement.pk).update(status="draft")
+        self.assertFalse(self._headline_shown_to(self.insider, "Withdrawn notice"))
+        self.assertTrue(self._headline_shown_to(self.officer, "Withdrawn notice"))
+
+    def test_committee_announcement_notifies_only_that_committee(self):
+        if not _has_committee_audience():
+            self.skipTest("Committee audiences arrive with SCRUM-95 (#30).")
+        announcement = _make_announcement(self.officer, title="Budget-only notice")
+        Announcement.objects.filter(pk=announcement.pk).update(committee=self.committee)
+        announcement.refresh_from_db()
+        notify_announcement_published(announcement)
+        recipients = set(Notification.objects.filter(object_id=str(announcement.pk)).values_list("user_id", flat=True))
+        self.assertEqual(recipients, {self.insider.pk})
+        self.assertTrue(self._headline_shown_to(self.insider, "Budget-only notice"))
+
+    def test_announcement_retargeted_to_a_committee_hides_old_notifications_from_outsiders(self):
+        if not _has_committee_audience():
+            self.skipTest("Committee audiences arrive with SCRUM-95 (#30).")
+        announcement = _make_announcement(self.officer, title="Narrowed notice")
+        notify_announcement_published(announcement)
+        Announcement.objects.filter(pk=announcement.pk).update(committee=self.committee)
+        self.assertFalse(self._headline_shown_to(self.outsider, "Narrowed notice"))
+        self.assertTrue(self._headline_shown_to(self.insider, "Narrowed notice"))

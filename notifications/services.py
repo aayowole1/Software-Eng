@@ -25,8 +25,9 @@ def notify_announcement_published(announcement):
 
     Recipients follow the app's shared account rule (``eligible_assignees``):
     active Members, Officers and Admins who are not suspended and have no
-    pending access change. Applicants are excluded. Committee-targeted
-    filtering (US-18) is out of scope for this story.
+    pending access change. Applicants are excluded. An announcement targeted
+    to one committee (SCRUM-95) only notifies that committee's members, so
+    its title is not shown to anyone outside the audience.
 
     The announcement is already saved, so a failed recipient lookup is logged
     instead of turning the publish into an error page.
@@ -34,7 +35,10 @@ def notify_announcement_published(announcement):
     from tasks.models import eligible_assignees
 
     try:
-        recipient_ids = list(eligible_assignees().values_list("pk", flat=True))
+        # getattr: committee audiences arrive with SCRUM-95 (#30) and may merge after this.
+        committee_id = getattr(announcement, "committee_id", None)
+        recipients = eligible_assignees(committee=committee_id) if committee_id else eligible_assignees()
+        recipient_ids = list(recipients.values_list("pk", flat=True))
     except DatabaseError:
         logger.exception("Failed to look up recipients for announcement %s", announcement.pk)
         return
@@ -71,7 +75,8 @@ def notify_task_assigned(task_id, title, assignee_id):
 def visible_notifications(user):
     """The user's notifications whose target they can still open.
 
-    Announcement notifications need current Member access to announcements.
+    Announcement notifications need the announcement to still be visible to
+    the user (published, and in their committee when it targets one).
     Task notifications need the task to still be visible to the user, so a
     member demoted to applicant (or moved off the committee) no longer sees
     old task headlines. Hidden notifications are kept, so they reappear if
@@ -82,8 +87,16 @@ def visible_notifications(user):
 
     mine = Notification.objects.filter(user=user)
     allowed = []
-    if has_minimum_role(effective_role(user), Role.MEMBER):
-        allowed.extend(mine.filter(kind=NotificationKind.ANNOUNCEMENT).values_list("pk", flat=True))
+    announcement_ids = set(mine.filter(kind=NotificationKind.ANNOUNCEMENT).values_list("object_id", flat=True))
+    if announcement_ids:
+        open_ids = {
+            str(pk) for pk in _announcements_visible_to(user, effective_role(user)).filter(
+                pk__in=[pk for pk in announcement_ids if _is_object_id(pk)]
+            ).values_list("pk", flat=True)
+        }
+        allowed.extend(
+            mine.filter(kind=NotificationKind.ANNOUNCEMENT, object_id__in=open_ids).values_list("pk", flat=True)
+        )
     task_ids = set(mine.filter(kind=NotificationKind.TASK).values_list("object_id", flat=True))
     if task_ids:
         open_ids = {
@@ -93,6 +106,25 @@ def visible_notifications(user):
         }
         allowed.extend(mine.filter(kind=NotificationKind.TASK, object_id__in=open_ids).values_list("pk", flat=True))
     return mine.filter(pk__in=allowed)
+
+
+def _announcements_visible_to(user, role):
+    """Announcements this user may open, using the announcements app's own rule.
+
+    SCRUM-95 (#30) adds ``visible_announcements`` with committee audiences; until
+    it is merged, Members see published announcements and Officers see all.
+    """
+    from announcements import permissions
+    from announcements.models import Announcement
+
+    rule = getattr(permissions, "visible_announcements", None)
+    if rule is not None:
+        return rule(user, role)
+    if has_minimum_role(role, Role.OFFICER):
+        return Announcement.objects.all()
+    if has_minimum_role(role, Role.MEMBER):
+        return Announcement.objects.filter(status="published")
+    return Announcement.objects.none()
 
 
 def _is_object_id(value):
