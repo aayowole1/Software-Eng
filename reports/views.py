@@ -196,6 +196,35 @@ def _build_report(start_date, end_date):
     }
 
 
+def _build_chart_data(data):
+    """Serialize the report data into a JSON-safe dict for Chart.js (SCRUM-37)."""
+    if data is None:
+        return None
+
+    per_event = [
+        {
+            "title": item["event"].title,
+            "rsvps_going": item["rsvps_going"],
+            "attended": item["attended"],
+        }
+        for item in data["per_event"]
+    ]
+
+    per_committee = [
+        {
+            "name": item["committee"].name,
+            "attendance_pct": item["attendance_pct"] if item["attendance_pct"] is not None else 0,
+            "has_events": item["attendance_pct"] is not None,
+            "tasks_total": item["tasks_total"],
+            "tasks_completed": item["tasks_completed"],
+            "tasks_overdue": item["tasks_overdue"],
+        }
+        for item in data["per_committee"]
+    ]
+
+    return {"per_event": per_event, "per_committee": per_committee}
+
+
 @role_required(Role.OFFICER)
 def report(request):
     start_default, end_default = _default_dates()
@@ -212,7 +241,12 @@ def report(request):
         form = DateRangeForm(initial={"start_date": start_default, "end_date": end_default})
         data = _build_report(start_default, end_default)
 
-    return render(request, "reports/report.html", {"form": form, "data": data})
+    chart_data = _build_chart_data(data)
+    return render(request, "reports/report.html", {
+        "form": form,
+        "data": data,
+        "chart_data": chart_data,
+    })
 
 
 @role_required(Role.OFFICER)

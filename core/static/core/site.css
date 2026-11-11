@@ -204,3 +204,41 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Report charts (SCRUM-37) ─────────────────────────────────────────────── */
+
+.report-charts {
+    margin-top: 2rem;
+}
+
+.report-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.report-chart-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    min-width: 0; /* prevent grid blowout on narrow screens */
+}
+
+.report-chart-item h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+}
+
+.report-canvas {
+    width: 100% !important;
+    max-width: 100%;
+    height: auto !important;
+}
+
+@media (max-width: 600px) {
+    .report-chart-grid {
+        grid-template-columns: 1fr;
+    }
+}
