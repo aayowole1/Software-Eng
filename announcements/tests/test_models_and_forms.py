@@ -10,6 +10,7 @@ from announcements.forms import AnnouncementAttachmentForm, AnnouncementForm
 from announcements.models import (
     Announcement,
     AnnouncementAttachment,
+    AnnouncementComment,
     AnnouncementReadReceipt,
     Category,
 )
@@ -86,6 +87,20 @@ class AnnouncementModelTests(AnnouncementTestDataMixin, TestCase):
                 user=user,
                 announcement=announcement,
             )
+
+    def test_comments_are_disabled_by_default(self):
+        announcement = self.make_announcement()
+        self.assertFalse(announcement.comments_enabled)
+
+    def test_comment_string_representation(self):
+        author = self.make_user()
+        announcement = self.make_announcement()
+        comment = AnnouncementComment.objects.create(
+            announcement=announcement,
+            author=author,
+            content="A useful reply.",
+        )
+        self.assertEqual(str(comment), f"Comment by {author} on {announcement}")
 
     def test_category_slug_must_be_unique(self):
         self.make_category(slug="updates")

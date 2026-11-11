@@ -5,8 +5,10 @@
 """
 
 # === IMPORTS
+from bson import ObjectId
+from bson.errors import InvalidId
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse, JsonResponse, Http404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -15,8 +17,14 @@ from django.db.models import F, Q
 
 from accounts.models import Profile, ROSTER_ROLES, Role
 
-from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
-from .forms import AnnouncementForm, AnnouncementAttachmentForm
+from .models import (
+    Announcement,
+    AnnouncementAttachment,
+    AnnouncementComment,
+    AnnouncementReadReceipt,
+    Category,
+)
+from .forms import AnnouncementForm, AnnouncementAttachmentForm, AnnouncementCommentForm
 
 
 # === HELPERS
@@ -342,7 +350,7 @@ def announcement_detail(request, pk):
     announcement = get_object_or_404(
         Announcement.objects.select_related(
             "author", "category", "audience"
-        ).prefetch_related("attachments"),
+        ).prefetch_related("attachments", "comments__author"),
         pk=pk
     )
 
@@ -383,6 +391,8 @@ def announcement_detail(request, pk):
         ),
         "is_read_by_user": is_read_by_user,
         "related_announcements": related_announcements,
+        "comments": announcement.comments.all(),
+        "comment_form": AnnouncementCommentForm(),
     }
 
     return render(request, "announcements/announcement_detail.html", context)
@@ -392,6 +402,10 @@ def announcement_detail(request, pk):
 @login_required
 def announcement_mark_read(request, pk):
     if request.method == "POST":
+        try:
+            pk = ObjectId(str(pk))
+        except (InvalidId, TypeError):
+            raise Http404("Announcement not found.")
         announcement = get_object_or_404(
             Announcement,
             pk=pk,
@@ -425,5 +439,33 @@ def announcement_mark_read(request, pk):
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JsonResponse({"is_read": action != "unread"})
         return redirect("announcements:list")
+
+
+@login_required
+def announcement_comment_create(request, pk):
+    """Create a comment when the announcement author enabled comments."""
+    if request.method != "POST":
+        return redirect("announcements:detail", pk=pk)
+
+    announcement = get_object_or_404(Announcement, pk=pk, status="published")
+    is_admin = is_officer_or_admin(request.user)
+    if not is_admin and not can_receive_announcement(request.user, announcement):
+        raise PermissionDenied("This announcement is not available to your audience.")
+    if not announcement.comments_enabled:
+        raise PermissionDenied("Comments are not enabled for this announcement.")
+
+    form = AnnouncementCommentForm(request.POST)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.announcement = announcement
+        comment.author = request.user
+        comment.save()
+        Announcement.objects.filter(pk=announcement.pk).update(
+            comments_count=F("comments_count") + 1
+        )
+        return redirect("announcements:detail", pk=announcement.pk)
+
+    messages.error(request, "Please enter a comment before posting.")
+    return redirect("announcements:detail", pk=announcement.pk)
 
     return redirect("announcements:list")

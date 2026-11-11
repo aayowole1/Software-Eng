@@ -85,6 +85,7 @@ class Announcement(models.Model):
     scheduled_for = models.DateTimeField(
         null=True, blank=True
     )
+    comments_enabled = models.BooleanField(default=False)
     created_at = models.DateTimeField(
         auto_now_add=True
     )
@@ -182,3 +183,25 @@ class AnnouncementReadReceipt(models.Model):
         """Define the read receipt metadata."""
         # define the unique key pair
         unique_together = ("user", "announcement")
+
+
+class AnnouncementComment(models.Model):
+    """Store a comment posted on an announcement."""
+    announcement = models.ForeignKey(
+        Announcement,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="announcement_comments",
+    )
+    content = models.TextField(max_length=2000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self) -> str:
+        return f"Comment by {self.author} on {self.announcement}"

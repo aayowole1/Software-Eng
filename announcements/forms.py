@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from committees.models import Committee
 
-from .models import Announcement, AnnouncementAttachment
+from .models import Announcement, AnnouncementAttachment, AnnouncementComment
 
 
 # === [CLASS] ANNOUNCEMENT FORM
@@ -58,6 +58,7 @@ class AnnouncementForm(forms.ModelForm):
             "audience",
             "is_pinned",
             "is_urgent",
+            "comments_enabled",
             "content",
             "scheduled_for",
             "meeting_location",
@@ -161,6 +162,27 @@ class AnnouncementForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+
+class AnnouncementCommentForm(forms.ModelForm):
+    """Validate a member or officer announcement comment."""
+
+    class Meta:
+        model = AnnouncementComment
+        fields = ["content"]
+        widgets = {
+            "content": forms.Textarea(
+                attrs={
+                    "rows": 3,
+                    "placeholder": "Write a comment...",
+                    "class": (
+                        "w-full text-sm bg-white border border-slate-200"
+                        " rounded-lg p-3 text-slate-800"
+                        " focus:ring-2 focus:ring-slate-800 focus:outline-none"
+                    ),
+                }
+            )
+        }
 
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT FORM

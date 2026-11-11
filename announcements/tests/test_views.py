@@ -13,6 +13,7 @@ from committees.models import Committee, CommitteeMember
 from announcements.models import (
     Announcement,
     AnnouncementAttachment,
+    AnnouncementComment,
     AnnouncementReadReceipt,
 )
 from announcements.views import publish_due_announcements
@@ -408,6 +409,52 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
                 announcement=self.announcement,
             ).exists()
         )
+
+    def test_mark_read_ajax_returns_success_for_member(self):
+        self.login(self.member)
+        response = self.client.post(
+            reverse("announcements:mark_read", args=[self.announcement.pk]),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {"is_read": True})
+
+    def test_malformed_mark_read_id_returns_not_found(self):
+        self.login(self.member)
+        response = self.client.post(
+            reverse("announcements:mark_read", args=["not-an-object-id"])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_member_can_comment_when_enabled(self):
+        self.announcement.comments_enabled = True
+        self.announcement.save(update_fields=["comments_enabled"])
+        self.login(self.member)
+
+        response = self.client.post(
+            reverse("announcements:comment_create", args=[self.announcement.pk]),
+            {"content": "Thanks for the update."},
+        )
+
+        self.assertRedirects(response, self.detail_url)
+        self.assertTrue(
+            AnnouncementComment.objects.filter(
+                announcement=self.announcement,
+                author=self.member,
+                content="Thanks for the update.",
+            ).exists()
+        )
+        self.announcement.refresh_from_db()
+        self.assertEqual(self.announcement.comments_count, 1)
+
+    def test_member_cannot_comment_when_disabled(self):
+        self.login(self.member)
+        response = self.client.post(
+            reverse("announcements:comment_create", args=[self.announcement.pk]),
+            {"content": "Not allowed."},
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_officer_can_mark_another_officers_announcement_read(self):
         another_officer = self.make_officer("another-officer")
