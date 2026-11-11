@@ -11,8 +11,17 @@
       <div class="text-xs text-slate-500 font-medium">
         <span>Portal</span> &rsaquo; <span class="text-slate-800">Workspace</span>
       </div>
-      <form method="get" class="relative w-72">
+      <form method="get" class="relative w-72 flex items-center gap-2">
+        {% if is_admin and status_filter != "all" %}
+          <input type="hidden" name="status" value="{{ status_filter }}">
+        {% endif %}
+        {% if current_category %}
+          <input type="hidden" name="category" value="{{ current_category }}">
+        {% endif %}
         <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements..." class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
+        {% if search_query %}
+          <button type="button" class="text-xs font-medium text-slate-500 hover:text-slate-900" onclick="this.form.querySelector('[name=q]').value=''; this.form.submit();">Clear</button>
+        {% endif %}
       </form>
     </div>
 
@@ -45,6 +54,9 @@
           <a href="?status=draft" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
             Drafts ({{ stats.active_drafts }})
           </a>
+          <a href="?status=scheduled" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
+            Scheduled ({{ stats.scheduled_queue }})
+          </a>
         </div>
       {% endif %}
     </div>
@@ -69,6 +81,11 @@
 
     <!-- Filter & Category Pills Bar -->
     <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
+      {% if is_admin %}
+        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All statuses</a>
+        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Drafts</a>
+        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Scheduled</a>
+      {% endif %}
       <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
         All Announcements ({{ announcements|length }})
       </a>
@@ -117,14 +134,6 @@
                 <strong>{{ stats.applicant_total }}</strong>
               </li>
             </ul>
-          </div>
-        {% else %}
-          <!-- Member Information Widget -->
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-900 mb-2">Your feed</h3>
-            <div class="text-xs text-slate-500">
-              <p>Showing published announcements available to your account.</p>
-            </div>
           </div>
         {% endif %}
       </aside>

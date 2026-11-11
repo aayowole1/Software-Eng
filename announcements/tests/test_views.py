@@ -79,11 +79,33 @@ class AnnouncementListViewTests(AnnouncementTestDataMixin, TestCase):
         self.assertContains(response, "Published notice")
         self.assertNotContains(response, "Draft notice")
 
+    def test_cleared_search_query_returns_unfiltered_announcements(self):
+        self.login(self.officer)
+        response = self.client.get(self.url, {"q": ""})
+
+        self.assertEqual(response.context["search_query"], "")
+        self.assertContains(response, "Published notice")
+        self.assertContains(response, "Draft notice")
+
     def test_members_can_filter_by_category(self):
         self.login(self.member)
         response = self.client.get(self.url, {"category": "events"})
         self.assertNotContains(response, "Published notice")
         self.assertNotContains(response, "Scheduled notice")
+
+    def test_member_can_mark_announcement_read_via_read_route(self):
+        self.login(self.member)
+        response = self.client.post(
+            reverse("announcements:mark_read", args=[self.published.pk]),
+        )
+
+        self.assertRedirects(response, reverse("announcements:list"))
+        self.assertTrue(
+            AnnouncementReadReceipt.objects.filter(
+                user=self.member,
+                announcement=self.published,
+            ).exists()
+        )
 
     def test_admin_context_contains_status_counts(self):
         self.login(self.officer)
