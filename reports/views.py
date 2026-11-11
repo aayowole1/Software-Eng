@@ -197,7 +197,10 @@ def _build_report(start_date, end_date):
 
 
 def _build_chart_data(data):
-    """Serialize the report data into a JSON-safe dict for Chart.js (SCRUM-37)."""
+    """Serialize the report data into a JSON-safe dict for Chart.js (SCRUM-37).
+
+    Returns None when there is no data to display (form invalid or no events/committees).
+    """
     if data is None:
         return None
 
@@ -221,6 +224,9 @@ def _build_chart_data(data):
         }
         for item in data["per_committee"]
     ]
+
+    if not per_event and not per_committee:
+        return None
 
     return {"per_event": per_event, "per_committee": per_committee}
 
