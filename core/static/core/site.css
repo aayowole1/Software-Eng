@@ -113,6 +113,19 @@ select:focus-visible, textarea:focus-visible {
   line-height: 1;
   cursor: pointer;
 }
+.sidebar-collapse-toggle svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+  transition: transform 0.2s ease;
+}
+.sidebar.collapsed .sidebar-collapse-toggle svg {
+  transform: rotate(180deg);
+}
 .sidebar-collapse-toggle:hover {
   color: var(--accent);
   background: #f1f5f9;

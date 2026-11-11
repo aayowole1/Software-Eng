@@ -5,10 +5,16 @@
   const closeButton = document.getElementById("sidebarToggle");
   const openButton = document.getElementById("sidebarToggleMobile");
   const collapseButton = document.getElementById("sidebarCollapseToggle");
-  if (!sidebar || !closeButton || !openButton || !collapseButton) return;
+  if (!sidebar || !collapseButton) return;
   const mobile = window.matchMedia("(max-width: 768px)");
   let open = false;
-  let collapsed = window.localStorage.getItem("orgflow.sidebar.collapsed") === "true";
+  let collapsed = false;
+
+  try {
+    collapsed = window.localStorage.getItem("orgflow.sidebar.collapsed") === "true";
+  } catch (error) {
+    // Keep collapse usable when browser storage is unavailable.
+  }
 
   function applyState() {
     const visible = !mobile.matches || open;
@@ -16,16 +22,15 @@
     sidebar.inert = !visible;
     sidebar.classList.toggle("open", mobile.matches && open);
     sidebar.classList.toggle("collapsed", !mobile.matches && collapsed);
-    openButton.hidden = !mobile.matches || open;
-    closeButton.hidden = !mobile.matches || !open;
+    if (openButton) openButton.hidden = !mobile.matches || open;
+    if (closeButton) closeButton.hidden = !mobile.matches || !open;
     collapseButton.hidden = mobile.matches;
     collapseButton.setAttribute("aria-expanded", String(!collapsed));
     collapseButton.setAttribute(
       "aria-label",
       collapsed ? "Expand navigation" : "Collapse navigation",
     );
-    collapseButton.querySelector("span").textContent = collapsed ? "›" : "‹";
-    for (const button of [openButton, closeButton]) {
+    for (const button of [openButton, closeButton].filter(Boolean)) {
       button.setAttribute("aria-expanded", String(visible));
     }
   }
@@ -33,19 +38,23 @@
   function closeNavigation() {
     open = false;
     applyState();
-    if (mobile.matches) openButton.focus();
+    if (mobile.matches && openButton) openButton.focus();
   }
 
-  openButton.addEventListener("click", () => {
+  openButton?.addEventListener("click", () => {
     if (!mobile.matches) return;
     open = true;
     applyState();
-    closeButton.focus();
+    closeButton?.focus();
   });
-  closeButton.addEventListener("click", closeNavigation);
+  closeButton?.addEventListener("click", closeNavigation);
   collapseButton.addEventListener("click", () => {
     collapsed = !collapsed;
-    window.localStorage.setItem("orgflow.sidebar.collapsed", String(collapsed));
+    try {
+      window.localStorage.setItem("orgflow.sidebar.collapsed", String(collapsed));
+    } catch (error) {
+      // The current page state still applies without persistence.
+    }
     applyState();
   });
   document.addEventListener("keydown", (event) => {
@@ -60,7 +69,7 @@
     const focusedToggle = [openButton, closeButton].includes(document.activeElement);
     open = false;
     applyState();
-    if (mobile.matches && focusedInside) {
+    if (mobile.matches && focusedInside && openButton) {
       openButton.focus();
     } else if (!mobile.matches && focusedToggle) {
       sidebar.querySelector("a[href]")?.focus();
