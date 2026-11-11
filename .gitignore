@@ -41,5 +41,8 @@ Thumbs.db
 *.pid
 .aider*
 
-# ML Models
-models/
+# Regeneratable Data
+meetings/benchmark_data/audio
+
+# Benchmark Artifacts
+meetings/benchmark/results

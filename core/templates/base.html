@@ -141,16 +141,16 @@
             <ul>
               <li><a href="{% url 'reports:report' %}">Reports</a></li>
               <li><a href="{% url 'membership:application_list' %}">Applications</a></li>
-              <li><a href="{% url 'meetings:list' %}">Meeting drafts</a></li>
+              <li><a href="{% url 'meetings:list' %}">Notes</a></li>
             </ul>
           </div>
         {% endif %}
 
         {% if is_officer %}
           <div class="sidebar-group">
-            <h3>Meeting Actions</h3>
+            <h3>Notes Actions</h3>
             <ul>
-              <li><a href="{% url 'meetings:create' %}">Start a meeting</a></li>
+              <li><a href="{% url 'meetings:create' %}">Start taking notes</a></li>
             </ul>
           </div>
         {% endif %}

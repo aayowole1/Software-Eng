@@ -168,6 +168,36 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 
 
 
+/* Dashboard summary cards (FR-6.1) */
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.summary-card strong {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+@media (max-width: 600px) {
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
 /* Membership application summary */
 
 .application-summary {
@@ -240,5 +270,48 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 @media (max-width: 600px) {
     .report-chart-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* About section (SCRUM-98) */
+
+.about-section {
+    margin-bottom: 1.5rem;
+}
+
+.about-section h2 {
+    margin-top: 0;
+}
+
+.about-section h3 {
+    margin-top: 1.25rem;
+    margin-bottom: 0.4rem;
+}
+
+.benefits-list {
+    margin: 0.25rem 0 0 1.25rem;
+    padding: 0;
+}
+
+.benefits-list li + li {
+    margin-top: 0.25rem;
+}
+
+.status-guide {
+    margin: 0.5rem 0 0;
+}
+
+.status-guide dt {
+    font-weight: 600;
+    margin-top: 0.75rem;
+}
+
+.status-guide dd {
+    margin: 0.2rem 0 0 0;
+}
+
+@media (max-width: 375px) {
+    .about-section {
+        word-break: break-word;
     }
 }

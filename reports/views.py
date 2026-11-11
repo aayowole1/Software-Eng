@@ -12,7 +12,7 @@ from django.utils import timezone
 from accounts.decorators import role_required
 from accounts.models import Role, ROSTER_ROLES
 from committees.models import Committee, CommitteeMember
-from events.models import Attendance, Event, RSVP, RSVPResponse
+from events.models import Attendance, Event, RSVP, RSVPResponse, member_since_by_user
 from tasks.models import Task, TaskStatus
 
 User = get_user_model()
@@ -108,9 +108,25 @@ def _build_report(start_date, end_date):
 
     events_held = len(events)
 
+    # Each member is only counted for events since their membership started
+    # (their latest approval), matching the member's own attendance page.
+    committee_memberships = list(CommitteeMember.objects.all())
+    counted_users = {u.pk: u for u in roster_users}
+    missing_ids = {cm.user_id for cm in committee_memberships} - set(counted_users)
+    if missing_ids:
+        counted_users.update({u.pk: u for u in User.objects.filter(pk__in=list(missing_ids))})
+    since_by_user = member_since_by_user(counted_users.values())
+    event_start = {e.pk: e.starts_at for e in events}
+
+    held_by_user = {
+        uid: sum(1 for e in events if e.starts_at >= since)
+        for uid, since in since_by_user.items()
+    }
     attended_by_user = {}
     for att in attendance_records:
-        attended_by_user[att.user_id] = attended_by_user.get(att.user_id, 0) + 1
+        since = since_by_user.get(att.user_id)
+        if since is not None and event_start[att.event_id] >= since:
+            attended_by_user[att.user_id] = attended_by_user.get(att.user_id, 0) + 1
 
     # Task counts per member: tasks assigned to this user in the range.
     task_assigned = {}
@@ -130,11 +146,12 @@ def _build_report(start_date, end_date):
     for user in roster_users:
         uid = user.pk
         attended = attended_by_user.get(uid, 0)
-        pct = round(attended / events_held * 100, 1) if events_held > 0 else None
+        member_held = held_by_user.get(uid, 0)
+        pct = round(attended / member_held * 100, 1) if member_held > 0 else None
         per_member.append({
             "user": user,
             "attended": attended,
-            "events_held": events_held,
+            "events_held": member_held,
             "attendance_pct": pct,
             "tasks_assigned": task_assigned.get(uid, 0),
             "tasks_completed": task_completed.get(uid, 0),
@@ -146,7 +163,7 @@ def _build_report(start_date, end_date):
 
     # Map committee_id -> set of member user_ids.
     committee_member_ids = {}
-    for cm in CommitteeMember.objects.select_related("committee"):
+    for cm in committee_memberships:
         committee_member_ids.setdefault(cm.committee_id, set()).add(cm.user_id)
 
     # Task counts per committee.
@@ -169,9 +186,10 @@ def _build_report(start_date, end_date):
         member_ids = committee_member_ids.get(cid, set())
         num_members = len(member_ids)
 
-        # Attendance %: sum of each member's attendance, divided by (members × events_held).
-        if events_held > 0 and num_members > 0:
-            total_possible = events_held * num_members
+        # Attendance %: the members' attendances divided by the events each of
+        # them could attend since their membership started.
+        total_possible = sum(held_by_user.get(uid, 0) for uid in member_ids)
+        if total_possible > 0:
             total_attended = sum(attended_by_user.get(uid, 0) for uid in member_ids)
             att_pct = round(total_attended / total_possible * 100, 1)
         else:

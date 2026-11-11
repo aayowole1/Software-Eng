@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Meeting drafts{% endblock %}
+{% block title %}Notes{% endblock %}
 {% block content %}
-  <h1>AI meeting drafts</h1>
-  <p><a class="button" href="{% url 'meetings:create' %}">Submit meeting notes</a></p>
+  <h1>Notes</h1>
+  <p><a class="button" href="{% url 'meetings:create' %}">Create new note</a></p>
   <div class="table-wrap">
     <table>
       <thead><tr><th scope="col">Title</th><th scope="col">Status</th><th scope="col">Submitted by</th><th scope="col">Date</th></tr></thead>
@@ -15,7 +15,7 @@
             <td>{{ d.created_at|date:"M j, Y" }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="4" class="muted">No drafts yet.</td></tr>
+          <tr><td colspan="4" class="muted">No notes yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

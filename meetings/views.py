@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db import DatabaseError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -19,6 +20,20 @@ from .stt import DeepgramTranscriber
 _active_recordings = {}
 logger = logging.getLogger(__name__)
 
+
+def _action_item_parts(description):
+    parts = {}
+    current_key = None
+    for segment in description.removeprefix("Action:").strip().split(";"):
+        key, separator, value = segment.partition("=")
+        key = key.strip().lower()
+        if separator and key in {"owner", "task", "due", "priority"}:
+            current_key = key
+            parts[key] = value.strip()
+        elif current_key is not None:
+            parts[current_key] += ";" + segment
+    return {key: value.strip() for key, value in parts.items()}
+
 # Meeting notes can contain sensitive organization information, so only
 # officers and admins can see them (proposal section 2.4, limitation).
 
@@ -28,19 +43,29 @@ class MeetingNotesForm(forms.ModelForm):
 
     class Meta:
         model = MeetingDraft
-        fields = ["title", "notes"]
-        labels = {"notes": "Meeting notes"}
+        fields = ["title", "transcript", "notes"]
+        labels = {"transcript": "Transcript", "notes": "Officer notes"}
         help_texts = {
-            "notes": 'Put action items on their own line starting with "Action:", "TODO:" or "- [ ]".',
+            "notes": "Add context, corrections, or other notes for the summarizer.",
         }
         widgets = {
-            "title": forms.TextInput(attrs={"style": "width: 100%; max-width: none;"}),
-            "notes": forms.HiddenInput(),
+            "title": forms.TextInput(
+                attrs={"style": "width: 100%; max-width: none;", "placeholder": "Enter Title Here"}
+            ),
+            "transcript": forms.HiddenInput(),
+            "notes": forms.Textarea(attrs={"rows": 6, "placeholder": "Add Notes Here"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["title"].required = False
         self.initial["expected_generation"] = self.instance.generation_token or ""
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("notes", "").strip() and not cleaned_data.get("transcript", "").strip():
+            raise forms.ValidationError("Add officer notes or record audio before submitting.")
+        return cleaned_data
 
 
 class ReviewForm(forms.Form):
@@ -65,37 +90,128 @@ def draft_list(request):
 
 @role_required(Role.OFFICER)
 def draft_create(request):
-    form = MeetingNotesForm(request.POST or None)
+    initial = request.session.get("meeting_processing") if request.method == "GET" else None
+    form = MeetingNotesForm(request.POST or None, initial=initial)
     if request.method == "POST" and form.is_valid():
         draft = form.save(commit=False)
         draft.created_by = request.user
-        # Reserve this attempt's ID before any write. Provider generation runs
-        # before the insert, and force_insert cannot update an existing draft.
         draft.pk = ObjectId()
-
         if not draft.title:
-            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Transcript"
-
+            draft.title = f"{timezone.now():%d %B, %Y} - Untitled Notes"
         try:
             draft.generate(force_insert=True)
         except (RuntimeError, ValueError, DatabaseError):
+            try:
+                published = MeetingDraft.objects.filter(
+                    pk=draft.pk,
+                    created_by=request.user,
+                    generation_token=draft.generation_token,
+                ).first()
+            except DatabaseError:
+                published = None
+            if published is not None:
+                messages.warning(request, "The notes were saved, but confirmation was delayed. Review the draft below.")
+                return redirect("meetings:detail", pk=published.pk)
             if _cleanup_created_draft(draft):
-                message = "The meeting could not be created. No new draft was retained. Please try submitting again."
+                message = "The notes could not be created. No new draft was retained. Please try submitting again."
             else:
                 message = (
-                    "The meeting's creation could not be confirmed. Review Meeting drafts before retrying. "
+                    "The notes' creation could not be confirmed. Review Notes drafts before retrying. "
                     "A completed draft or unpublished action data may remain; ask an officer for help if needed."
                 )
             messages.error(request, message)
             return render(
                 request,
                 "meetings/draft_form.html",
-                {"form": form, "heading": "New meeting notes"},
+                {"form": form, "heading": "Take notes"},
                 status=503,
             )
-        messages.success(request, "Meeting created.")
+        messages.success(request, "Notes created.")
         return redirect("meetings:detail", pk=draft.pk)
-    return render(request, "meetings/draft_form.html", {"form": form, "heading": "New meeting notes"})
+    return render(request, "meetings/draft_form.html", {"form": form, "heading": "Take notes"})
+
+
+def _create_draft(user, data):
+    draft = MeetingDraft(
+        title=data.get("title", ""),
+        transcript=data.get("transcript", ""),
+        notes=data.get("notes", ""),
+        created_by=user,
+        pk=ObjectId(),
+    )
+    if not draft.title:
+        draft.title = f"{timezone.now():%d %B, %Y} - Untitled Notes"
+    try:
+        draft.generate(force_insert=True)
+    except (RuntimeError, ValueError, DatabaseError):
+        _cleanup_created_draft(draft)
+        raise
+    return draft
+
+
+@role_required(Role.OFFICER)
+def meeting_processing(request):
+    if request.method == "POST":
+        form = MeetingNotesForm(request.POST)
+        if not form.is_valid():
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": "Take notes"},
+                status=400,
+            )
+        data = {
+            "title": form.cleaned_data["title"],
+            "transcript": form.cleaned_data["transcript"],
+            "notes": form.cleaned_data["notes"],
+        }
+        submission_id = str(ObjectId())
+        submissions = request.session.get("meeting_processing_submissions", {})
+        submissions[submission_id] = data
+        request.session["meeting_processing_submissions"] = submissions
+        request.session["meeting_processing"] = data
+        request.session["meeting_processing_submission_id"] = submission_id
+        request.session.save()
+        return redirect(f'{reverse("meetings:processing")}?submission_id={submission_id}')
+    return redirect("meetings:create")
+
+
+@role_required(Role.OFFICER)
+def meeting_processing_page(request):
+    submission_id = request.GET.get("submission_id", "").strip()
+    submissions = request.session.get("meeting_processing_submissions", {})
+    if not submission_id or submission_id not in submissions:
+        return redirect("meetings:create")
+    return render(request, "meetings/processing.html", {"submission_id": submission_id})
+
+
+@require_POST
+@role_required(Role.OFFICER)
+def meeting_process(request):
+    submission_id = request.GET.get("submission_id", "").strip()
+    submissions = request.session.get("meeting_processing_submissions", {})
+    data = submissions.get(submission_id)
+    if not data:
+        return JsonResponse({"error": "This notes processing request has expired."}, status=400)
+    if not data.get("transcript", "").strip() and not data.get("notes", "").strip():
+        return JsonResponse(
+            {"error": "No audio was found. Record audio or add officer notes before submitting."},
+            status=422,
+        )
+    try:
+        draft = _create_draft(request.user, data)
+    except (RuntimeError, ValueError, DatabaseError):
+        return JsonResponse({"error": "The notes could not be processed. Please return and try again."}, status=503)
+    submissions.pop(submission_id, None)
+    if submissions:
+        request.session["meeting_processing_submissions"] = submissions
+    else:
+        request.session.pop("meeting_processing_submissions", None)
+    if request.session.get("meeting_processing_submission_id") == submission_id:
+        request.session.pop("meeting_processing_submission_id", None)
+        request.session.pop("meeting_processing", None)
+    request.session.save()
+    return JsonResponse({"redirect": reverse("meetings:detail", args=[draft.pk])})
 
 
 def _cleanup_created_draft(draft):
@@ -132,10 +248,14 @@ def transcribe_chunk(request):
         if request.headers.get("X-Recording-Final") == "true":
             transcript = transcriber.finish()
             _active_recordings.pop(key, None)
-    except (OSError, ValueError, RuntimeError) as error:
+    except ValueError as error:
         transcriber.discard()
         _active_recordings.pop(key, None)
         return JsonResponse({"error": str(error)}, status=400)
+    except (OSError, RuntimeError) as error:
+        transcriber.discard()
+        _active_recordings.pop(key, None)
+        return JsonResponse({"error": str(error)}, status=503)
 
     return JsonResponse({"transcript": transcript})
 
@@ -149,6 +269,10 @@ def draft_detail(request, pk):
         {
             "draft": draft,
             "items": draft.current_action_items,
+            "review_items": [
+                {"item": item, "parts": _action_item_parts(item.description)}
+                for item in draft.current_action_items
+            ],
             "review_form": ReviewForm(initial={"expected_generation": draft.generation_token or ""}),
             "can_review": draft.status == DraftStatus.PENDING_REVIEW and not draft.review_update_pending,
             "can_revise": draft.status == DraftStatus.REVISION_REQUESTED and not draft.review_update_pending,
@@ -181,6 +305,8 @@ def draft_review(request, pk):
         item_intent.append({"id": str(ObjectId()), "description": line, "accepted": True})
 
     try:
+        draft.notes = request.POST.get("notes", draft.notes)
+        draft.save(update_fields=["notes"])
         draft.review(
             request.user, form.cleaned_data["decision"], form.cleaned_data["note"],
             item_intent=item_intent, expected_generation=form.cleaned_data["expected_generation"],
@@ -188,7 +314,7 @@ def draft_review(request, pk):
     except MeetingReviewConflict:
         messages.error(
             request,
-            "The meeting status changed during review. Reload the draft before trying again. "
+            "The notes status changed during review. Reload the draft before trying again. "
             "No action-item changes from this review were saved.",
         )
         return redirect("meetings:detail", pk=draft.pk)
@@ -203,7 +329,7 @@ def draft_review(request, pk):
         )
         return redirect("meetings:detail", pk=draft.pk)
     messages.success(request, f"Draft marked {draft.get_status_display().lower()}.")
-    return redirect("meetings:detail", pk=draft.pk)
+    return redirect("meetings:list")
 
 
 @require_POST
@@ -238,16 +364,17 @@ def draft_revise(request, pk):
     if request.method == "POST" and form.is_valid():
         try:
             draft.revise(
-                form.cleaned_data["notes"], title=form.cleaned_data["title"],
+                form.cleaned_data["notes"], transcript=form.cleaned_data["transcript"],
+                title=form.cleaned_data["title"] or form.initial["title"],
                 expected_generation=form.cleaned_data["expected_generation"],
             )
         except MeetingReviewConflict:
-            messages.error(request, "This meeting changed during revision. Reload it before trying again.")
+            messages.error(request, "These notes changed during revision. Reload them before trying again.")
             return redirect("meetings:detail", pk=draft.pk)
         except (RuntimeError, ValueError, DatabaseError):
             messages.error(
                 request,
-                "The revised generation could not be confirmed. Reload the meeting before retrying. "
+                "The revised generation could not be confirmed. Reload the notes before retrying. "
                 "The published action set has not been removed.",
             )
             return render(

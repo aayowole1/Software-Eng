@@ -27,6 +27,13 @@ explicit URI. Host entries do not accept wildcards, schemes, ports or leading-do
 subdomain shorthand. If cross-origin CSRF access is needed, supply exact HTTPS
 origins in `DJANGO_CSRF_TRUSTED_ORIGINS`.
 
+Meeting summaries use OpenRouter through the OpenAI-compatible client. Set
+`OPENROUTER_API_KEY` and optionally `OPENROUTER_MODEL` in the deployment
+environment; a blank model value falls back to `openai/gpt-4o-mini`. The
+application no longer uses `OPENAI_API_KEY`, so deployments that previously
+configured only that variable must add an OpenRouter key before meeting
+summaries can be generated.
+
 The web service publishes only `127.0.0.1:${ORGFLOW_WEB_PORT:-8000}`. An
 operator-managed TLS proxy on the **same VM** must route the public HTTPS origin
 to that loopback port, preserve the original Host, and strip/overwrite incoming
