@@ -58,8 +58,9 @@ class AnnouncementForm(forms.ModelForm):
         if not self.is_bound and self.instance.pk is None:
             self.initial["scheduled_for"] = ""
         if user is not None:
-            self.fields["audience"].queryset = Committee.objects.filter(
-                members__user=user
+            self.fields["audience"].queryset = (
+                Committee.objects.filter(members__user=user)
+                | Committee.objects.filter(pk=self.instance.audience_id)
             ).distinct()
 
     class Meta:
