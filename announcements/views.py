@@ -486,7 +486,7 @@ def announcement_mark_read(request, pk):
     return redirect("announcements:list")
 
 
-@login_required
+@announcement_access(Role.OFFICER)
 def announcement_delete(request, pk):
     announcement = get_object_or_404(Announcement, pk=pk)
     if not is_officer_or_admin(request.user):
