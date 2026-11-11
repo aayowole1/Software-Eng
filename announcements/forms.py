@@ -23,9 +23,10 @@ from .models import (
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
-    audience = forms.ModelChoiceField(
+    committee = forms.ModelChoiceField(
         queryset=Committee.objects.none(),
         required=False,
+        label="Audience",
         empty_label="All members",
     )
     category = forms.ModelChoiceField(
@@ -58,9 +59,9 @@ class AnnouncementForm(forms.ModelForm):
         if not self.is_bound and self.instance.pk is None:
             self.initial["scheduled_for"] = ""
         if user is not None:
-            self.fields["audience"].queryset = (
+            self.fields["committee"].queryset = (
                 Committee.objects.filter(members__user=user)
-                | Committee.objects.filter(pk=self.instance.audience_id)
+                | Committee.objects.filter(pk=self.instance.committee_id)
             ).distinct()
 
     class Meta:
@@ -69,7 +70,7 @@ class AnnouncementForm(forms.ModelForm):
         fields = [
             "title",
             "category",
-            "audience",
+            "committee",
             "is_pinned",
             "is_urgent",
             "comments_enabled",
@@ -95,7 +96,7 @@ class AnnouncementForm(forms.ModelForm):
                     )
                 }
             ),
-            "audience": forms.Select(
+            "committee": forms.Select(
                 attrs={
                     "class": (
                         "w-full text-sm bg-white border"

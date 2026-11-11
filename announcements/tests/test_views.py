@@ -147,8 +147,8 @@ class AnnouncementListViewTests(AnnouncementTestDataMixin, TestCase):
         CommitteeMember.objects.create(committee=committee, user=self.member)
         self.category.committee = committee
         self.category.save(update_fields=["committee"])
-        self.published.audience = committee
-        self.published.save(update_fields=["audience"])
+        self.published.committee = committee
+        self.published.save(update_fields=["committee"])
 
         self.login(self.make_user("outside"))
         response = self.client.get(self.url)

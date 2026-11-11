@@ -83,7 +83,7 @@ class Announcement(models.Model):
         null=True,
         related_name="announcements",
     )
-    audience = models.ForeignKey(
+    committee = models.ForeignKey(
         Committee,
         on_delete=models.SET_NULL,
         null=True,
@@ -144,8 +144,8 @@ class Announcement(models.Model):
     @property
     def audience_count(self) -> int:
         """Return the current number of users who can receive this post."""
-        if self.audience_id:
-            return self.audience.members.filter(
+        if self.committee_id:
+            return self.committee.members.filter(
                 user__profile__role__in=ROSTER_ROLES
             ).exclude(user_id=self.author_id).count()
         return User.objects.filter(

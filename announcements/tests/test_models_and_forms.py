@@ -126,7 +126,7 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_audience_defaults_to_all_members(self):
+    def test_committee_defaults_to_all_members(self):
         form = AnnouncementForm(
             data={
                 "title": "Committee notice",
@@ -135,9 +135,9 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertIsNone(form.cleaned_data["audience"])
+        self.assertIsNone(form.cleaned_data["committee"])
 
-    def test_audience_lists_committees_the_user_belongs_to(self):
+    def test_committee_lists_committees_the_user_belongs_to(self):
         user = self.make_user()
         committee = Committee.objects.create(
             name="Events",
@@ -148,8 +148,8 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
         CommitteeMember.objects.create(committee=committee, user=user)
         category = self.make_category()
         form = AnnouncementForm(user=user)
-        self.assertIn(committee, form.fields["audience"].queryset)
-        self.assertEqual(form.fields["audience"].empty_label, "All members")
+        self.assertIn(committee, form.fields["committee"].queryset)
+        self.assertEqual(form.fields["committee"].empty_label, "All members")
 
     def test_blank_schedule_is_valid_for_immediate_publication(self):
         category = self.make_category()
