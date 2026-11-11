@@ -168,6 +168,36 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 
 
 
+/* Dashboard summary cards (FR-6.1) */
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+}
+
+.summary-card strong {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+@media (max-width: 600px) {
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
 /* Membership application summary */
 
 .application-summary {

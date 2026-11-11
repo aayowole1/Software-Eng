@@ -46,6 +46,23 @@ def dashboard(request):
                 status=ApplicationStatus.PENDING
             ).count()
             context["pending_drafts"] = MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
+            # FR-6.1: summary cards for officers and admins. Imported here so
+            # this change doesn't touch the module import lines other PRs edit.
+            from tasks.models import eligible_assignees
+
+            # Active members are roster members whose accounts can be used
+            # now: switched on, not suspended or mid-suspension, and with no
+            # unfinished membership approval. This is the same rule that
+            # decides who can be assigned tasks.
+            context["summary_active_members"] = eligible_assignees().count()
+            context["summary_upcoming_events"] = Event.objects.filter(
+                starts_at__gte=timezone.now(),
+                cancelled=False,
+            ).count()
+            context["summary_open_tasks"] = Task.objects.exclude(status=TaskStatus.DONE).count()
+            context["summary_pending_approvals"] = (
+                context["pending_applications"] + context["pending_drafts"]
+            )
         if has_minimum_role(role, Role.MEMBER):
             assigned = Task.objects.visible_to(request.user).filter(assignee=request.user)
             context["my_tasks"] = assigned.exclude(status=TaskStatus.DONE).order_by("due_date", "-created_at")[:5]
