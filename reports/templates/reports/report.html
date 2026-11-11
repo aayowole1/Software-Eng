@@ -29,15 +29,27 @@
       {% endif %}
     </div>
     <button type="submit">Generate report</button>
-    {% if data %}
-      <a href="{% url 'reports:csv' %}?start_date={{ data.start_date|date:'Y-m-d' }}&end_date={{ data.end_date|date:'Y-m-d' }}">
-        Download CSV
-      </a>
-    {% endif %}
   </form>
 </section>
 
 {% if data %}
+
+<section aria-labelledby="download-heading">
+  <h2 id="download-heading">Download CSV</h2>
+  <form method="get" action="{% url 'reports:download' %}" class="report-download">
+    <input type="hidden" name="start_date" value="{{ data.start_date|date:'Y-m-d' }}">
+    <input type="hidden" name="end_date" value="{{ data.end_date|date:'Y-m-d' }}">
+    <label for="report-choice">Report</label>
+    <select id="report-choice" name="report">
+      <option value="all">All reports (ZIP)</option>
+      <option value="events">Events</option>
+      <option value="members">Members</option>
+      <option value="committees">Committees</option>
+    </select>
+    <button type="submit">Download</button>
+  </form>
+  <p class="muted">Downloads use the date range above. "All reports" is a ZIP file with the Events, Members and Committees CSVs.</p>
+</section>
 
 <section aria-label="Definitions">
   <h2>How numbers are calculated</h2>
