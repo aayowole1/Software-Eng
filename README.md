@@ -39,7 +39,7 @@ cd Software-Eng
 
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
-Build and start the containers (takes approx. 157 seconds):
+Build and start the containers:
 
 ```bash
 docker compose up -d --build
@@ -169,14 +169,22 @@ tests, and the remaining live-provider check. Existing password accounts are
 not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
+`meetings/ai.py` uses OpenRouter to produce a concise discussion summary and
+proposed action items. Set `OPENROUTER_API_KEY` in `.env`; this replaces the
+previous `OPENAI_API_KEY` integration, so existing deployments must add the
+OpenRouter key before meeting summaries will work again.
+`OPENROUTER_MODEL` is optional and defaults to `openai/gpt-4o-mini`. The
+response must be valid JSON with validated summary and action-item fields.
+Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
+they are saved. The officer's notes are sent alongside the Deepgram transcript.
+Approved action items will become tasks once the task module (WBS 1.6) exists.
 
-Jack's `meetings/ai.py` calls OpenAI for a summary and proposed action items when
-`OPENAI_API_KEY` is configured. This preview preserves that provider implementation;
-live provider behavior has not been verified by the local integration checks.
-After approving a draft, an officer can choose **Create tasks from accepted action
-items**, review the assignment defaults, and confirm. Only accepted items are copied.
-Repeating the conversion preserves existing tasks and creates no duplicates.
-Original meeting notes remain officer-only.
+Meeting recording uses Deepgram real-time transcription. The browser sends
+16 kHz mono PCM chunks to Django. Django writes the active session to a
+uniquely named temporary PCM file, sends that file to Deepgram when recording
+stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
+the temporary file in all success and error paths. The officer can add notes
+before submitting; both sources are retained and passed to OpenRouter.
 
 ### Participation reports (WBS 1.8)
 

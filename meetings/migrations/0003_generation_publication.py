@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('meetings', '0002_review_update_intent'),
+        ("meetings", "0002_review_update_intent"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='actionitem',
-            name='generation_token',
-            field=models.CharField(blank=True, default='', editable=False, max_length=32),
+            model_name="actionitem",
+            name="generation_token",
+            field=models.CharField(blank=True, default="", editable=False, max_length=32),
         ),
         migrations.AddField(
-            model_name='meetingdraft',
-            name='generation_token',
-            field=models.CharField(blank=True, default='', editable=False, max_length=32),
+            model_name="meetingdraft",
+            name="generation_token",
+            field=models.CharField(blank=True, default="", editable=False, max_length=32),
         ),
     ]
