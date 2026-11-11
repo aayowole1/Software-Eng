@@ -49,11 +49,8 @@ def dashboard(request):
             announcement_role = effective_role(request.user)
             if has_minimum_role(announcement_role, Role.MEMBER):
                 context["recent_announcements"] = visible_announcements(
-                    request.user,
-                    announcement_role,
-                ).filter(
-                    status="published",
-                ).order_by("-published_at", "-id")[:3]
+                    request.user, announcement_role
+                ).filter(status="published").order_by("-published_at", "-id")[:3]
         if has_minimum_role(role, Role.OFFICER):
             context["pending_applications"] = MembershipApplication.objects.filter(
                 status=ApplicationStatus.PENDING

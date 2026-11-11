@@ -15,7 +15,15 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.db.models import F, Q
-from django.views.decorators.http import require_POST
+from django.http import FileResponse, Http404
+from django.views.decorators.http import require_POST, require_http_methods
+from bson import ObjectId
+
+from accounts.models import Profile, Role, has_minimum_role
+
+from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
+from .forms import AnnouncementForm
+from .permissions import announcement_access, effective_role, visible_announcements
 
 from accounts.models import Profile, ROSTER_ROLES, Role, get_role
 
@@ -303,21 +311,15 @@ def announcements_list(request):
     # define filtering and search feature
     query = request.GET.get("q", "")
     category_slug = request.GET.get("category", "")
+    tag = request.GET.get("tag", "").strip().casefold()
     status_filter = request.GET.get("status", "all")
 
-    announcements = Announcement.objects.select_related(
+    announcements = visible_announcements(request.user, request.announcement_role).select_related(
         "author", "category", "committee"
     ).prefetch_related("attachments")
 
 
-    if not is_admin:
-        announcements = visible_announcements(
-            request.user,
-            request.announcement_role,
-        ).select_related("author", "category", "committee").prefetch_related(
-            "attachments",
-        )
-    elif status_filter != "all":
+    if can_publish and status_filter != "all":
         announcements = announcements.filter(status=status_filter)
 
     if query:
@@ -328,6 +330,8 @@ def announcements_list(request):
 
     if category_slug:
         announcements = announcements.filter(category__slug=category_slug)
+    if tag:
+        announcements = announcements.filter(tags__contains=[tag])
 
     announcements = list(announcements)
     if not is_admin:
@@ -376,6 +380,7 @@ def announcements_list(request):
         "can_publish": is_admin,
         "stats": stats,
         "current_category": category_slug,
+        "selected_tag": tag,
         "search_query": query,
         "status_filter": status_filter,
     }
@@ -390,25 +395,24 @@ def announcements_list(request):
 @announcement_access(Role.MEMBER)
 def announcement_detail(request, pk):
     """Retrieve details about the announcement."""
-    publish_due_announcements()
-    announcement = get_object_or_404(
-        Announcement.objects.select_related(
-            "author", "category", "committee"
-        ).prefetch_related("attachments", "comments__author"),
-        pk=pk
+    visible = visible_announcements(request.user, request.announcement_role)
+    announcement = get_visible_announcement(
+        visible.select_related("author", "category", "committee").prefetch_related("attachments"), pk
     )
+    can_publish = has_minimum_role(request.announcement_role, Role.OFFICER)
 
-    is_admin = is_officer_or_admin(request.user)
-    is_published = Announcement.objects.filter(
-        pk=announcement.pk,
-        status="published",
-    ).exists()
-
-    # permission check: regular members cannot view unpublished/draft posts
-    if not is_published and not is_admin:
-        raise PermissionDenied("This announcement has not been published yet.")
-    if not is_admin and not can_receive_announcement(request.user, announcement):
-        raise PermissionDenied("This announcement is not available to your audience.")
+    # record / check read receipt for telemetry
+    receipt_created = False
+    if request.user.is_authenticated:
+        receipt, created = AnnouncementReadReceipt.objects.get_or_create(
+            user=request.user,
+            announcement=announcement
+        )
+        if created:
+            # atomic increment read count
+            Announcement.objects.filter(pk=pk).update(read_count=F("read_count") + 1)
+            announcement.refresh_from_db(fields=["read_count"])
+            receipt_created = True
 
     is_read_by_user = AnnouncementReadReceipt.objects.filter(
         user=request.user,
@@ -416,7 +420,7 @@ def announcement_detail(request, pk):
     ).exists()
 
     # related / recent notices in the same category
-    related_announcements = Announcement.objects.filter(
+    related_announcements = visible.filter(
         category=announcement.category,
         status="published"
     ).exclude(pk=announcement.pk).order_by("-published_at")[:3]
@@ -443,40 +447,24 @@ def announcement_detail(request, pk):
     return render(request, "announcements/announcement_detail.html", context)
 
 
+def get_visible_announcement(queryset, pk):
+    announcement = queryset.filter(pk=pk).first()
+    if announcement is not None:
+        return announcement
+    if Announcement.objects.filter(pk=pk).exists():
+        raise PermissionDenied("You do not have access to this announcement.")
+    raise Http404("Announcement not found.")
+
+
 # === [DISPLAY] MARK AS READ TOGGLE
 @announcement_access(Role.MEMBER)
 @require_POST
 def announcement_mark_read(request, pk):
-    try:
-        pk = ObjectId(str(pk))
-    except (InvalidId, TypeError):
-        raise Http404("Announcement not found.")
-    announcement = get_object_or_404(
-        Announcement,
-        pk=pk,
-    )
-    if announcement.status != "published":
-        raise PermissionDenied("Only published announcements can be marked read.")
-    is_admin = is_officer_or_admin(request.user)
-    if announcement.author_id == request.user.id:
-        raise PermissionDenied("Authors cannot mark their own announcements as read.")
-    if not is_admin and not can_receive_announcement(request.user, announcement):
-        raise PermissionDenied(
-            "This announcement is not available to your audience."
+    if request.method == "POST":
+        announcement = get_visible_announcement(
+            visible_announcements(request.user, request.announcement_role), pk
         )
-    action = request.POST.get("action", "read")
-    receipt = AnnouncementReadReceipt.objects.filter(
-        user=request.user,
-        announcement=announcement,
-    ).first()
-    if action == "unread" and receipt:
-        receipt.delete()
-        Announcement.objects.filter(
-            pk=pk,
-            read_count__gt=0,
-        ).update(read_count=F("read_count") - 1)
-    elif action != "unread" and receipt is None:
-        AnnouncementReadReceipt.objects.create(
+        receipt, created = AnnouncementReadReceipt.objects.get_or_create(
             user=request.user,
             announcement=announcement,
         )
@@ -487,6 +475,23 @@ def announcement_mark_read(request, pk):
     return redirect("announcements:list")
 
 
+@announcement_access(Role.MEMBER)
+def attachment_download(request, pk):
+    attachment = get_object_or_404(AnnouncementAttachment, pk=pk)
+    get_visible_announcement(
+        visible_announcements(request.user, request.announcement_role), attachment.announcement_id
+    )
+    try:
+        stream = attachment.file.open("rb")
+    except (FileNotFoundError, OSError):
+        raise Http404("This attachment is unavailable.") from None
+    response = FileResponse(stream, as_attachment=True, filename=attachment.name, content_type="application/octet-stream")
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@require_http_methods(["GET", "POST"])
 @announcement_access(Role.OFFICER)
 def announcement_delete(request, pk):
     announcement = get_object_or_404(Announcement, pk=pk)

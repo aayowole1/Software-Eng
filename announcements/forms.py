@@ -6,19 +6,27 @@
 
 # === IMPORTS
 from django import forms
-from django.core.validators import URLValidator
-from django.utils import timezone
-
 from committees.models import Committee
 
-from .models import (
-    Announcement,
-    AnnouncementAttachment,
-    AnnouncementComment,
-    Category,
-    Resource,
-)
 
+
+class TagsField(forms.CharField):
+    def __init__(self):
+        super().__init__(
+            required=False,
+            max_length=500,
+            help_text="Separate up to 10 tags with commas. Each tag can be up to 32 characters.",
+        )
+
+    def prepare_value(self, value):
+        return ", ".join(value) if isinstance(value, list) else value
+
+    def clean(self, value):
+        value = super().clean(value)
+        tags = list(dict.fromkeys(part.strip().casefold() for part in value.split(",") if part.strip()))
+        if len(tags) > 10 or any(len(tag) > 32 for tag in tags):
+            raise forms.ValidationError("Use up to 10 tags of 32 characters each.")
+        return tags
 
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
@@ -34,6 +42,13 @@ class AnnouncementForm(forms.ModelForm):
         required=False,
         empty_label="Select a category",
     )
+    committee = forms.ModelChoiceField(
+        queryset=Committee.objects.all(),
+        required=False,
+        label="Audience",
+        empty_label="Organization-wide",
+    )
+    tags = TagsField()
     scheduled_for = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(
@@ -71,6 +86,8 @@ class AnnouncementForm(forms.ModelForm):
             "title",
             "category",
             "committee",
+            "tags",
+            "status",
             "is_pinned",
             "is_urgent",
             "comments_enabled",
@@ -199,6 +216,13 @@ class AnnouncementCommentForm(forms.ModelForm):
             )
         }
 
+    def clean_committee(self):
+        # Older edit forms may omit the field. An explicit empty selection
+        # is required to change a committee notice to organization-wide.
+        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
+            return self.instance.committee
+        return self.cleaned_data["committee"]
+
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT FORM
 class AnnouncementAttachmentForm(forms.ModelForm):
@@ -235,21 +259,24 @@ class AnnouncementAttachmentForm(forms.ModelForm):
 
 
 class ResourceForm(forms.ModelForm):
-    """Validate a resource backed by either a safe URL or uploaded file."""
-
-    remove_file = forms.BooleanField(required=False)
-    file = forms.FileField(
-        required=False,
-        widget=forms.FileInput,
-    )
-    url = forms.URLField(
-        required=False,
-        validators=[URLValidator(schemes=["http", "https"])],
-    )
+    remove_file = forms.BooleanField(required=False, label="Remove the existing file")
+    tags = TagsField()
 
     class Meta:
         model = Resource
-        fields = ["title", "description", "category", "file", "url"]
+        fields = ["title", "description", "category", "tags", "file", "remove_file", "url"]
+        labels = {"url": "External link", "file": "Upload a document"}
+        help_texts = {
+            "file": "Maximum 25 MB. To switch to a link, clear the existing file.",
+            "url": "Use an HTTP or HTTPS link. Choose either a file or a link.",
+        }
+        widgets = {"description": forms.Textarea(attrs={"rows": 4}), "file": forms.FileInput()}
+
+    def clean_title(self):
+        title = self.cleaned_data["title"].strip()
+        if not title:
+            raise forms.ValidationError("Enter a resource title.")
+        return title
 
     def clean(self):
         cleaned_data = super().clean()
