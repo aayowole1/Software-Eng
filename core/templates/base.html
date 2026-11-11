@@ -51,9 +51,11 @@
   <div class="sidebar-content">
     <div class="sidebar-brand-row">
       <a class="brand" href="{% url 'core:home' %}"><span class="sidebar-label">OrgFlow</span></a>
-      <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
-      </button>
+      {% if user.is_authenticated %}
+        <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
+        </button>
+      {% endif %}
     </div>
 
     {% if user.is_authenticated %}
