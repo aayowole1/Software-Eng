@@ -5,11 +5,17 @@
   <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
 {% endblock %}
 {% block content %}
-  <h1>{{ draft.title }}</h1>
-  <p><span class="badge">{{ draft.get_status_display }}</span>
-     <span class="muted">submitted by {{ draft.created_by.email|default:"—" }} on {{ draft.created_at|date:"M j, Y" }}</span></p>
+  <div class="note-review-page">
+    <header class="note-review-header">
+      <div>
+        <p class="eyebrow">Note review</p>
+        <h1>{{ draft.title }}</h1>
+      </div>
+      <span class="badge">{{ draft.get_status_display }}</span>
+    </header>
+    <p class="note-review-meta">Submitted by {{ draft.created_by.email|default:"—" }} on {{ draft.created_at|date:"M j, Y" }}</p>
   {% if draft.reviewed_by %}
-    <p class="muted">Reviewed by {{ draft.reviewed_by.email }} on {{ draft.reviewed_at|date:"M j, Y" }}{% if draft.review_note %}: “{{ draft.review_note }}”{% endif %}</p>
+    <p class="note-review-meta">Reviewed by {{ draft.reviewed_by.email }} on {{ draft.reviewed_at|date:"M j, Y" }}{% if draft.review_note %}: “{{ draft.review_note }}”{% endif %}</p>
   {% endif %}
 
   {% if can_finish_review %}
@@ -17,7 +23,7 @@
       <h2>Action updates unfinished</h2>
       <p>The review decision is recorded. Finish its saved action updates before converting tasks or revising notes.</p>
       <form method="post" action="{% url 'meetings:finish_review' draft.pk %}">
-        {% csrf_token %}<button type="submit">Finish review</button>
+        {% csrf_token %}<button type="submit" class="button button-primary">Finish review</button>
       </form>
     </div>
   {% endif %}
@@ -27,11 +33,11 @@
       {% csrf_token %}
   {% endif %}
   <div class="meeting-review-columns">
-    <div class="card">
+    <div class="card note-review-panel note-review-notes">
       <h2>Officer notes</h2>
       <textarea aria-label="Officer notes" name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
     </div>
-    <div class="card">
+    <div class="card note-review-panel">
       <h2>AI summary</h2>
       <div class="meeting-summary-scroll">
         <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
@@ -73,13 +79,13 @@
   </div>
 
   {% if can_review %}
-      <div class="card meeting-review-card">
+      <div class="card meeting-review-card note-review-panel">
         <h2>Review notes</h2>
       {{ review_form.expected_generation }}
       <p>{{ review_form.decision.label_tag }} {{ review_form.decision }}</p>
       <p>{{ review_form.note.label_tag }} {{ review_form.note }}</p>
       <div class="meeting-review-actions">
-        <button type="submit">Submit review</button>
+        <button type="submit" class="button button-primary">Submit review</button>
         {% if is_admin %}
           <button type="submit" class="danger" formaction="{% url 'meetings:delete' draft.pk %}" formmethod="post" formnovalidate onclick="return confirm('Delete this draft?');">Delete draft</button>
         {% endif %}
@@ -89,22 +95,25 @@
   {% endif %}
 
   {% if can_revise %}
-    <p><a class="button" href="{% url 'meetings:revise' draft.pk %}">Revise notes and regenerate</a></p>
+    <p class="note-review-secondary-action"><a class="button" href="{% url 'meetings:revise' draft.pk %}">Revise notes and regenerate</a></p>
   {% endif %}
 
   {% if draft.status == "approved" and is_officer and not draft.review_update_pending %}
-    <p><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
+    <p class="note-review-secondary-action"><a class="button" href="{% url 'tasks:import_draft' draft.pk %}">Create tasks from accepted action items</a></p>
   {% endif %}
 
+  <section class="note-review-transcript">
   <h2>Transcript</h2>
-  <div class="card">
+  <div class="card note-review-panel">
     <p class="transcript-display">{{ draft.transcript|default:"(No transcript provided.)"|linebreaksbr }}</p>
   </div>
+  </section>
 
   {% if is_admin and not can_review %}
     <form method="post" action="{% url 'meetings:delete' draft.pk %}" onsubmit="return confirm('Delete this draft?');">
       {% csrf_token %}
-      <button type="submit" class="danger">Delete draft</button>
+      <button type="submit" class="button button-danger">Delete draft</button>
     </form>
   {% endif %}
+  </div>
 {% endblock %}

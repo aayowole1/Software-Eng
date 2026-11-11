@@ -102,8 +102,7 @@ class MeetingFlowTests(TestCase):
 
     def test_notes_list_uses_note_labels(self):
         response = self.client.get(reverse("meetings:list"))
-        self.assertContains(response, "<h1>Notes</h1>")
-        self.assertContains(response, "Create new note")
+        self.assertContains(response, "Start Note Transcription")
         self.assertNotContains(response, "Notes drafts")
 
     def test_submit_redirects_to_separate_processing_page(self):
