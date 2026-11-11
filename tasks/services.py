@@ -31,20 +31,18 @@ DESCRIPTION_AUDIT_THRESHOLD = 240
 DESCRIPTION_AUDIT_PREVIEW = 160
 
 
-def _notify_if_assigned(task, previous_assignee_id):
-    """Fire a notification when the task gains a new assignee (not via self-claim).
+def _notify_if_assigned(task_id, before, after):
+    """Notify the assignee this write stored, when it differs from the one before.
 
-    previous_assignee_id may be an ObjectId or its string representation (from _snapshot).
+    ``before`` and ``after`` are this request's own snapshots, so a concurrent
+    reassignment that lands before a re-read cannot redirect or repeat the alert.
     """
-    new_id = task.assignee_id
-    if new_id is None:
-        return
-    # Normalise both sides to str for a safe cross-type comparison.
-    if str(new_id) == str(previous_assignee_id) if previous_assignee_id is not None else False:
+    new_id = after.get("assignee")
+    if not new_id or new_id == before.get("assignee"):
         return
     try:
         from notifications.services import notify_task_assigned
-        notify_task_assigned(task, task.assignee)
+        notify_task_assigned(task_id, after.get("title"), new_id)
     except Exception:
         logger.exception("Failed to notify user %s of task assignment", new_id)
 
@@ -118,7 +116,7 @@ def _create(actor, fields, *, origin_key=None, source_action_item=None, action="
         raise PermissionDenied("Your permission to manage this committee's tasks has changed.")
     task.save(force_insert=True)
     if action != "claimed":
-        _notify_if_assigned(task, None)
+        _notify_if_assigned(task.pk, {}, _snapshot(task))
     return task
 
 
@@ -168,7 +166,7 @@ def _persist(actor, task, changes, expected_version, action, *, authorize=None):
         raise TaskConflict("This task changed while you were working. Reload it before trying again.")
     task.refresh_from_db()
     if action != "claimed":
-        _notify_if_assigned(task, before.get("assignee"))
+        _notify_if_assigned(task.pk, before, after)
     return task
 
 
