@@ -377,3 +377,38 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
                 announcement=self.announcement,
             ).exists()
         )
+
+    def test_officer_can_mark_another_officers_announcement_read(self):
+        another_officer = self.make_officer("another-officer")
+        self.announcement.author = another_officer
+        self.announcement.save(update_fields=["author"])
+        self.login(self.officer)
+
+        response = self.client.post(
+            reverse("announcements:mark_read", args=[self.announcement.pk]),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {"is_read": True})
+        self.assertTrue(
+            AnnouncementReadReceipt.objects.filter(
+                user=self.officer,
+                announcement=self.announcement,
+            ).exists()
+        )
+
+    def test_author_cannot_mark_own_announcement_read(self):
+        self.login(self.officer)
+
+        response = self.client.post(
+            reverse("announcements:mark_read", args=[self.announcement.pk]),
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            AnnouncementReadReceipt.objects.filter(
+                user=self.officer,
+                announcement=self.announcement,
+            ).exists()
+        )

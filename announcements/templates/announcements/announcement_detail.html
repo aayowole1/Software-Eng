@@ -173,7 +173,8 @@
           {% else %}
             <span class="text-slate-400">Read statistics available after publication</span>
           {% endif %}
-        {% else %}
+        {% endif %}
+        {% if announcement.status == "published" and announcement.author_id != user.id %}
           <div class="flex items-center gap-2">
             <form method="post" action="{% url 'announcements:mark_read' announcement.id %}" onsubmit="return toggleAnnouncementRead(this)">
               {% csrf_token %}

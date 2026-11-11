@@ -6,7 +6,7 @@
 
 # === IMPORTS
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -285,8 +285,15 @@ def announcements_list(request):
                 announcement__in=announcements,
             ).values_list("announcement_id", flat=True)
         )
-        for item in announcements:
-            item.is_read_by_user = item.pk in read_ids
+    else:
+        read_ids = set(
+            AnnouncementReadReceipt.objects.filter(
+                user=request.user,
+                announcement__in=announcements,
+            ).values_list("announcement_id", flat=True)
+        )
+    for item in announcements:
+        item.is_read_by_user = item.pk in read_ids
 
     # display summary stats in admin view
     stats = {}
@@ -389,6 +396,13 @@ def announcement_mark_read(request, pk):
             pk=pk,
             status="published",
         )
+        is_admin = is_officer_or_admin(request.user)
+        if announcement.author_id == request.user.id:
+            raise PermissionDenied("Authors cannot mark their own announcements as read.")
+        if not is_admin and not can_receive_announcement(request.user, announcement):
+            raise PermissionDenied(
+                "This announcement is not available to your audience."
+            )
         action = request.POST.get("action", "read")
         receipt = AnnouncementReadReceipt.objects.filter(
             user=request.user,

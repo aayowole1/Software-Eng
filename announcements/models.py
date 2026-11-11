@@ -124,10 +124,10 @@ class Announcement(models.Model):
         if self.audience_id:
             return self.audience.members.filter(
                 user__profile__role__in=ROSTER_ROLES
-            ).count()
+            ).exclude(user_id=self.author_id).count()
         return User.objects.filter(
             profile__role__in=ROSTER_ROLES
-        ).count()
+        ).exclude(pk=self.author_id).count()
 
     @property
     def read_percentage(self) -> int:

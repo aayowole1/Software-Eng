@@ -25,11 +25,23 @@ class AnnouncementModelTests(AnnouncementTestDataMixin, TestCase):
         self.assertEqual(str(announcement), "Town hall")
 
     def test_read_percentage_is_calculated(self):
-        announcement = self.make_announcement(read_count=25)
+        author = self.make_user()
+        announcement = self.make_announcement(author=author, read_count=25)
         for _ in range(100):
             member = self.make_user()
             Profile.objects.filter(user=member).update(role="member")
         self.assertEqual(announcement.read_percentage, 25)
+
+    def test_read_percentage_excludes_the_poster_from_the_audience(self):
+        author = self.make_user()
+        Profile.objects.filter(user=author).update(role="member")
+        announcement = self.make_announcement(author=author, read_count=100)
+        for _ in range(100):
+            member = self.make_user()
+            Profile.objects.filter(user=member).update(role="member")
+
+        self.assertEqual(announcement.audience_count, 100)
+        self.assertEqual(announcement.read_percentage, 100)
 
     def test_read_percentage_is_zero_when_target_is_zero(self):
         announcement = self.make_announcement(read_count=10)

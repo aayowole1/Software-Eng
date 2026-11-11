@@ -101,7 +101,9 @@
       <div class="flex items-center gap-2">
         <a href="{% url 'announcements:edit' item.id %}" class="px-2.5 py-1 text-slate-700 hover:bg-slate-100 rounded border border-slate-200 font-medium">Edit</a>
       </div>
-    {% else %}
+    {% endif %}
+
+    {% if item.status == "published" and item.author_id != user.id %}
       <!-- Member Engagement -->
       <div class="flex items-center gap-2">
         <form method="post" action="{% url 'announcements:mark_read' item.id %}" onsubmit="return toggleAnnouncementRead(this)">
@@ -116,6 +118,10 @@
         </button>
       </div>
 
+      <a href="{% url 'announcements:detail' item.id %}" class="font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
+        Read full notice &rarr;
+      </a>
+    {% else %}
       <a href="{% url 'announcements:detail' item.id %}" class="font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
         Read full notice &rarr;
       </a>
