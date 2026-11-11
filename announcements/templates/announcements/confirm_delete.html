@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ kind }}{% endblock %}
+{% block content %}
+<h1>Delete {{ kind }}</h1>
+<p>Remove “{{ object }}”? It will no longer be available to members.</p>
+<form method="post">{% csrf_token %}<button class="danger" type="submit">Delete {{ kind }}</button> <a href="{% url cancel_url %}">Cancel</a></form>
+{% endblock %}

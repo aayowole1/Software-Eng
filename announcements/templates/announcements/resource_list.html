@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Resources{% endblock %}
+{% block content %}
+<h1>Resource library</h1>
+<p>Shared organization documents and links. External links open their destination website.</p>
+{% if can_manage %}<p><a class="button" href="{% url 'resources:create' %}">Add resource</a></p>{% endif %}
+<form method="get" class="card" role="search">
+<p><label for="resource-search">Search resources</label><input id="resource-search" name="q" value="{{ query }}" maxlength="100"></p>
+<p><label for="resource-category">Category</label><select id="resource-category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></p>
+<button type="submit">Apply filters</button> <a href="{% url 'resources:list' %}">Clear filters</a>
+</form>
+{% for resource in resources %}
+<article class="card">
+<h2>{{ resource.title }}</h2><p class="muted">{{ resource.category|default:"General" }} · {% if resource.url %}External link{% else %}Document{% endif %}</p>
+{{ resource.description|linebreaks }}
+<p><a href="{% url 'resources:open' resource.pk %}">{% if resource.url %}Open link{% else %}Download document{% endif %}</a></p>
+{% if can_manage %}<p><a href="{% url 'resources:edit' resource.pk %}">Edit</a> · <a href="{% url 'resources:delete' resource.pk %}">Remove</a></p>{% endif %}
+</article>
+{% empty %}<p>No resources match these filters.</p>{% endfor %}
+{% endblock %}

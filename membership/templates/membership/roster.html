@@ -48,6 +48,7 @@
 </form>
 
 <div class="table-wrap">
+  <p>{{ page_obj.paginator.count }} member{{ page_obj.paginator.count|pluralize }} found.</p>
   <table>
     <thead>
       <tr>
@@ -97,5 +98,13 @@
     </tbody>
   </table>
 </div>
+
+{% if page_obj.has_other_pages %}
+<nav aria-label="Roster pages">
+  {% if page_obj.has_previous %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
 
 {% endblock %}

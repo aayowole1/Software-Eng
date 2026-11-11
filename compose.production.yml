@@ -19,6 +19,7 @@ x-application: &application
     DJANGO_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_HSTS_INCLUDE_SUBDOMAINS:-false}
     DJANGO_HSTS_PRELOAD: ${DJANGO_HSTS_PRELOAD:-false}
     DJANGO_STATIC_ROOT: /var/lib/orgflow/static
+    DJANGO_MEDIA_ROOT: /var/lib/orgflow/media
     DJANGO_EMAIL_POLICY: ${DJANGO_EMAIL_POLICY:-smtp}
     DJANGO_ALLOW_INSECURE_SMTP: ${DJANGO_ALLOW_INSECURE_SMTP:-false}
     EMAIL_HOST: ${EMAIL_HOST:-}
@@ -76,6 +77,7 @@ services:
       - '127.0.0.1:${ORGFLOW_WEB_PORT:-8000}:8000'
     volumes:
       - static_data:/var/lib/orgflow/static:ro
+      - media_data:/var/lib/orgflow/media
     networks: [database, default]
     depends_on:
       mongo:
@@ -99,3 +101,4 @@ networks:
 volumes:
   mongo_data:
   static_data:
+  media_data:

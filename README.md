@@ -104,7 +104,10 @@ Ported from the Software-Eng Node.js prototype (WBS 1.3, 1.4, 1.9) and aligned w
 | `committees` | Committees with a chair and members; officers manage rosters | FR-04 |
 | `tasks` | Officer task creation and delegation; committee work, member claiming and progress, due dates, priorities, scoped counts and audit history | FR-04, FR-09; WBS 1.6 |
 | `events` | Officers create, edit and cancel events; members RSVP; officers record attendance; upcoming events on the dashboard | FR-03, FR-08 (partial) |
+| `announcements` | Published member feed, officer authoring, category/search filters, private attachment downloads and read receipts | FR-05 (partial), WBS 1.7 |
+| Resource library (in `announcements`) | Member search/downloads and external links; Officer/Admin add/edit/remove | FR-07, WBS 1.7; [user guide](docs/resources-guide.md) |
 | `meetings` | Officers submit meeting notes; AI drafts a summary and action items; an officer reviews before anything is kept | FR-06, FR-12 |
+| `reports` | Participation and engagement report for officers and admins: attendance by event, member and committee, and task counts, for a chosen date range, with CSV download | FR-6.2, FR-6.3, WBS 1.8 |
 | `core` | Public dashboard (signed-in users also see their own sections), `/health/` check, shared layout and styles | FR-08 (partial), NFR-03 |
 
 ### Roles
@@ -115,7 +118,7 @@ Each role includes everything the roles below it can do.
 |------|-----|
 | `applicant` | Waiting on a membership application (default for new accounts) |
 | `member` | View the roster, committees and events; RSVP to events |
-| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts |
+| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts; view participation reports |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).
@@ -181,6 +184,23 @@ stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
 the temporary file in all success and error paths. The officer can add notes
 before submitting; both sources are retained and passed to OpenRouter.
 
+### Participation reports (WBS 1.8)
+
+Officers and admins open **Reports** in the sidebar (`/reports/`). Pick a start and
+end date (the last 30 days by default); both days are included in full, in the
+organization's time zone. The page shows:
+
+* **Events held:** non-cancelled events in the range that have already started,
+  with RSVPs going and attendance for each. Upcoming events are not counted.
+* **Members:** events attended out of events held, attendance %, and tasks
+  assigned, completed and overdue (tasks created in the range).
+* **Committees:** members, attendance % across those events, and task totals.
+
+**Download CSV** exports the same figures with a `section` column. Cells that
+start with `=`, `+`, `-` or `@` are escaped so spreadsheets don't run them as
+formulas. An end date before the start date is rejected on the page and in the
+download. Charts are not included yet (SCRUM-37).
+
 ### Tasks and committee work
 
 Officers and admins can create, edit and assign tasks with a due date and priority.
@@ -236,14 +256,22 @@ accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 
 ### Not yet implemented
 
-On this integration preview, announcements and resources (1.7) and reports (1.8)
-remain separate team work. Task change history is included;
+Announcements are integrated in this working branch; see the
+[integration notes](docs/announcements-integration.md) for access rules, private
+file storage and remaining committee-targeting/notification work. Participation
+reports (1.8) are available to officers and admins; charts (SCRUM-37) are not
+included yet. Task change history is included;
 an organization-wide audit system remains separate. Live OpenAI summarization and
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
 deployment needs its own Google client configuration and live check.
 
 ## Running Tests
+
+SCRUM-83's human pilot is not yet complete: no participants are currently
+available. See the [pilot protocol and readiness evidence](docs/usability-pilot.md)
+and blank results sheet. Automated HTTP checks and unit tests do not replace
+the five-person unaided workflow/timing requirement.
 
 Tests use Django's test framework and need MongoDB running:
 

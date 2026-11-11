@@ -5,11 +5,13 @@ from django.core.exceptions import ValidationError
 from committees.models import Committee
 
 from .models import Task, TaskPriority, TaskStatus, can_manage_tasks, eligible_assignees
+from .permissions import can_manage_committee_tasks, manageable_committees
 
 
 class AssignmentFieldsMixin:
     def _prepare_assignment_fields(self):
-        self.fields["committee"].queryset = Committee.objects.all()
+        self.fields["committee"].queryset = manageable_committees(self.actor)
+        self.fields["committee"].required = not can_manage_tasks(self.actor)
         self.fields["committee"].help_text = "Choose a committee to limit task visibility to its roster and officers."
         committee_id = getattr(getattr(self, "instance", None), "committee_id", None)
         committee = Committee.objects.filter(pk=committee_id).first() if committee_id else None
@@ -23,12 +25,16 @@ class AssignmentFieldsMixin:
                 committee = raw_committee
             elif raw_committee:
                 try:
-                    committee = Committee.objects.filter(pk=raw_committee).first()
+                    committee = self.fields["committee"].queryset.filter(pk=raw_committee).first()
                 except (ValueError, TypeError, ValidationError):
                     committee = None
             else:
                 committee = None
-        self.fields["assignee"].queryset = eligible_assignees(committee)
+        self.fields["assignee"].queryset = (
+            eligible_assignees(committee)
+            if can_manage_committee_tasks(self.actor, committee)
+            else get_user_model().objects.none()
+        )
         self.fields["assignee"].label_from_instance = lambda user: user.email or user.username
         self.fields["assignee"].help_text = (
             "For a committee task, choose a current member of that committee. "
@@ -57,8 +63,12 @@ class TaskForm(AssignmentFieldsMixin, forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if not can_manage_tasks(self.actor):
-            raise forms.ValidationError("Only officers and admins can manage task details.")
+        if not can_manage_committee_tasks(self.actor, cleaned.get("committee")):
+            raise forms.ValidationError("Choose a committee whose tasks you can manage.")
+        if self.instance.pk:
+            original = Task.objects.filter(pk=self.instance.pk).first()
+            if original is None or not can_manage_committee_tasks(self.actor, original.committee_id):
+                raise forms.ValidationError("You can no longer manage this task.")
         return cleaned
 
 
