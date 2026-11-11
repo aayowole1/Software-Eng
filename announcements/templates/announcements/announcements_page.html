@@ -10,6 +10,7 @@
 <form method="get" class="card" role="search">
   <p><label for="announcement-search">Search announcements</label><input id="announcement-search" name="q" value="{{ search_query }}" maxlength="100"></p>
   <p><label for="announcement-category">Category</label><select id="announcement-category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></p>
+  <p><label for="announcement-tag">Tag</label><input id="announcement-tag" name="tag" value="{{ selected_tag }}" maxlength="32"></p>
   {% if can_publish %}<p><label for="announcement-status">Status</label><select id="announcement-status" name="status"><option value="all">All statuses</option><option value="published" {% if status_filter == 'published' %}selected{% endif %}>Published</option><option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option><option value="scheduled" {% if status_filter == 'scheduled' %}selected{% endif %}>Scheduled</option><option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Archived</option></select></p>{% endif %}
   <button type="submit">Apply filters</button> <a href="{% url 'announcements:list' %}">Clear filters</a>
 </form>
@@ -17,6 +18,8 @@
 <article class="card">
   <h2><a href="{% url 'announcements:detail' announcement.pk %}">{{ announcement.title }}</a></h2>
   <p class="muted">{{ announcement.category|default:"General" }} · {{ announcement.published_at|date:"M j, Y" }}{% if can_publish %} · {{ announcement.get_status_display }}{% endif %}</p>
+  {% if announcement.committee %}<p>Audience: {{ announcement.committee.name }}</p>{% endif %}
+  {% for tag in announcement.tags %}<a class="badge" href="{% url 'announcements:list' %}?tag={{ tag|urlencode }}">{{ tag }}</a> {% endfor %}
   {% if announcement.is_pinned %}<span class="badge">Pinned</span>{% endif %} {% if announcement.is_urgent %}<span class="badge">Urgent</span>{% endif %}
   <p>{{ announcement.content|truncatechars:240 }}</p>
 </article>
