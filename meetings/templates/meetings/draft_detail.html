@@ -47,7 +47,7 @@
           {% if can_review %}
             <input type="checkbox" name="item-{{ item.pk }}-accepted" id="item-{{ item.pk }}-accepted" {% if item.accepted %}checked{% endif %}>
             <label for="item-{{ item.pk }}-accepted" class="action-item-keep">Keep</label>
-            <input class="action-item-input" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
+            <input class="action-item-input" aria-label="Action item text" type="text" name="item-{{ item.pk }}-description" value="{{ item.description }}">
           {% else %}
             {% if parts %}
               <span class="action-item-pretty">
