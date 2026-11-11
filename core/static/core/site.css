@@ -52,11 +52,14 @@ select:focus-visible, textarea:focus-visible {
 .skip-link:focus { left: 16px; top: 8px; z-index: 1000; background: var(--surface); padding: 8px; }
 
 .sidebar {
-  position: fixed;
+  position: sticky;
   left: 0;
   top: 0;
   height: 100vh;
   width: 264px;
+  flex: 0 0 264px;
+  box-sizing: border-box;
+  align-self: flex-start;
   background: var(--surface);
   border-right: 1px solid var(--border);
   padding: 1.25rem 1rem;
@@ -306,6 +309,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 
 @media (max-width: 768px) {
   .sidebar {
+    position: fixed;
+    flex: none;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
   }
