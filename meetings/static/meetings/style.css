@@ -38,21 +38,6 @@
     justify-content: space-between;
     align-items: center;
     gap: 16px;
-    flex-wrap: wrap;
-    margin-top: 20px;
-}
-
-.meeting-notes-field {
-    margin-top: 20px;
-}
-
-.meeting-notes-field h2 {
-    margin-top: 0;
-    margin-bottom: 4px;
-}
-
-.meeting-notes-field textarea {
-    min-height: 140px;
 }
 
 .notes-submit-warning {
@@ -76,144 +61,13 @@
 .meeting-review-columns {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px;
+    gap: 16px;
     align-items: stretch;
 }
 
-.note-review-page {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 8px 0 32px;
-}
-
-.note-list-page {
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 8px 0 32px;
-}
-
-.note-list-header {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 0;
-}
-
-.note-list-header h1 {
-    margin: 0;
-}
-
-.note-list-create {
-    min-height: 44px;
-    font-weight: 700;
-}
-
-.note-list-panel {
-    margin-top: 0;
-    padding: 0;
-    overflow: hidden;
-    border-color: #c9d2e3;
-    border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(31, 50, 81, 0.08);
-}
-
-.note-list-table {
-    margin: 0;
-}
-
-.note-list-table th {
-    padding: 14px 24px;
-    color: #64748b;
-    background: #f8fafc;
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.note-list-table td {
-    padding: 18px 24px;
-    color: #475569;
-    vertical-align: middle;
-}
-
-.note-list-table tbody tr {
-    transition: background-color 0.15s ease;
-}
-
-.note-list-table tbody tr:hover {
-    background: #f8fafc;
-}
-
-.note-list-title {
-    color: #0c2340;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.note-list-title:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-}
-
-.note-list-warning {
-    display: inline-block;
-    margin: 6px 0 0 8px;
-    color: #92400e;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.note-list-empty {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: 16px;
-    padding: 40px 24px;
-    text-align: center;
-}
-
-.note-review-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 6px;
-}
-
-.note-review-header h1 {
-    margin-bottom: 0;
-}
-
-.note-review-header .badge {
-    margin-top: 8px;
-    white-space: nowrap;
-}
-
-.eyebrow {
-    margin: 0 0 6px;
-    color: #64748b;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.note-review-meta {
-    margin: 0 0 24px;
-    color: #64748b;
-    font-size: 0.875rem;
-}
-
 .meeting-review-columns > .card {
-    display: flex;
-    flex-direction: column;
     height: 100%;
     margin-bottom: 0;
-    padding: 24px;
     border-color: #c9d2e3;
     border-radius: 12px;
     box-shadow: 0 4px 14px rgba(31, 50, 81, 0.08);
@@ -234,23 +88,19 @@
 }
 
 .meeting-review-columns > .card:first-child textarea {
-    flex: 1;
     width: 100%;
     max-width: none;
-    min-height: 420px;
     box-sizing: border-box;
-    margin-top: 12px;
-    padding: 14px 16px;
     overflow-y: auto;
-    resize: vertical;
-    line-height: 1.6;
+    resize: none;
+    min-height: 330px;
+    max-height: 330px;
 }
 
 .meeting-summary-scroll {
-    min-height: 180px;
     max-height: 330px;
     overflow-y: auto;
-    padding: 4px 12px 4px 0;
+    padding-right: 8px;
 }
 
 .meeting-summary-scroll p {
@@ -258,7 +108,6 @@
 }
 
 .action-item-list {
-    margin: 16px 0;
     padding: 0;
     list-style: none;
 }
@@ -293,8 +142,7 @@
 }
 
 .meeting-review-card {
-    margin-top: 24px;
-    padding: 24px;
+    margin-top: 16px;
 }
 
 .meeting-review-card select,
@@ -307,27 +155,7 @@
     flex-wrap: wrap;
     gap: 12px;
     align-items: center;
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
-}
-
-.meeting-review-card .button,
-.note-review-page > form .button {
-    min-height: 44px;
-    font-weight: 700;
-}
-
-.note-review-secondary-action {
-    margin: 24px 0 0;
-}
-
-.note-review-transcript {
-    margin-top: 32px;
-}
-
-.note-review-transcript h2 {
-    margin-bottom: 12px;
+    margin-top: 20px;
 }
 
 .meeting-processing {
@@ -390,151 +218,23 @@
 }
 
 @media (max-width: 700px) {
-    .note-list-page {
-        padding-top: 0;
-    }
-
-    .note-list-header {
-        align-items: stretch;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .note-list-create {
-        align-self: flex-start;
-    }
-
-    .note-list-table thead {
-        display: none;
-    }
-
-    .note-list-table,
-    .note-list-table tbody,
-    .note-list-table tr,
-    .note-list-table td {
-        display: block;
-        width: 100%;
-    }
-
-    .note-list-table tr {
-        padding: 16px 20px;
-        border-bottom: 1px solid #e2e8f0;
-    }
-
-    .note-list-table tr:last-child {
-        border-bottom: 0;
-    }
-
-    .note-list-table td {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        padding: 6px 0;
-        text-align: right;
-    }
-
-    .note-list-table td::before {
-        color: #64748b;
-        content: attr(data-label);
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-align: left;
-        text-transform: uppercase;
-    }
-
-    .note-list-table td:first-child {
-        display: block;
-        padding-top: 0;
-        text-align: left;
-    }
-
-    .note-list-table td:first-child::before {
-        display: block;
-        margin-bottom: 4px;
-    }
-
-    .note-list-warning {
-        display: block;
-        margin: 6px 0 0;
-    }
-
-    .note-review-page {
-        padding-top: 0;
-    }
-
-    .note-review-header {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .note-review-header .badge {
-        margin-top: 0;
-    }
-
     .meeting-review-columns {
         grid-template-columns: 1fr;
-        gap: 16px;
-    }
-
-    .meeting-review-columns > .card:first-child textarea {
-        min-height: 300px;
     }
 }
 
 .meeting-recording-actions {
     display: flex;
-    flex-wrap: wrap;
     gap: 8px;
 }
 
-.meeting-actions .button {
-    min-height: 44px;
-    min-width: 9rem;
-    font-weight: 700;
-    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.meeting-actions .button:focus-visible {
-    outline: 3px solid #f59e0b;
-    outline-offset: 3px;
-}
-
-.meeting-actions .button:disabled {
-    cursor: not-allowed;
-    opacity: 0.55;
-}
-
-.button-primary {
-    background-color: #0c2340;
-    border-color: #0c2340;
-    color: #fff;
-}
-
-.button-primary:hover:not(:disabled) {
-    background-color: #163a66;
-    border-color: #163a66;
-}
-
-.button-danger {
+.stop-meeting {
     background-color: #b42318;
     border-color: #b42318;
     color: #fff;
 }
 
-.button-danger:hover:not(:disabled) {
+.stop-meeting:hover {
     background-color: #8f1d14;
     border-color: #8f1d14;
-}
-
-@media (max-width: 600px) {
-    .meeting-actions,
-    .meeting-recording-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .meeting-actions .button {
-        width: 100%;
-    }
 }
