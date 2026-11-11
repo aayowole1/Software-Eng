@@ -260,6 +260,33 @@ Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
 deployment needs its own Google client configuration and live check.
 
+## About page settings
+
+The signed-out dashboard shows a public **About** section with the organization's
+name, mission, benefits and a leadership contact link. Configure these in `.env`:
+
+| Setting | Environment variable | Default |
+|---------|----------------------|---------|
+| Organization name | `ORG_NAME` | Placeholder text |
+| Mission statement | `ORG_MISSION` | Placeholder text |
+| Benefits of joining | `ORG_BENEFITS` | Pipe-separated list, e.g. `Networking\|Leadership skills` |
+| Contact email | `ORG_CONTACT_EMAIL` | Empty (shows "Contact an officer after you sign in") |
+
+Example `.env` entries:
+
+```env
+ORG_NAME=Acme Student Association
+ORG_MISSION=We bring students together to build real-world skills.
+ORG_BENEFITS=Professional networking|Leadership opportunities|Community events
+ORG_CONTACT_EMAIL=officers@acme.edu
+```
+
+Restart the web container after changing these values:
+
+```bash
+docker compose restart web
+```
+
 ## Running Tests
 
 SCRUM-83's human pilot is not yet complete: no participants are currently

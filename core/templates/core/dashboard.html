@@ -6,7 +6,24 @@
   {% if user.is_authenticated %}
     <p>Signed in as <strong>{{ user.email|default:user.username }}</strong> · <span class="badge">{{ role }}</span></p>
   {% else %}
-    <p>One place for your student organization's membership, committees, events, tasks and meeting follow-ups.</p>
+    <section class="about-section" aria-label="About {{ org_name }}">
+      <h2>About {{ org_name }}</h2>
+      <p>{{ org_mission }}</p>
+      {% if org_benefits %}
+      <h3>Benefits of joining</h3>
+      <ul class="benefits-list">
+        {% for benefit in org_benefits %}
+          <li>{{ benefit }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <h3>Contact leadership</h3>
+      {% if org_contact_email %}
+        <p>Contact an officer: <a href="mailto:{{ org_contact_email }}" aria-label="Email the organization officers">{{ org_contact_email }}</a></p>
+      {% else %}
+        <p>Contact an officer after you sign in.</p>
+      {% endif %}
+    </section>
     <p>
       <a class="button" href="{% url 'accounts:register' %}">Create an account and apply</a>
       <a href="{% url 'accounts:login' %}">or sign in</a>
@@ -14,10 +31,17 @@
     <div class="card">
       <h2>How joining works</h2>
       <ol>
-        <li>Create an account and tell us why you want to join. That's your membership application.</li>
-        <li>An officer reviews it.</li>
-        <li>Once it's approved, you can sign in and you're on the roster.</li>
+        <li>Create an account and answer the application question. That's your membership application.</li>
+        <li>Wait while an officer reviews it.</li>
+        <li>Once it's approved, sign in — you're on the roster.</li>
       </ol>
+      <h3>Application statuses</h3>
+      <dl class="status-guide">
+        <dt><span class="badge">Pending</span></dt>
+        <dd>Your application is waiting for an officer to review it. You can't sign in yet.</dd>
+        <dt><span class="badge">Not approved</span></dt>
+        <dd>You'll see the officer's reason when you sign in. You can apply again after {{ reapply_wait_days }} day{{ reapply_wait_days|pluralize }}.</dd>
+      </dl>
     </div>
   {% endif %}
 

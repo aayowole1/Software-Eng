@@ -23,7 +23,17 @@ from announcements.permissions import effective_role
 
 def dashboard(request):
     """The dashboard is public; signed-in users also see their own sections."""
-    context = {"committees_public": Committee.objects.all()}
+    from django.conf import settings as django_settings
+    from membership.models import REAPPLY_WAIT
+
+    context = {
+        "committees_public": Committee.objects.all(),
+        "org_name": django_settings.ORG_NAME,
+        "org_mission": django_settings.ORG_MISSION,
+        "org_benefits": django_settings.ORG_BENEFITS,
+        "org_contact_email": django_settings.ORG_CONTACT_EMAIL,
+        "reapply_wait_days": REAPPLY_WAIT.days,
+    }
     if request.user.is_authenticated:
         role = get_role(request.user)
         context.update(

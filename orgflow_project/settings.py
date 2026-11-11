@@ -185,6 +185,22 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OrgFlow <no-reply@orgflow.local>")
 
 
+# Organization public profile (FR-1.5, NFR-05).
+# Set each value in .env; see .env.example and README for details.
+
+ORG_NAME = os.getenv("ORG_NAME", "Add your organization's name in ORG_NAME")
+ORG_MISSION = os.getenv("ORG_MISSION", "Add your organization's mission in ORG_MISSION")
+ORG_BENEFITS = [
+    b.strip()
+    for b in os.getenv(
+        "ORG_BENEFITS",
+        "Add benefit 1 in ORG_BENEFITS|Add benefit 2 in ORG_BENEFITS",
+    ).split("|")
+    if b.strip()
+]
+ORG_CONTACT_EMAIL = os.getenv("ORG_CONTACT_EMAIL", "").strip()
+
+
 # MongoDB-compatible migrations for Django's built-in apps.
 
 MIGRATION_MODULES = {
