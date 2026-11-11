@@ -95,11 +95,14 @@ def draft_create(request):
         try:
             draft.generate(force_insert=True)
         except (RuntimeError, ValueError, DatabaseError):
-            published = MeetingDraft.objects.filter(
-                pk=draft.pk,
-                created_by=request.user,
-                generation_token=draft.generation_token,
-            ).first()
+            try:
+                published = MeetingDraft.objects.filter(
+                    pk=draft.pk,
+                    created_by=request.user,
+                    generation_token=draft.generation_token,
+                ).first()
+            except DatabaseError:
+                published = None
             if published is not None:
                 messages.warning(request, "The notes were saved, but confirmation was delayed. Review the draft below.")
                 return redirect("meetings:detail", pk=published.pk)
