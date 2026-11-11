@@ -15,7 +15,7 @@ class MeetingSummary:
 
 
 def get_summary_model() -> str:
-    return os.getenv("OPENROUTER_MODEL", DEFAULT_SUMMARY_MODEL)
+    return os.getenv("OPENROUTER_MODEL", "").strip() or DEFAULT_SUMMARY_MODEL
 
 
 def build_summary_messages(transcript: str, officer_notes: str = "") -> list[dict[str, str]]:
