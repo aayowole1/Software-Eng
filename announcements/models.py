@@ -9,6 +9,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from accounts.models import ROSTER_ROLES
+from committees.models import Committee
 
 # === CONFIG
 User = get_user_model()
@@ -18,6 +20,13 @@ class Category(models.Model):
     """Manage the announcement categories."""
     name = models.CharField(max_length=64)
     slug = models.SlugField(unique=True)
+    committee = models.ForeignKey(
+        Committee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="announcement_categories",
+    )
 
     class Meta:
         """Define the category metadata."""
@@ -37,7 +46,6 @@ class Announcement(models.Model):
         ("published", "Published"),
         ("archived", "Archived"),
     ]
-
     title = models.CharField(max_length=255)
     content = models.TextField()
     status = models.CharField(
@@ -53,8 +61,8 @@ class Announcement(models.Model):
         null=True,
         related_name="announcements",
     )
-    committee = models.ForeignKey(
-        "committees.Committee",
+    audience = models.ForeignKey(
+        Committee,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -96,7 +104,6 @@ class Announcement(models.Model):
 
     # telemetry and engagement
     read_count = models.PositiveIntegerField(default=0)
-    target_reach = models.PositiveIntegerField(default=165)
     comments_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -112,35 +119,27 @@ class Announcement(models.Model):
 
     # === PROPERTIES
     @property
-    def member_audience_count(self) -> int:
-        """Return the current number of active organization members."""
-        from accounts.models import ROSTER_ROLES, Profile
-
-        return Profile.objects.filter(
-            role__in=ROSTER_ROLES,
-            is_suspended=False,
-            user__is_active=True,
-        ).count()
-
-    @property
-    def member_read_count(self) -> int:
-        """Return the current number of members who read this announcement."""
-        from accounts.models import ROSTER_ROLES
-
-        return self.read_receipts.filter(
-            user__profile__role__in=ROSTER_ROLES,
-            user__profile__is_suspended=False,
-            user__is_active=True,
+    def audience_count(self) -> int:
+        """Return the current number of users who can receive this post."""
+        if self.audience_id:
+            return self.audience.members.filter(
+                user__profile__role__in=ROSTER_ROLES
+            ).count()
+        return User.objects.filter(
+            profile__role__in=ROSTER_ROLES
         ).count()
 
     @property
     def read_percentage(self) -> int:
-        """Return this announcement's current member read percentage."""
-        audience_count = self.member_audience_count
-        if audience_count == 0:
-            return 0
+        """Return the current read percentage for the announcement audience."""
+        audience_count = self.audience_count
+        if audience_count > 0:
+            return min(
+                100,
+                int(((self.read_count or 0) / audience_count) * 100)
+            )
 
-        return min(100, int((self.member_read_count / audience_count) * 100))
+        return 0
 
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT

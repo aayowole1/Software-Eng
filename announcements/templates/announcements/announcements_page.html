@@ -12,7 +12,7 @@
         <span>Portal</span> &rsaquo; <span class="text-slate-800">Workspace</span>
       </div>
       <form method="get" class="relative w-72">
-        <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements" class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements..." class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
       </form>
     </div>
 
@@ -42,6 +42,9 @@
           <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
             <span>+</span> Create Announcement
           </a>
+          <a href="?status=draft" class="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50">
+            Drafts ({{ stats.active_drafts }})
+          </a>
         </div>
       {% endif %}
     </div>
@@ -66,21 +69,9 @@
 
     <!-- Filter & Category Pills Bar -->
     <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
-      {% if is_admin %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
-          All Announcements ({{ announcements|length }})
-        </a>
-        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
-          Drafts ({{ stats.active_drafts }})
-        </a>
-        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
-          Scheduled ({{ stats.scheduled_queue }})
-        </a>
-      {% else %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-white">
-          All Announcements ({{ announcements|length }})
-        </a>
-      {% endif %}
+      <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+        All Announcements ({{ announcements|length }})
+      </a>
       {% for cat in categories %}
         <a href="?category={{ cat.slug }}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_category == cat.slug %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
           {{ cat.name }}
@@ -106,43 +97,33 @@
       <!-- Right Utility Rail -->
       <aside class="space-y-6">
         {% if is_admin %}
-          {% if status_filter == 'all' %}
-            <!-- Admin Audience Reach Widget -->
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
-                <span>Audience Reach</span>
-                <span class="text-xs font-normal text-slate-500">{{ stats.audience_total }} Members</span>
-              </h3>
-              <ul class="text-xs space-y-2 text-slate-600">
-                <li class="flex justify-between py-1 border-b border-slate-100">
-                  <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> All Active Members</span>
-                  <strong>{{ stats.audience_total }}</strong>
-                </li>
-                <li class="flex justify-between py-1 border-b border-slate-100">
-                  <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Executive Officers</span>
-                  <strong>{{ stats.audience_officers }}</strong>
-                </li>
-                <li class="flex justify-between py-1">
-                  <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> New Recruits</span>
-                  <strong>{{ stats.audience_new_recruits }}</strong>
-                </li>
-              </ul>
-            </div>
-          {% endif %}
-        {% else %}
-          <!-- Member Key Deadlines Widget -->
+          <!-- Admin Audience Reach Widget -->
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-900 mb-3">Key Member Deadlines</h3>
-            <div class="space-y-3 text-xs">
-              <div class="flex items-start gap-3 p-2 rounded-lg bg-amber-50/50 border border-amber-100">
-                <div class="bg-amber-100 text-amber-900 font-bold px-2 py-1 rounded text-[11px] text-center">
-                  OCT<br>24
-                </div>
-                <div>
-                  <h4 class="font-bold text-slate-800">Mandatory GBM #3</h4>
-                  <p class="text-slate-500 text-[11px]">7:00 PM &bull; Student Union</p>
-                </div>
-              </div>
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
+              <span>Organization Audience</span>
+              <span class="text-xs font-normal text-slate-500">{{ stats.audience_total }} Members</span>
+            </h3>
+            <ul class="text-xs space-y-2 text-slate-600">
+              <li class="flex justify-between py-1 border-b border-slate-100">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Active roster</span>
+                <strong>{{ stats.audience_total }}</strong>
+              </li>
+              <li class="flex justify-between py-1 border-b border-slate-100">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Officers and admins</span>
+                <strong>{{ stats.officer_total }}</strong>
+              </li>
+              <li class="flex justify-between py-1">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Applicants</span>
+                <strong>{{ stats.applicant_total }}</strong>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <!-- Member Information Widget -->
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-900 mb-2">Your feed</h3>
+            <div class="text-xs text-slate-500">
+              <p>Showing published announcements available to your account.</p>
             </div>
           </div>
         {% endif %}

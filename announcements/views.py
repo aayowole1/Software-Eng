@@ -6,42 +6,20 @@
 
 # === IMPORTS
 from django.shortcuts import render, get_object_or_404, redirect
+from django.http import FileResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
-from datetime import timedelta
 from django.db.models import F, Q
 
-from accounts.models import Profile, Role, ROSTER_ROLES
+from accounts.models import Profile, ROSTER_ROLES, Role
 
 from .models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Category
 from .forms import AnnouncementForm, AnnouncementAttachmentForm
 
 
 # === HELPERS
-def member_can_view_announcement(user, announcement) -> bool:
-    """Return whether a member belongs to the announcement's audience."""
-    return (
-        announcement.committee_id is None
-        or announcement.committee.members.filter(user=user).exists()
-    )
-
-
-def apply_announcement_action(announcement, action: str) -> None:
-    """Set announcement status from an explicit form action."""
-    if action == "draft":
-        announcement.status = "draft"
-    elif action == "archive":
-        announcement.status = "archived"
-    else:
-        announcement.status = (
-            "scheduled" if announcement.scheduled_for else "published"
-        )
-        if announcement.status == "published":
-            announcement.published_at = timezone.now()
-
-
 def is_officer_or_admin(user) -> bool:
     """Check whether user has admin publishing permissions."""
     return (
@@ -68,22 +46,78 @@ def get_author_role(user) -> str:
     return "Officer"
 
 
+def can_receive_announcement(user, announcement) -> bool:
+    """Return whether a user belongs to an announcement's audience."""
+    if announcement.audience_id is None:
+        return True
+
+    return announcement.audience.members.filter(user=user).exists()
+
+
+def publish_due_announcements() -> int:
+    """Publish scheduled announcements whose release time has arrived."""
+    now = timezone.now()
+    due_announcements = Announcement.objects.filter(
+        status="scheduled",
+        scheduled_for__lte=now,
+    )
+    published_count = 0
+    for announcement in due_announcements:
+        announcement.status = "published"
+        announcement.published_at = now
+        announcement.save(update_fields=["status", "published_at", "updated_at"])
+        published_count += 1
+    return published_count
+
+
+@login_required
+def announcement_attachment_download(request, pk):
+    """Serve an attachment to users who can access its announcement."""
+    attachment = get_object_or_404(
+        AnnouncementAttachment.objects.select_related("announcement"),
+        pk=pk,
+    )
+    announcement = attachment.announcement
+    is_admin = is_officer_or_admin(request.user)
+    if not is_admin and (
+        announcement.status != "published"
+        or not can_receive_announcement(request.user, announcement)
+    ):
+        raise PermissionDenied(
+            "You do not have permission to download this attachment."
+        )
+    return FileResponse(
+        attachment.file.open("rb"),
+        as_attachment=True,
+        filename=attachment.name,
+    )
+
+
 # === [ADMIN] CREATE ANNOUNCEMENT
 @login_required
 @user_passes_test(is_officer_or_admin, login_url="announcements:list")
 def announcement_create(request):
     """Create an announcement."""
     if request.method == "POST":
-        form = AnnouncementForm(request.POST)
-        action = request.POST.get("action", "publish")
+        form = AnnouncementForm(request.POST, user=request.user)
+        save_action = request.POST.get("save_action", "publish")
         # support multi-file upload
         files = request.FILES.getlist("attachments")
 
         if form.is_valid():
             announcement = form.save(commit=False)
             announcement.author = request.user
+            if save_action == "draft":
+                announcement.status = "draft"
+            else:
+                announcement.status = (
+                    "scheduled" if announcement.scheduled_for else "published"
+                )
+
             announcement.author_role = get_author_role(request.user)
-            apply_announcement_action(announcement, action)
+
+            if announcement.status == "published":
+                announcement.published_at = timezone.now()
 
             announcement.save()
 
@@ -109,7 +143,7 @@ def announcement_create(request):
     else:
         # pre-populate sensible defaults
         form = AnnouncementForm(
-            initial={}
+            user=request.user,
         )
 
     return render(
@@ -140,14 +174,26 @@ def announcement_edit(request, pk):
         raise PermissionDenied("You do not have permission to edit this announcement.")
 
     if request.method == "POST":
-        form = AnnouncementForm(request.POST, instance=announcement)
-        action = request.POST.get("action", "publish")
+        form = AnnouncementForm(
+            request.POST,
+            instance=announcement,
+            user=request.user,
+        )
+        save_action = request.POST.get("save_action", "publish")
         files = request.FILES.getlist("attachments")
         delete_attachment_ids = request.POST.getlist("delete_attachments")
 
         if form.is_valid():
             announcement = form.save(commit=False)
-            apply_announcement_action(announcement, action)
+            if save_action == "draft":
+                announcement.status = "draft"
+            else:
+                announcement.status = (
+                    "scheduled" if announcement.scheduled_for else "published"
+                )
+
+            if announcement.status == "published":
+                announcement.published_at = timezone.now()
 
             announcement.save()
 
@@ -176,7 +222,7 @@ def announcement_edit(request, pk):
             messages.error(request, 'Please correct the form errors.')
 
     else:
-        form = AnnouncementForm(instance=announcement)
+        form = AnnouncementForm(instance=announcement, user=request.user)
 
     return render(
         request,
@@ -193,6 +239,7 @@ def announcement_edit(request, pk):
 # === [ALL] LIST ANNOUNCEMENTS
 @login_required
 def announcements_list(request):
+    publish_due_announcements()
     is_admin = (
         request.user.is_staff
         or request.user.groups.filter(name="Officer").exists()
@@ -204,16 +251,19 @@ def announcements_list(request):
     status_filter = request.GET.get("status", "all")
 
     announcements = Announcement.objects.select_related(
-        "author", "category", "committee"
+        "author", "category", "audience"
     ).prefetch_related("attachments")
 
 
     if not is_admin:
+        # regular members can only see published posts
         announcements = announcements.filter(
-            status="published",
+            status="published"
         ).filter(
-            Q(committee__isnull=True)
-            | Q(committee__members__user=request.user)
+            Q(audience__isnull=True)
+            | Q(
+                audience__members__user=request.user,
+            )
         ).distinct()
     elif status_filter != "all":
         announcements = announcements.filter(status=status_filter)
@@ -227,26 +277,34 @@ def announcements_list(request):
     if category_slug:
         announcements = announcements.filter(category__slug=category_slug)
 
-    # Display current roster counts in the admin audience widget.
+    announcements = list(announcements)
+    if not is_admin:
+        read_ids = set(
+            AnnouncementReadReceipt.objects.filter(
+                user=request.user,
+                announcement__in=announcements,
+            ).values_list("announcement_id", flat=True)
+        )
+        for item in announcements:
+            item.is_read_by_user = item.pk in read_ids
+
+    # display summary stats in admin view
     stats = {}
     if is_admin:
-        active_members = Profile.objects.filter(
-            role__in=ROSTER_ROLES,
-            is_suspended=False,
-            user__is_active=True,
-        )
-        recent_cutoff = timezone.now() - timedelta(days=30)
         stats = {
-            "total_published": Announcement.objects.filter(status="published").count(),
+            "total_published": Announcement.objects.filter(
+                status="published"
+            ).count(),
             "active_drafts": Announcement.objects.filter(status="draft").count(),
             "scheduled_queue": Announcement.objects.filter(status="scheduled").count(),
-            "audience_total": active_members.count(),
-            "audience_officers": active_members.filter(
+            "audience_total": Profile.objects.filter(
+                role__in=ROSTER_ROLES
+            ).count(),
+            "officer_total": Profile.objects.filter(
                 role__in=[Role.OFFICER, Role.ADMIN]
             ).count(),
-            "audience_new_recruits": active_members.filter(
-                role=Role.MEMBER,
-                created_at__gte=recent_cutoff,
+            "applicant_total": Profile.objects.filter(
+                role=Role.APPLICANT
             ).count(),
         }
 
@@ -272,9 +330,11 @@ def announcements_list(request):
 @login_required
 def announcement_detail(request, pk):
     """Retrieve details about the announcement."""
+    publish_due_announcements()
     announcement = get_object_or_404(
         Announcement.objects.select_related(
-            "author", "category", "committee").prefetch_related("attachments"),
+            "author", "category", "audience"
+        ).prefetch_related("attachments"),
         pk=pk
     )
 
@@ -287,24 +347,8 @@ def announcement_detail(request, pk):
     # permission check: regular members cannot view unpublished/draft posts
     if not is_published and not is_admin:
         raise PermissionDenied("This announcement has not been published yet.")
-    if is_published and not is_admin and not member_can_view_announcement(
-        request.user,
-        announcement,
-    ):
-        raise PermissionDenied("This announcement is not available to your committee.")
-
-    # record / check read receipt for telemetry
-    receipt_created = False
-    if request.user.is_authenticated:
-        receipt, created = AnnouncementReadReceipt.objects.get_or_create(
-            user=request.user,
-            announcement=announcement
-        )
-        if created:
-            # atomic increment read count
-            Announcement.objects.filter(pk=pk).update(read_count=F("read_count") + 1)
-            announcement.refresh_from_db(fields=["read_count"])
-            receipt_created = True
+    if not is_admin and not can_receive_announcement(request.user, announcement):
+        raise PermissionDenied("This announcement is not available to your audience.")
 
     is_read_by_user = AnnouncementReadReceipt.objects.filter(
         user=request.user,
@@ -316,6 +360,11 @@ def announcement_detail(request, pk):
         category=announcement.category,
         status="published"
     ).exclude(pk=announcement.pk).order_by("-published_at")[:3]
+    if not is_admin:
+        related_announcements = [
+            item for item in related_announcements
+            if can_receive_announcement(request.user, item)
+        ]
 
     context = {
         "announcement": announcement,
@@ -325,7 +374,6 @@ def announcement_detail(request, pk):
             or announcement.author == request.user
         ),
         "is_read_by_user": is_read_by_user,
-        "receipt_just_created": receipt_created,
         "related_announcements": related_announcements,
     }
 
@@ -336,16 +384,31 @@ def announcement_detail(request, pk):
 @login_required
 def announcement_mark_read(request, pk):
     if request.method == "POST":
-        announcement = get_object_or_404(Announcement, pk=pk)
-        receipt, created = AnnouncementReadReceipt.objects.get_or_create(
-            user=request.user,
-            announcement=announcement
+        announcement = get_object_or_404(
+            Announcement,
+            pk=pk,
+            status="published",
         )
-        if created:
+        action = request.POST.get("action", "read")
+        receipt = AnnouncementReadReceipt.objects.filter(
+            user=request.user,
+            announcement=announcement,
+        ).first()
+        if action == "unread" and receipt:
+            receipt.delete()
+            Announcement.objects.filter(
+                pk=pk,
+                read_count__gt=0,
+            ).update(read_count=F("read_count") - 1)
+        elif action != "unread" and receipt is None:
+            AnnouncementReadReceipt.objects.create(
+                user=request.user,
+                announcement=announcement,
+            )
             Announcement.objects.filter(pk=pk).update(read_count=F("read_count") + 1)
-            announcement.refresh_from_db(fields=["read_count"])
 
-        # return updated read button HTML or JSON response
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"is_read": action != "unread"})
         return redirect("announcements:list")
 
     return redirect("announcements:list")

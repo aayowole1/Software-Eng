@@ -13,7 +13,8 @@ from announcements.models import (
     AnnouncementReadReceipt,
     Category,
 )
-from accounts.models import Profile, Role
+from committees.models import Committee
+from accounts.models import Profile
 
 from .test_support import AnnouncementTestDataMixin
 
@@ -24,30 +25,25 @@ class AnnouncementModelTests(AnnouncementTestDataMixin, TestCase):
         self.assertEqual(str(announcement), "Town hall")
 
     def test_read_percentage_is_calculated(self):
-        announcement = self.make_announcement()
-        members = [self.make_user() for _ in range(4)]
-        Profile.objects.filter(user__in=members).update(role=Role.MEMBER)
-        AnnouncementReadReceipt.objects.create(
-            announcement=announcement,
-            user=members[0],
-        )
+        announcement = self.make_announcement(read_count=25)
+        for _ in range(100):
+            member = self.make_user()
+            Profile.objects.filter(user=member).update(role="member")
         self.assertEqual(announcement.read_percentage, 25)
-        new_member = self.make_user()
-        Profile.objects.filter(user=new_member).update(role=Role.MEMBER)
-        self.assertEqual(announcement.read_percentage, 20)
 
-    def test_read_percentage_is_zero_without_active_members(self):
+    def test_read_percentage_is_zero_when_target_is_zero(self):
+        announcement = self.make_announcement(read_count=10)
+        self.assertEqual(announcement.read_percentage, 0)
+
+    def test_read_percentage_treats_missing_read_count_as_zero(self):
         announcement = self.make_announcement()
+        announcement.read_count = None
         self.assertEqual(announcement.read_percentage, 0)
 
     def test_read_percentage_is_capped_at_one_hundred(self):
-        announcement = self.make_announcement()
+        announcement = self.make_announcement(read_count=125)
         member = self.make_user()
-        Profile.objects.filter(user=member).update(role=Role.MEMBER)
-        AnnouncementReadReceipt.objects.create(
-            announcement=announcement,
-            user=member,
-        )
+        Profile.objects.filter(user=member).update(role="member")
         self.assertEqual(announcement.read_percentage, 100)
 
     def test_announcement_ordering_places_pinned_items_first(self):
@@ -87,6 +83,10 @@ class AnnouncementModelTests(AnnouncementTestDataMixin, TestCase):
 
 
 class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
+    def test_new_form_does_not_prefill_schedule_time(self):
+        form = AnnouncementForm()
+        self.assertEqual(form.initial.get("scheduled_for"), "")
+
     def test_valid_published_announcement_form(self):
         category = self.make_category()
         form = AnnouncementForm(
@@ -95,35 +95,70 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
                 "category": category.pk,
                 "status": "published",
                 "content": "Valid content",
-                "target_reach": 10,
             }
         )
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_scheduled_time_is_required_to_be_in_the_future(self):
+    def test_audience_defaults_to_all_members(self):
+        form = AnnouncementForm(
+            data={
+                "title": "Committee notice",
+                "status": "published",
+                "content": "Committee content",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertIsNone(form.cleaned_data["audience"])
+
+    def test_audience_lists_committees_the_user_belongs_to(self):
+        user = self.make_user()
+        committee = Committee.objects.create(
+            name="Events",
+            created_by=user,
+        )
+        from committees.models import CommitteeMember
+
+        CommitteeMember.objects.create(committee=committee, user=user)
+        category = self.make_category()
+        form = AnnouncementForm(user=user)
+        self.assertIn(committee, form.fields["audience"].queryset)
+        self.assertEqual(form.fields["audience"].empty_label, "All members")
+
+    def test_blank_schedule_is_valid_for_immediate_publication(self):
         category = self.make_category()
         form = AnnouncementForm(
             data={
                 "title": "Scheduled",
                 "category": category.pk,
                 "content": "Future content",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_future_schedule_is_valid(self):
+        category = self.make_category()
+        form = AnnouncementForm(
+            data={
+                "title": "Scheduled",
+                "category": category.pk,
+                "content": "Future content",
+                "scheduled_for": "2099-01-01T12:00",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_past_schedule_is_rejected(self):
+        category = self.make_category()
+        form = AnnouncementForm(
+            data={
+                "title": "Past schedule",
+                "category": category.pk,
+                "content": "Past content",
                 "scheduled_for": "2000-01-01T12:00",
             }
         )
         self.assertFalse(form.is_valid())
         self.assertIn("scheduled_for", form.errors)
-
-    def test_future_scheduled_time_is_accepted(self):
-        category = self.make_category()
-        form = AnnouncementForm(
-            data={
-                "title": "Scheduled",
-                "category": category.pk,
-                "content": "Future content",
-                "scheduled_for": "2030-01-01T12:00",
-            }
-        )
-        self.assertTrue(form.is_valid(), form.errors)
 
     def test_required_title_and_content_are_validated(self):
         form = AnnouncementForm(data={"status": "published"})
@@ -140,24 +175,10 @@ class AnnouncementFormTests(AnnouncementTestDataMixin, TestCase):
                 "status": "published",
                 "content": "Details",
                 "meeting_virtual_url": "not-a-url",
-                "target_reach": 10,
             }
         )
         self.assertFalse(form.is_valid())
         self.assertIn("meeting_virtual_url", form.errors)
-
-    def test_target_reach_is_not_part_of_the_announcement_form(self):
-        category = self.make_category()
-        form = AnnouncementForm(
-            data={
-                "title": "Dynamic reach",
-                "category": category.pk,
-                "status": "published",
-                "content": "Details",
-            }
-        )
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertNotIn("target_reach", form.fields)
 
     def test_attachment_form_requires_a_name(self):
         form = AnnouncementAttachmentForm(

@@ -12,14 +12,14 @@ from committees.models import Committee
 
 from .models import Announcement, AnnouncementAttachment
 
+
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
-    committee = forms.ModelChoiceField(
-        queryset=Committee.objects.all(),
+    audience = forms.ModelChoiceField(
+        queryset=Committee.objects.none(),
         required=False,
         empty_label="All members",
-        help_text="Select who should view this announcement",
     )
     scheduled_for = forms.DateTimeField(
         required=False,
@@ -41,12 +41,21 @@ class AnnouncementForm(forms.ModelForm):
         )
     )
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and self.instance.pk is None:
+            self.initial["scheduled_for"] = ""
+        if user is not None:
+            self.fields["audience"].queryset = Committee.objects.filter(
+                members__user=user
+            ).distinct()
+
     class Meta:
         """Define the metadata."""
         model = Announcement
         fields = [
             "title",
-            "committee",
+            "audience",
             "is_pinned",
             "is_urgent",
             "content",
@@ -68,41 +77,36 @@ class AnnouncementForm(forms.ModelForm):
                         " placeholder:text-slate-400"
                         " focus:ring-2 focus:ring-slate-800"
                         " focus:outline-none"
-                    ),
-                    "style": "width: 100%; max-width: none;",
+                    )
                 }
             ),
-            "committee": forms.Select(
+            "audience": forms.Select(
                 attrs={
                     "class": (
                         "w-full text-sm bg-white border"
                         " border-slate-200 rounded-lg px-3 py-2"
                         " text-slate-800 focus:ring-2"
                         " focus:ring-slate-800 focus:outline-none"
-                    ),
+                    )
                 }
             ),
             "content": forms.Textarea(
-                attrs={
-                    "rows": 6,
-                    "placeholder": (
-                        "Write announcement details,"
-                        " agenda items, voting procedures,"
-                        " or guidelines..."
-                    ),
-                    "class": (
-                        "w-full text-sm bg-white border"
-                        " border-slate-200 rounded-lg p-3.5"
-                        " text-slate-800 placeholder:text-slate-400"
-                        " focus:ring-2 focus:ring-slate-800"
-                        " focus:outline-none"
-                    ),
-                    "style": (
-                        "width: 100%; max-width: none; height: 16rem;"
-                        " resize: none; overflow-y: auto;"
-                    ),
-                }
-            ),
+                    attrs={
+                        "rows": 6,
+                        "placeholder": (
+                            "Write announcement details,"
+                            " agenda items, voting procedures,"
+                            " or guidelines..."
+                        ),
+                        "class": (
+                            "w-full text-sm bg-white border"
+                            " border-slate-200 rounded-lg p-3.5"
+                            " text-slate-800 placeholder:text-slate-400"
+                            " focus:ring-2 focus:ring-slate-800"
+                            " focus:outline-none"
+                        )
+                    }
+                ),
             "meeting_location": forms.TextInput(
                 attrs={
                     "placeholder": "e.g., Student Union Auditorium (Rm 204)",
@@ -153,7 +157,7 @@ class AnnouncementForm(forms.ModelForm):
         if scheduled_for and scheduled_for <= timezone.now():
             self.add_error(
                 "scheduled_for",
-                "The scheduled time must be in the future.",
+                "Choose a date and time in the future.",
             )
 
         return cleaned_data
