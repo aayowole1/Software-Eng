@@ -4,13 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db import DatabaseError, IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
 from committees.models import CommitteeMember
 from events.models import Event
 
 from .decorators import role_required
+from .forms import ProfileEditForm
 from .google_auth import apply_google_login_headers, google_login_context
+from .provisioning import is_identifier_conflict
 from .lifecycle import apply_suspension
 from .models import Profile, Role, get_role, has_minimum_role, set_role
 
@@ -62,6 +64,35 @@ class EmailLoginView(LoginView):
         if context.get("google_enabled"):
             apply_google_login_headers(self.request, response)
         return response
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def edit_profile(request):
+    account_profile, _ = Profile.objects.get_or_create(user=request.user)
+    form = ProfileEditForm(
+        request.POST if request.method == "POST" else None,
+        instance=request.user,
+        profile=account_profile,
+    )
+    if request.method == "POST" and form.is_valid():
+        fields = ["first_name", "last_name"]
+        if not form.fields["email"].disabled:
+            fields.append("email")
+        try:
+            form.save(commit=False).save(update_fields=fields)
+            Profile.objects.filter(pk=account_profile.pk).update(
+                graduation_year=form.cleaned_data["graduation_year"],
+            )
+        except DatabaseError as error:
+            if is_identifier_conflict(error):
+                form.add_error("email", "An account with this email already exists.")
+            else:
+                form.add_error(None, "Your changes could not be confirmed. Reload My account and try again.")
+        else:
+            messages.success(request, "Profile updated.")
+            return redirect("accounts:profile")
+    return render(request, "accounts/edit_profile.html", {"form": form})
 
 
 @login_required

@@ -24,6 +24,10 @@
         </span>
       {% endif %}
 
+      {% for tag in item.tags %}
+        <a href="{% url 'announcements:list' %}?tag={{ tag|urlencode }}" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">#{{ tag }}</a>
+      {% endfor %}
+
       {% if can_publish %}
         {% if item.status == 'published' %}
           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Live</span>

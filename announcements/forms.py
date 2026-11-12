@@ -6,11 +6,23 @@
 
 # === IMPORTS
 from django import forms
+from django.core.validators import URLValidator
+from django.utils import timezone
+
 from committees.models import Committee
 
+from .models import (
+    Announcement,
+    AnnouncementAttachment,
+    AnnouncementComment,
+    Category,
+    Resource,
+)
 
 
 class TagsField(forms.CharField):
+    """Comma-separated tags, stored lower-case and de-duplicated (SCRUM-95)."""
+
     def __init__(self):
         super().__init__(
             required=False,
@@ -28,6 +40,7 @@ class TagsField(forms.CharField):
             raise forms.ValidationError("Use up to 10 tags of 32 characters each.")
         return tags
 
+
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
@@ -42,13 +55,6 @@ class AnnouncementForm(forms.ModelForm):
         required=False,
         empty_label="Select a category",
     )
-    committee = forms.ModelChoiceField(
-        queryset=Committee.objects.all(),
-        required=False,
-        label="Audience",
-        empty_label="Organization-wide",
-    )
-    tags = TagsField()
     scheduled_for = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(
@@ -69,8 +75,18 @@ class AnnouncementForm(forms.ModelForm):
         )
     )
 
+    tags = TagsField()
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["tags"].widget.attrs.update({
+            "placeholder": "e.g., budget, workshop",
+            "class": (
+                "w-full text-sm bg-white border border-slate-200 rounded-lg"
+                " px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400"
+                " focus:ring-2 focus:ring-slate-800 focus:outline-none"
+            ),
+        })
         if not self.is_bound and self.instance.pk is None:
             self.initial["scheduled_for"] = ""
         if user is not None:
@@ -87,7 +103,6 @@ class AnnouncementForm(forms.ModelForm):
             "category",
             "committee",
             "tags",
-            "status",
             "is_pinned",
             "is_urgent",
             "comments_enabled",
@@ -196,6 +211,14 @@ class AnnouncementForm(forms.ModelForm):
         return cleaned_data
 
 
+    def clean_committee(self):
+        # Older edit forms may omit the field. An explicit empty selection
+        # is required to change a committee notice to organization-wide.
+        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
+            return self.instance.committee
+        return self.cleaned_data["committee"]
+
+
 class AnnouncementCommentForm(forms.ModelForm):
     """Validate a member or officer announcement comment."""
 
@@ -215,13 +238,6 @@ class AnnouncementCommentForm(forms.ModelForm):
                 }
             )
         }
-
-    def clean_committee(self):
-        # Older edit forms may omit the field. An explicit empty selection
-        # is required to change a committee notice to organization-wide.
-        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
-            return self.instance.committee
-        return self.cleaned_data["committee"]
 
 
 # === [CLASS] ANNOUNCEMENT ATTACHMENT FORM
@@ -259,24 +275,22 @@ class AnnouncementAttachmentForm(forms.ModelForm):
 
 
 class ResourceForm(forms.ModelForm):
-    remove_file = forms.BooleanField(required=False, label="Remove the existing file")
+    """Validate a resource backed by either a safe URL or uploaded file."""
+
+    remove_file = forms.BooleanField(required=False)
     tags = TagsField()
+    file = forms.FileField(
+        required=False,
+        widget=forms.FileInput,
+    )
+    url = forms.URLField(
+        required=False,
+        validators=[URLValidator(schemes=["http", "https"])],
+    )
 
     class Meta:
         model = Resource
-        fields = ["title", "description", "category", "tags", "file", "remove_file", "url"]
-        labels = {"url": "External link", "file": "Upload a document"}
-        help_texts = {
-            "file": "Maximum 25 MB. To switch to a link, clear the existing file.",
-            "url": "Use an HTTP or HTTPS link. Choose either a file or a link.",
-        }
-        widgets = {"description": forms.Textarea(attrs={"rows": 4}), "file": forms.FileInput()}
-
-    def clean_title(self):
-        title = self.cleaned_data["title"].strip()
-        if not title:
-            raise forms.ValidationError("Enter a resource title.")
-        return title
+        fields = ["title", "description", "category", "tags", "file", "url"]
 
     def clean(self):
         cleaned_data = super().clean()

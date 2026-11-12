@@ -43,6 +43,7 @@ class Resource(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, max_length=5000)
     category = models.CharField(max_length=64, blank=True)
+    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
     file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
     url = models.URLField(max_length=2000, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -85,7 +86,7 @@ class Announcement(models.Model):
         related_name="announcements",
     )
     committee = models.ForeignKey(
-        "committees.Committee",
+        Committee,
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -209,16 +210,19 @@ class AnnouncementReadReceipt(models.Model):
         unique_together = ("user", "announcement")
 
 
-class Resource(models.Model):
-    """A shared organization file or external HTTP(S) link."""
-
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True, max_length=5000)
-    category = models.CharField(max_length=64, blank=True)
-    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
-    file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
-    url = models.URLField(max_length=2000, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+class AnnouncementComment(models.Model):
+    """Store a comment posted on an announcement."""
+    announcement = models.ForeignKey(
+        Announcement,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="announcement_comments",
+    )
+    content = models.TextField(max_length=2000)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
