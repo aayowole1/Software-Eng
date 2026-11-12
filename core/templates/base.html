@@ -49,47 +49,54 @@
 <aside class="sidebar" id="sidebar" aria-label="Main">
   <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Close navigation" aria-controls="sidebar" aria-expanded="false">Close</button>
   <div class="sidebar-content">
-    <a class="brand" href="{% url 'core:home' %}">OrgFlow</a>
+    <div class="sidebar-brand-row">
+      <a class="brand" href="{% url 'core:home' %}"><span class="sidebar-label">OrgFlow</span></a>
+      {% if user.is_authenticated %}
+        <button type="button" class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Collapse navigation" aria-controls="sidebar" aria-expanded="true">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 5h14v14H5zM9 5v14m6-10-3 3 3 3"/></svg>
+        </button>
+      {% endif %}
+    </div>
 
     {% if user.is_authenticated %}
-      <div class="sidebar-group">
-        <h3>Account</h3>
-        <ul>
-          <li><a href="{% url 'notifications:list' %}">Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}</a></li>
-          <li><a href="{% url 'accounts:profile' %}">My account</a></li>
-          <li>
-            <form method="post" action="{% url 'accounts:logout' %}" class="inline">
-              {% csrf_token %}
-              <button type="submit" class="link-button">Sign out</button>
-            </form>
-          </li>
-        </ul>
-      </div>
-
+        <div class="space-y-1">
+          <span class="sidebar-section-title">Account</span>
+          <ul class="space-y-1">
+            <li>
+              <a class="sidebar-nav-link" href="{% url 'notifications:list' %}" aria-label="Notifications{% if unread_notification_count %}, {{ unread_notification_count }} unread{% endif %}">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8.5 9a2.5 2.5 0 0 0 5 0"/></svg>
+                <span class="sidebar-label">Notifications</span>
+                {% if unread_notification_count %}
+                  <span class="sidebar-notification-count" aria-hidden="true">{{ unread_notification_count }}</span>
+                {% endif %}
+              </a>
+            </li>
+          </ul>
+        </div>
         {% if is_admin %}
-          <div class="sidebar-group">
-            <h3>Admin</h3>
-            <ul>
-              <li><a href="{% url 'accounts:user_list' %}">Users</a></li>
-              <li><a href="{% url 'core:audit_history' %}">Audit history</a></li>
+          <div class="space-y-1">
+            <span class="sidebar-section-title">Admin</span>
+            <ul class="space-y-1">
+              <li><a class="sidebar-nav-link" href="{% url 'accounts:user_list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6-3a4 4 0 0 1 0 7.75M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span class="sidebar-label">Users</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'core:audit_history' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-3m5 3V8m5 8v-6"/></svg><span class="sidebar-label">Audit history</span></a></li>
             </ul>
           </div>
         {% endif %}
 
-        <div class="sidebar-group">
-          <h3>Navigation</h3>
-          <ul>
-            <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
-            <li><a href="{% url 'core:help' %}">Help</a></li>
+        <div class="space-y-1">
+          <span class="sidebar-section-title">Navigation</span>
+          <ul class="space-y-1">
+            <li><a class="sidebar-nav-link" href="{% url 'core:dashboard' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg><span class="sidebar-label">Dashboard</span></a></li>
+            <li><a class="sidebar-nav-link" href="{% url 'core:help' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 4.7 1.2c-.7 1-1.7 1.3-2.2 2.3-.2.4-.3.8-.3 1.5m.1 3h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/></svg><span class="sidebar-label">Help</span></a></li>
             {% if is_member %}
-              <li><a href="{% url 'membership:roster' %}">Roster</a></li>
-              <li><a href="{% url 'committees:list' %}">Committees</a></li>
-              <li><a href="{% url 'tasks:list' %}">Tasks</a></li>
-              <li><a href="{% url 'events:list' %}">Events</a></li>
-              <li><a href="{% url 'announcements:list' %}">Announcements</a></li>
-              <li><a href="{% url 'resources:list' %}">Resources</a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'membership:roster' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6 8v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="sidebar-label">Roster</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'committees:list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V5m0 0 8-2 8 2v14l-8 2-8-2Zm8-16v18"/></svg><span class="sidebar-label">Committees</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'tasks:list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 11 2 2 4-4m6 3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg><span class="sidebar-label">Tasks</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'events:list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v4m10-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1Z"/></svg><span class="sidebar-label">Events</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'announcements:list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 15h3l8 4V5L7 9H4v6Zm11-6.5a4 4 0 0 1 0 7M7 15l1 5"/></svg><span class="sidebar-label">Announcements</span></a></li>
+              <li><a class="sidebar-nav-link" href="{% url 'resources:list' %}"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v12H4V5Z"/></svg><span class="sidebar-label">Resources</span></a></li>
             {% else %}
-              <li><a href="{% url 'membership:apply' %}">Apply</a></li>
+              <li><a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'membership:apply' %}">Apply</a></li>
             {% endif %}
           </ul>
         </div>
@@ -97,23 +104,23 @@
 <!-- Group: Officer Tools (if applicable) -->
           {% if is_officer %}
             <div class="space-y-1">
-<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Officer Tools</span>
+<span class="sidebar-section-title">Officer Tools</span>
 <ul class="space-y-1">
 <li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'reports:report' %}">
-<span>Reports</span>
+<a class="sidebar-nav-link" href="{% url 'reports:report' %}">
+<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-4m4 4V8m4 8v-7"/></svg><span class="sidebar-label">Reports</span>
 </a>
 </li>
 <li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'membership:application_list' %}">
-<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Applications</span>
+<a class="sidebar-nav-link" href="{% url 'membership:application_list' %}">
+<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2m-4 0a2 2 0 0 0 4 0m-4 0a2 2 0 0 1 4 0"/></svg>
+<span class="sidebar-label">Applications</span>
 </a>
 </li>
 <li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'meetings:list' %}">
-<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Notes</span>
+<a class="sidebar-nav-link" href="{% url 'meetings:list' %}">
+<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v4m10-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1Z"/></svg>
+<span class="sidebar-label">Notes</span>
 </a>
 </li>
 </ul>
@@ -123,12 +130,12 @@
           <!-- Group: Admin Actions -->
           {% if user_role == 'admin' %}
             <div class="space-y-1">
-<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Administration</span>
+<span class="sidebar-section-title">Administration</span>
 <ul class="space-y-1">
 <li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'accounts:user_list' %}">
-<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Users &amp; Permissions</span>
+<a class="sidebar-nav-link" href="{% url 'accounts:user_list' %}">
+<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6-3a4 4 0 0 1 0 7.75M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+<span class="sidebar-label">Users &amp; Permissions</span>
 </a>
 </li>
 </ul>
@@ -138,12 +145,12 @@
           <!-- Group: Notes Actions -->
           {% if is_officer %}
 <div class="space-y-1">
-<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Notes Actions</span>
+<span class="sidebar-section-title">Notes Actions</span>
 <ul class="space-y-1">
 <li>
-<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 transition" href="{% url 'meetings:create' %}">
-<svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Start Note Transcription</span>
+<a class="sidebar-nav-link" href="{% url 'meetings:create' %}">
+<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 6v12m-6-6h12"/></svg>
+<span class="sidebar-label">Start Note Transcription</span>
 </a>
 </li>
 </ul>
@@ -154,7 +161,7 @@
 
           <!-- Unauthenticated State -->
 <div class="space-y-1">
-<span class="px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 select-none">Authentication</span>
+<span class="sidebar-section-title">Authentication</span>
 <ul class="space-y-1">
 <li>
 <a class="flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" href="{% url 'core:dashboard' %}">
@@ -182,7 +189,7 @@
       </div>
 <!-- Persistent Sidebar Footer / User Profile Card -->
       {% if user.is_authenticated %}
-        <div class="p-3 border-t border-slate-200 mt-auto bg-slate-50/60">
+        <div class="sidebar-footer">
 <div class="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs space-y-2">
 <!-- User Info Row -->
 <a class="flex items-center gap-2.5 hover:opacity-80 transition group" href="{% url 'accounts:profile' %}">
