@@ -749,6 +749,17 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   background: var(--surface);
   color: var(--text);
 }
+.audit-filters select {
+  appearance: auto;
+  padding-right: 2rem;
+}
+html.dark .audit-filters input[type="date"] {
+  color-scheme: dark;
+}
+html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+}
 .filter-submit-button {
   min-height: 2.5rem;
   padding: 0.65rem 1.15rem;
