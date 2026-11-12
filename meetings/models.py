@@ -22,7 +22,7 @@ from django.db import DatabaseError, IntegrityError, models
 from django.db.models import Q
 from django.utils import timezone
 
-from .ai import summarize_meeting
+from .ai import generate_meeting_title, summarize_meeting
 
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,8 @@ class MeetingReviewConflict(ValueError):
 
 class MeetingDraft(models.Model):
     title = models.CharField(max_length=200)
-    notes = models.TextField()
+    transcript = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
     summary = models.TextField(blank=True)
     status = models.CharField(
         max_length=30,
@@ -105,12 +106,15 @@ class MeetingDraft(models.Model):
             logger.error("Unpublished meeting actions could not be cleaned up; operator recovery is required.")
             return False
 
-    def _publish_generation(self, notes, title, *, new, expected_generation=""):
-        # Provider work and all action inserts happen before the draft becomes
-        # reviewable. Each attempt owns different IDs and a different token.
+    def _publish_generation(self, transcript, notes, title, *, new, expected_generation=""):
         self._staged_generation = None
         self._publication_uncertain = False
-        result = summarize_meeting(notes)
+        result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
+        if title.endswith(" - Untitled Notes"):
+            try:
+                title = generate_meeting_title(transcript, notes)
+            except (RuntimeError, ValueError):
+                logger.warning("Meeting title generation failed; retaining the default title.")
         self.pk = self.pk or ObjectId()
         token = uuid4().hex
         self._staged_generation = token
@@ -123,6 +127,7 @@ class MeetingDraft(models.Model):
             publishing = True
             self._publication_uncertain = True
             if new:
+                self.title = title
                 self.summary = result.summary
                 self.generation_token = token
                 self.status = DraftStatus.PENDING_REVIEW
@@ -132,19 +137,19 @@ class MeetingDraft(models.Model):
                     generation_filter(expected_generation), pk=self.pk,
                     status=DraftStatus.REVISION_REQUESTED,
                 ).exclude(review_update_pending=True).update(
-                    title=title, notes=notes, summary=result.summary, generation_token=token,
-                    status=DraftStatus.PENDING_REVIEW, reviewed_by=None, reviewed_at=None,
-                    review_note="", review_item_intent=None, review_update_pending=False,
+                    title=title, transcript=transcript, notes=notes, summary=result.summary,
+                    generation_token=token, status=DraftStatus.PENDING_REVIEW,
+                    reviewed_by=None, reviewed_at=None, review_note="",
+                    review_item_intent=None, review_update_pending=False,
                 )
                 if changed != 1:
                     publishing = False
                     self._publication_uncertain = False
-                    raise MeetingReviewConflict("This meeting changed during generation. Reload it before trying again.")
+                    raise MeetingReviewConflict(
+                        "This meeting changed during generation. Reload the meeting before trying again."
+                    )
         except DatabaseError as error:
             if publishing and not isinstance(error, IntegrityError):
-                # A lost acknowledgement can follow a committed publication.
-                # Never compensate its draft or its action set, even if a newer
-                # review/generation has already advanced it before our read.
                 self._publication_uncertain = True
                 try:
                     if type(self).objects.filter(pk=self.pk, generation_token=token).exists():
@@ -165,10 +170,10 @@ class MeetingDraft(models.Model):
     def generate(self, *, force_insert=False):
         """Generate a new draft, or safely revise an existing revision request."""
         if self._state.adding:
-            return self._publish_generation(self.notes, self.title, new=True)
+            return self._publish_generation(self.transcript, self.notes, self.title, new=True)
         if force_insert:
             raise ValueError("Only a new meeting draft can be inserted.")
-        return self.revise(self.notes, title=self.title)
+        return self.revise(self.notes, transcript=self.transcript, title=self.title)
 
     def _normalize_review_items(self, items):
         if not isinstance(items, list):
@@ -187,8 +192,10 @@ class MeetingDraft(models.Model):
             if type(item.get("accepted")) is not bool:
                 raise ValueError("Choose whether each action item is accepted.")
             normalized.append({
-                "id": item_id, "description": description.strip(),
-                "accepted": item["accepted"], "position": position,
+                "id": item_id,
+                "description": description.strip(),
+                "accepted": item["accepted"],
+                "position": position,
             })
             seen.add(item_id)
         for item in ActionItem.objects.filter(pk__in=list(seen)):
@@ -253,7 +260,7 @@ class MeetingDraft(models.Model):
             raise ValueError("The review could not be finalized. Its saved action updates remain unfinished.")
         return self
 
-    def revise(self, notes, *, title=None, expected_generation=None):
+    def revise(self, notes, *, transcript=None, title=None, expected_generation=None):
         """Resubmit after a revision request: new notes, fresh AI output, back to review."""
         expected_generation = self.generation_token if expected_generation is None else expected_generation
         current = type(self).objects.get(pk=self.pk)
@@ -262,7 +269,8 @@ class MeetingDraft(models.Model):
         if current.review_update_pending:
             raise ValueError("Finish the recorded action-item review before revising notes.")
         return self._publish_generation(
-            notes, self.title if title is None else title, new=False, expected_generation=expected_generation,
+            current.transcript if transcript is None else transcript, notes,
+            self.title if title is None else title, new=False, expected_generation=expected_generation,
         )
 
 

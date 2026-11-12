@@ -39,7 +39,7 @@ cd Software-Eng
 
 Start Docker Desktop and wait until it shows Docker is running. The commands below fail with "Cannot connect to the Docker daemon" until it is.
 
-Build and start the containers (takes approx. 157 seconds):
+Build and start the containers:
 
 ```bash
 docker compose up -d --build
@@ -169,14 +169,22 @@ tests, and the remaining live-provider check. Existing password accounts are
 not automatically linked by email. New Google accounts start as applicants.
 
 ### AI meeting drafts
+`meetings/ai.py` uses OpenRouter to produce a concise discussion summary and
+proposed action items. Set `OPENROUTER_API_KEY` in `.env`; this replaces the
+previous `OPENAI_API_KEY` integration, so existing deployments must add the
+OpenRouter key before meeting summaries will work again.
+`OPENROUTER_MODEL` is optional and defaults to `openai/gpt-4o-mini`. The
+response must be valid JSON with validated summary and action-item fields.
+Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
+they are saved. The officer's notes are sent alongside the Deepgram transcript.
+Approved action items will become tasks once the task module (WBS 1.6) exists.
 
-Jack's `meetings/ai.py` calls OpenAI for a summary and proposed action items when
-`OPENAI_API_KEY` is configured. This preview preserves that provider implementation;
-live provider behavior has not been verified by the local integration checks.
-After approving a draft, an officer can choose **Create tasks from accepted action
-items**, review the assignment defaults, and confirm. Only accepted items are copied.
-Repeating the conversion preserves existing tasks and creates no duplicates.
-Original meeting notes remain officer-only.
+Meeting recording uses Deepgram real-time transcription. The browser sends
+16 kHz mono PCM chunks to Django. Django writes the active session to a
+uniquely named temporary PCM file, sends that file to Deepgram when recording
+stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
+the temporary file in all success and error paths. The officer can add notes
+before submitting; both sources are retained and passed to OpenRouter.
 
 ### Participation reports (WBS 1.8)
 
@@ -186,14 +194,33 @@ organization's time zone. The page shows:
 
 * **Events held:** non-cancelled events in the range that have already started,
   with RSVPs going and attendance for each. Upcoming events are not counted.
-* **Members:** events attended out of events held, attendance %, and tasks
-  assigned, completed and overdue (tasks created in the range).
+* **Members:** events attended out of the events held since their membership
+  started (their latest approval), attendance %, and tasks assigned, completed
+  and overdue (tasks created in the range).
 * **Committees:** members, attendance % across those events, and task totals.
 
-**Download CSV** exports the same figures with a `section` column. Cells that
-start with `=`, `+`, `-` or `@` are escaped so spreadsheets don't run them as
-formulas. An end date before the start date is rejected on the page and in the
-download. Charts are not included yet (SCRUM-37).
+Under the **Download CSV** heading, pick a report from the **Report** dropdown
+and click **Download**. The download uses the date range currently selected.
+**All reports (ZIP)** (the default) downloads one ZIP file,
+`orgflow-report-all-{start}_{end}.zip`, containing the three CSVs below; or
+choose a single report:
+
+| Download | File name pattern | Columns |
+|---|---|---|
+| Events | `orgflow-report-events-{start}_{end}.csv` | Event, Date, Start time, Location, RSVPs going, Attended |
+| Members | `orgflow-report-members-{start}_{end}.csv` | Member, Email, Role, Status, Attended, Events held, Attendance %, Tasks assigned, Tasks completed, Tasks overdue |
+| Committees | `orgflow-report-committees-{start}_{end}.csv` | Committee, Members, Attendance %, Tasks total, Tasks completed, Tasks overdue |
+
+Members are sorted by name. **Status** shows actual account access: `active`
+(the same rule as the dashboard's Active members count), `suspended`, `pending`
+(a membership approval still updating) or `disabled` (the account is switched
+off). Each file is UTF-8 with a byte-order mark so that names with accents open
+correctly in Excel. Attendance % is a plain number with one decimal place
+(e.g. `66.7`), and cells with no value are blank rather than `N/A`. Cells that
+start with `=`, `+`, `-`, `@`, tab or carriage return are escaped so
+spreadsheets do not interpret them as formulas. An end date before the start
+date, or an unknown report choice, is rejected with HTTP 400. Charts are not
+included yet (SCRUM-37).
 
 ### Tasks and committee work
 
@@ -259,6 +286,33 @@ an organization-wide audit system remains separate. Live OpenAI summarization an
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
 deployment needs its own Google client configuration and live check.
+
+## About page settings
+
+The signed-out dashboard shows a public **About** section with the organization's
+name, mission, benefits and a leadership contact link. Configure these in `.env`:
+
+| Setting | Environment variable | Default |
+|---------|----------------------|---------|
+| Organization name | `ORG_NAME` | Placeholder text |
+| Mission statement | `ORG_MISSION` | Placeholder text |
+| Benefits of joining | `ORG_BENEFITS` | Pipe-separated list, e.g. `Networking\|Leadership skills` |
+| Contact email | `ORG_CONTACT_EMAIL` | Empty (shows "Contact an officer after you sign in") |
+
+Example `.env` entries:
+
+```env
+ORG_NAME=Acme Student Association
+ORG_MISSION=We bring students together to build real-world skills.
+ORG_BENEFITS=Professional networking|Leadership opportunities|Community events
+ORG_CONTACT_EMAIL=officers@acme.edu
+```
+
+Restart the web container after changing these values:
+
+```bash
+docker compose restart web
+```
 
 ## Running Tests
 

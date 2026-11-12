@@ -2,6 +2,7 @@
 {% block title %}My account{% endblock %}
 {% block content %}
   <h1>My account</h1>
+  <p><a href="{% url 'accounts:edit_profile' %}">Edit profile</a></p>
   <div class="card">
     <p><strong>Email:</strong> {{ user.email|default:user.username }}</p>
     <p><strong>Role:</strong> <span class="badge">{{ role }}</span></p>
@@ -13,4 +14,24 @@
   {% empty %}
     <p class="muted">You're not on any committees.</p>
   {% endfor %}
+  {% if show_attendance %}
+    <h2 id="attendance">My attendance</h2>
+    <div class="card">
+      <p class="muted">Counting events since your membership started on {{ attendance_since|date:"M j, Y" }}.</p>
+      {% if attendance_total == 0 %}
+        <p>No past events yet.</p>
+      {% else %}
+        <p>Attended {{ attendance_count }} of {{ attendance_total }} event{{ attendance_total|pluralize }} ({{ attendance_rate }}%)</p>
+        <ul>
+          {% for row in attendance_history %}
+            <li>
+              <span class="muted">{{ row.event.starts_at|date:"M j, Y" }}</span>
+              <a href="{% url 'events:detail' row.event.pk %}">{{ row.event.title }}</a>
+              {% if row.attended %}<span class="badge">Attended</span>{% else %}<span class="muted">Not recorded</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  {% endif %}
 {% endblock %}

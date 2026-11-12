@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+from orgflow_project.env import env_list, env_text
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -55,9 +57,9 @@ INSTALLED_APPS = [
     "committees.apps.CommitteesConfig",
     "reports.apps.ReportsConfig",
     "meetings.apps.MeetingsConfig",
+    "announcements.apps.AnnouncementsConfig",
     "tasks.apps.TasksConfig",
     "events.apps.EventsConfig",
-    "announcements.apps.AnnouncementsConfig",
     "notifications.apps.NotificationsConfig",
 ]
 
@@ -187,6 +189,17 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "OrgFlow <no-reply@orgflow.local>")
 
 
+# Organization public profile (FR-1.5, NFR-05).
+# Set each value in .env; see .env.example and README for details.
+
+# Blank values (for example from a copied .env.example) fall back to the
+# placeholder text, so the public page never shows an empty About section.
+ORG_NAME = env_text("ORG_NAME", "Add your organization's name in ORG_NAME")
+ORG_MISSION = env_text("ORG_MISSION", "Add your organization's mission in ORG_MISSION")
+ORG_BENEFITS = env_list("ORG_BENEFITS", "Add benefit 1 in ORG_BENEFITS|Add benefit 2 in ORG_BENEFITS")
+ORG_CONTACT_EMAIL = env_text("ORG_CONTACT_EMAIL", "")
+
+
 # MongoDB-compatible migrations for Django's built-in apps.
 
 MIGRATION_MODULES = {
@@ -194,4 +207,3 @@ MIGRATION_MODULES = {
     "auth": "mongo_migrations.auth",
     "contenttypes": "mongo_migrations.contenttypes",
 }
-

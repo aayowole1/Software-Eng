@@ -6,11 +6,13 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name="meetingdraft", name="review_update_pending",
+            model_name="meetingdraft",
+            name="review_update_pending",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name="meetingdraft", name="review_item_intent",
+            model_name="meetingdraft",
+            name="review_item_intent",
             field=models.JSONField(blank=True, default=None, editable=False, null=True),
         ),
     ]

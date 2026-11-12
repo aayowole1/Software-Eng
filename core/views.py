@@ -17,13 +17,22 @@ from events.models import AttendanceAuditLog, AttendanceAuditStatus, Event
 from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
-from announcements.models import Announcement
-from announcements.permissions import effective_role
+from announcements.permissions import effective_role, visible_announcements
 
 
 def dashboard(request):
     """The dashboard is public; signed-in users also see their own sections."""
-    context = {"committees_public": Committee.objects.all()}
+    from django.conf import settings as django_settings
+    from membership.models import REAPPLY_WAIT
+
+    context = {
+        "committees_public": Committee.objects.all(),
+        "org_name": django_settings.ORG_NAME,
+        "org_mission": django_settings.ORG_MISSION,
+        "org_benefits": django_settings.ORG_BENEFITS,
+        "org_contact_email": django_settings.ORG_CONTACT_EMAIL,
+        "reapply_wait_days": REAPPLY_WAIT.days,
+    }
     if request.user.is_authenticated:
         role = get_role(request.user)
         context.update(
@@ -37,15 +46,33 @@ def dashboard(request):
             context["upcoming_events"] = Event.objects.filter(
                 starts_at__gte=timezone.now(), cancelled=False
             )[:3]
-            if has_minimum_role(effective_role(request.user), Role.MEMBER):
-                context["recent_announcements"] = Announcement.objects.filter(
-                    status="published",
-                ).order_by("-published_at", "-id")[:3]
+            announcement_role = effective_role(request.user)
+            if has_minimum_role(announcement_role, Role.MEMBER):
+                context["recent_announcements"] = visible_announcements(
+                    request.user, announcement_role
+                ).filter(status="published").order_by("-published_at", "-id")[:3]
         if has_minimum_role(role, Role.OFFICER):
             context["pending_applications"] = MembershipApplication.objects.filter(
                 status=ApplicationStatus.PENDING
             ).count()
             context["pending_drafts"] = MeetingDraft.objects.filter(status=DraftStatus.PENDING_REVIEW).count()
+            # FR-6.1: summary cards for officers and admins. Imported here so
+            # this change doesn't touch the module import lines other PRs edit.
+            from tasks.models import eligible_assignees
+
+            # Active members are roster members whose accounts can be used
+            # now: switched on, not suspended or mid-suspension, and with no
+            # unfinished membership approval. This is the same rule that
+            # decides who can be assigned tasks.
+            context["summary_active_members"] = eligible_assignees().count()
+            context["summary_upcoming_events"] = Event.objects.filter(
+                starts_at__gte=timezone.now(),
+                cancelled=False,
+            ).count()
+            context["summary_open_tasks"] = Task.objects.exclude(status=TaskStatus.DONE).count()
+            context["summary_pending_approvals"] = (
+                context["pending_applications"] + context["pending_drafts"]
+            )
         if has_minimum_role(role, Role.MEMBER):
             assigned = Task.objects.visible_to(request.user).filter(assignee=request.user)
             context["my_tasks"] = assigned.exclude(status=TaskStatus.DONE).order_by("due_date", "-created_at")[:5]
@@ -54,6 +81,10 @@ def dashboard(request):
                 "completed": assigned.filter(status=TaskStatus.DONE).count(),
                 "overdue": assigned.exclude(status=TaskStatus.DONE).filter(due_date__lt=timezone.localdate()).count(),
             }
+            # US-13: the member's own attendance summary, linking to My account.
+            attendance = Event.objects.attendance_summary_for(request.user)
+            if attendance["total"]:
+                context["attendance_summary"] = attendance
     return render(request, "core/dashboard.html", context)
 
 

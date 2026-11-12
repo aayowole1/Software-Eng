@@ -47,6 +47,12 @@
   </div>
 </form>
 
+{% if is_admin %}
+<div class="roster-export">
+  <a href="{% url 'membership:export_roster_csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
+</div>
+{% endif %}
+
 <div class="table-wrap">
   <p>{{ page_obj.paginator.count }} member{{ page_obj.paginator.count|pluralize }} found.</p>
   <table>
@@ -65,7 +71,7 @@
         <tr>
           <td>
                <a href="{% url 'membership:member_detail' p.pk %}">
-                 {{ p.user.username }}
+                 {{ p.user.get_full_name|default:p.user.username }}
                </a>
          </td>
           <td>{{ p.user.email|default:"—" }}</td>
