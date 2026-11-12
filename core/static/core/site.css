@@ -722,7 +722,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--surface);
-  width: 100%;
+  width: auto;
   margin-right: 0;
   margin-left: 0;
 }
@@ -757,11 +757,19 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   background: #1e293b;
 }
 .audit-table-wrap { margin-top: 1rem; }
+.audit-content {
+  width: 100%;
+}
 .audit-help {
   display: flex;
+  width: auto;
   justify-content: flex-end;
   margin: 0 0 0.5rem;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
+.audit-help summary { background: transparent; }
 .audit-help [role="tooltip"] {
   right: 0;
 }

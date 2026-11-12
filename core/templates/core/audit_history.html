@@ -15,36 +15,37 @@
   </div>
 </details>
 
-<form method="get" class="audit-filters" role="search" aria-label="Filter audit history">
-  {{ filter_form.non_field_errors }}
-  <div>
-    <label for="{{ filter_form.type.id_for_label }}">{{ filter_form.type.label }}</label>
-    {{ filter_form.type }}
-    {{ filter_form.type.errors }}
-  </div>
-  <div>
-    <label for="{{ filter_form.start.id_for_label }}">{{ filter_form.start.label }}</label>
-    {{ filter_form.start }}
-    {{ filter_form.start.errors }}
-  </div>
-  <div>
-    <label for="{{ filter_form.end.id_for_label }}">{{ filter_form.end.label }}</label>
-    {{ filter_form.end }}
-    {{ filter_form.end.errors }}
-  </div>
-  <button class="filter-submit-button" type="submit">Apply Filters</button>
-  {% if is_filtered or filter_form.errors %}<a class="button secondary" href="{% url 'core:audit_history' %}">Clear Filters</a>{% endif %}
-</form>
+<div class="audit-content">
+  <form method="get" class="audit-filters" role="search" aria-label="Filter audit history">
+    {{ filter_form.non_field_errors }}
+    <div>
+      <label for="{{ filter_form.type.id_for_label }}">{{ filter_form.type.label }}</label>
+      {{ filter_form.type }}
+      {{ filter_form.type.errors }}
+    </div>
+    <div>
+      <label for="{{ filter_form.start.id_for_label }}">{{ filter_form.start.label }}</label>
+      {{ filter_form.start }}
+      {{ filter_form.start.errors }}
+    </div>
+    <div>
+      <label for="{{ filter_form.end.id_for_label }}">{{ filter_form.end.label }}</label>
+      {{ filter_form.end }}
+      {{ filter_form.end.errors }}
+    </div>
+    <button class="filter-submit-button" type="submit">Apply Filters</button>
+    {% if is_filtered or filter_form.errors %}<a class="button secondary" href="{% url 'core:audit_history' %}">Clear Filters</a>{% endif %}
+  </form>
 
-<p class="muted" role="status">
-  {{ total_matching }} matching entr{{ total_matching|pluralize:"y,ies" }}{% if total_matching > display_limit %}; showing the most recent {{ display_limit }}{% endif %}.
-  Dates use the organization's time zone and include both the start and end day.
-</p>
+  <p class="muted" role="status">
+    {{ total_matching }} matching entr{{ total_matching|pluralize:"y,ies" }}{% if total_matching > display_limit %}; showing the most recent {{ display_limit }}{% endif %}.
+    Dates use the organization's time zone and include both the start and end day.
+  </p>
 
-{% if entries %}
-<div class="table-wrap users-table-wrap audit-table-wrap">
-  <table class="users-table audit-table">
-    <thead>
+  {% if entries %}
+  <div class="table-wrap users-table-wrap audit-table-wrap">
+    <table class="users-table audit-table">
+      <thead>
       <tr>
         <th scope="col">When</th>
         <th scope="col">Type</th>
@@ -52,8 +53,8 @@
         <th scope="col">Event</th>
         <th scope="col">Detail</th>
       </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
       {% for entry in entries %}
       <tr>
         <td><time datetime="{{ entry.at }}">{{ entry.at|human_datetime }}</time></td>
@@ -63,11 +64,12 @@
         <td class="muted">{{ entry.detail }}</td>
       </tr>
       {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">{% if is_filtered %}No audit events match these filters.{% else %}No audit events recorded yet.{% endif %}</p>
+  {% endif %}
 </div>
-{% else %}
-<p class="muted">{% if is_filtered %}No audit events match these filters.{% else %}No audit events recorded yet.{% endif %}</p>
-{% endif %}
 
 {% endblock %}
