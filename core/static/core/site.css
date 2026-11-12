@@ -436,6 +436,148 @@ form.inline { display: inline; }
 table { width: 100%; border-collapse: collapse; background: var(--surface); }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 
+.users-page { max-width: 100%; }
+.users-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.users-page-header h1 { margin-bottom: 0.35rem; }
+.user-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+.user-filters > div { min-width: 12rem; }
+.user-filters label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.user-filters input,
+.user-filters select,
+.users-table select {
+  min-height: 2.25rem;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--surface);
+  color: var(--text);
+}
+.users-table-wrap {
+  overflow-x: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+.users-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.users-table .users-col-account { width: 19%; }
+.users-table .users-col-role { width: 13%; }
+.users-table .users-col-status { width: 15%; }
+.users-table .users-col-change { width: 17%; }
+.users-table .users-col-actions { width: 18%; }
+.users-table .users-col-history { width: 18%; }
+.users-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.users-table tbody tr:nth-child(even) { background: #f8fafc; }
+.users-table tbody tr:hover { background: #eff6ff; }
+.users-table td,
+.users-table th { overflow-wrap: anywhere; }
+.users-table select { max-width: 10rem; }
+.user-secondary {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.role-pill,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.role-pill--admin { color: #5b21b6; background: #ede9fe; border-color: #c4b5fd; }
+.role-pill--officer { color: #1e3a8a; background: #dbeafe; border-color: #bfdbfe; }
+.role-pill--member { color: #155e75; background: #cffafe; border-color: #a5f3fc; }
+.role-pill--applicant { color: #475569; background: #e2e8f0; border-color: #cbd5e1; }
+.status-pill--active { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+.status-pill--suspended { color: #991b1b; background: #fee2e2; border-color: #fecaca; }
+.status-pill--inactive { color: #475569; background: #e2e8f0; border-color: #cbd5e1; }
+.users-table-footer,
+.load-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.save-role-button {
+  padding: 0.7rem 1.15rem;
+  border-color: #0f172a;
+  color: #f8fafc;
+  background: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+.save-role-button:hover {
+  border-color: #1e293b;
+  background: #1e293b;
+}
+.load-more { justify-content: center; }
+.help-tooltip { position: relative; }
+.help-tooltip summary {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid #94a3b8;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--surface);
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+.help-tooltip summary::-webkit-details-marker { display: none; }
+.help-tooltip [role="tooltip"] {
+  position: absolute;
+  top: 2.25rem;
+  right: 0;
+  z-index: 5;
+  width: min(22rem, 75vw);
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgb(15 23 42 / 0.14);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
 .messages { list-style: none; padding: 0; margin: 0 0 16px; }
 .message { padding: 10px 12px; border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border); background: var(--surface); }
 .message.success { border-color: var(--success); color: var(--success); }

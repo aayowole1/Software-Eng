@@ -16,6 +16,7 @@ urlpatterns = [
     path("me/", views.profile, name="profile"),
     path("me/edit/", views.edit_profile, name="edit_profile"),
     path("users/", views.user_list, name="user_list"),
+    path("users/roles/", views.bulk_change_roles, name="bulk_change_roles"),
     path("users/<oid:pk>/role/", views.change_role, name="change_role"),
     # Forgot password (Django's built-in reset flow). Accounts without a
     # usable password (Google sign-in) or not yet approved never get an email.

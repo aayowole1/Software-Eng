@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.db import DatabaseError, IntegrityError
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 from .forms import PasswordSignupConflictError, PasswordSignupRetryError, RegisterForm, EmailLoginForm, RoleForm, SuspensionForm
@@ -115,12 +116,111 @@ def profile(request):
 
 @role_required(Role.ADMIN)
 def user_list(request):
-    profiles = Profile.objects.select_related("user").order_by("user__username")
+    profiles = Profile.objects.select_related("user").annotate(
+        privilege_order=Case(
+            When(user__is_superuser=True, then=Value(4)),
+            When(role=Role.ADMIN, then=Value(4)),
+            When(role=Role.OFFICER, then=Value(3)),
+            When(role=Role.MEMBER, then=Value(2)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    )
+    email_filter = request.GET.get("email", "").strip()
+    role_filter = request.GET.get("role", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    if email_filter:
+        profiles = profiles.filter(
+            Q(user__email__icontains=email_filter) | Q(user__username__icontains=email_filter)
+        )
+    if role_filter in Role.values:
+        profiles = profiles.filter(role=role_filter)
+    if status_filter == "active":
+        profiles = profiles.filter(user__is_active=True, is_suspended=False)
+    elif status_filter == "suspended":
+        profiles = profiles.filter(is_suspended=True)
+    elif status_filter == "inactive":
+        profiles = profiles.filter(user__is_active=False, is_suspended=False)
+    profiles = profiles.order_by("-privilege_order", "user__username")
+    total_profiles = profiles.count()
+    try:
+        display_limit = max(50, min(int(request.GET.get("load_more", "50")), 5000))
+    except ValueError:
+        display_limit = 50
+    displayed_profiles = profiles[:display_limit]
+    query = request.GET.copy()
+    query.pop("load_more", None)
+    filter_query = query.urlencode()
     return render(
         request,
         "accounts/user_list.html",
-        {"profiles": profiles, "role_choices": Role.choices},
+        {
+            "profiles": displayed_profiles,
+            "role_choices": Role.choices,
+            "total_profiles": total_profiles,
+            "display_limit": display_limit,
+            "has_more": total_profiles > display_limit,
+            "next_display_limit": display_limit + 50,
+            "filter_query": filter_query,
+            "filters": {
+                "email": email_filter,
+                "role": role_filter,
+                "status": status_filter,
+            },
+        },
     )
+
+
+@require_POST
+@role_required(Role.ADMIN)
+def bulk_change_roles(request):
+    changed = 0
+    errors = []
+    for key, role in request.POST.items():
+        if not key.startswith("role_"):
+            continue
+        pk = key.removeprefix("role_")
+        target = User.objects.filter(pk=pk).first()
+        if target is None:
+            errors.append("One selected account no longer exists.")
+            continue
+        if target == request.user:
+            errors.append("Your own role cannot be changed.")
+            continue
+        if target.is_superuser:
+            errors.append("Superuser accounts always have the Admin role.")
+            continue
+        if role not in Role.values:
+            errors.append("Invalid role.")
+            continue
+        current_role = Profile.objects.filter(user=target).values_list("role", flat=True).first()
+        if current_role == role:
+            continue
+        try:
+            expected_version = int(request.POST.get(f"version_{pk}", "0"))
+        except ValueError:
+            errors.append("One role update had an invalid version.")
+            continue
+        try:
+            set_role(
+                target,
+                role,
+                actor=request.user,
+                source="account_role_management",
+                expected_version=expected_version,
+                reconcile_rejected=True,
+            )
+        except ValueError as error:
+            errors.append(str(error))
+        except DatabaseError:
+            errors.append("The role change could not be confirmed. Reload the users page before trying again.")
+        else:
+            changed += 1
+    if changed:
+        messages.success(request, f"{changed} role change(s) saved.")
+    for error in errors:
+        messages.error(request, error)
+    return redirect("accounts:user_list")
 
         # Prevents an admin from accidentally locking themselves out.
 
