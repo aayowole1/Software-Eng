@@ -5,8 +5,6 @@
 
 {% block page_heading %}Notifications{% endblock %}
 {% block content %}
-<h1>Notifications</h1>
-
 {% if notifications %}
   <div style="margin-bottom:1rem;">
     <form method="post" action="{% url 'notifications:mark_all_read' %}" style="display:inline;">
