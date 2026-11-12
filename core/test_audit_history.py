@@ -730,3 +730,40 @@ class AuditHistoryFilterTests(TestCase):
     def test_filters_do_not_open_the_page_to_officers(self):
         self.client.force_login(self.officer)
         self.assertEqual(self._get(type="attendance").status_code, 403)
+
+
+# ---------------------------------------------------------------------------
+# Records created before the audit fields existed
+# ---------------------------------------------------------------------------
+
+class RecordsWithoutHistoryTests(TestCase):
+    """MongoDB does not backfill new fields, so older records have no history at all."""
+
+    def setUp(self):
+        from django.db import connection
+
+        from accounts.models import Profile
+        from tasks.models import Task
+
+        self.admin = make_user("legacy-admin@example.com", Role.ADMIN)
+        self.applicant = make_user("legacy-applicant@example.com")
+        self.application = MembershipApplication.objects.create(user=self.applicant, statement="Hi.")
+        task = Task.objects.create(title="Legacy task", created_by=self.admin)
+        for model, pk, field in (
+            (MembershipApplication, self.application.pk, "history"),
+            (Profile, Profile.objects.get(user=self.admin).pk, "role_history"),
+            (Task, task.pk, "history"),
+        ):
+            connection.database[model._meta.db_table].update_one({"_id": pk}, {"$unset": {field: ""}})
+        self.application.refresh_from_db()
+        self.assertIsNone(self.application.history)
+
+    def test_audit_page_loads(self):
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse("core:audit_history")).status_code, 200)
+
+    def test_application_can_still_be_reviewed(self):
+        self.application.review(self.admin, approve=False, note="Not this term.")
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, ApplicationStatus.REJECTED)
+        self.assertEqual([entry["action"] for entry in self.application.history], ["rejected"])
