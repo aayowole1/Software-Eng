@@ -295,11 +295,55 @@ def finish_review_access(request, pk):
 
 
 
-def _filter_roster_members(search_query, selected_role):
+ROSTER_STATUSES = [
+    ("active", "Active"),
+    ("suspended", "Suspended"),
+    ("pending", "Pending approval"),
+    ("disabled", "Disabled"),
+]
+
+
+def _roster_status_ids():
+    """User IDs that decide account status, shared by the roster page and CSV."""
+    from tasks.models import eligible_assignees
+
+    active_ids = set(eligible_assignees().values_list("pk", flat=True))
+    pending_access_ids = set(
+        MembershipApplication.objects.filter(access_update_pending=True).values_list("user_id", flat=True)
+    )
+    return active_ids, pending_access_ids
+
+
+def _roster_filters(request):
+    """Read and validate the roster filters (FR-2.2) from the query string.
+
+    Status is account-access information, so only officers and admins can
+    filter by it; for everyone else it is ignored.
+    """
+    # Imported here to keep the shared import lines unchanged (other open
+    # PRs add imports next to them).
+    from bson import ObjectId
+    from accounts.models import has_minimum_role
+    from committees.models import Committee
+
+    search_query = request.GET.get("q", "").strip()[:100]
+    selected_role = request.GET.get("role", "").strip().lower()
+    if selected_role not in ROSTER_ROLES:
+        selected_role = ""
+    selected_committee = request.GET.get("committee", "").strip()
+    if not ObjectId.is_valid(selected_committee) or not Committee.objects.filter(pk=selected_committee).exists():
+        selected_committee = ""
+    selected_status = request.GET.get("status", "").strip().lower()
+    if selected_status not in dict(ROSTER_STATUSES) or not has_minimum_role(get_role(request.user), Role.OFFICER):
+        selected_status = ""
+    return search_query, selected_role, selected_committee, selected_status
+
+
+def _filter_roster_members(search_query, selected_role, selected_committee="", selected_status="", status_ids=None):
     """Return a filtered, ordered queryset of roster Profile objects.
 
     Both the roster page and the CSV export use this so the two always show
-    the same set of members.
+    the same set of members. Status follows _account_status.
     """
     members = Profile.objects.filter(role__in=ROSTER_ROLES).select_related("user")
 
@@ -307,10 +351,34 @@ def _filter_roster_members(search_query, selected_role):
         members = members.filter(
             Q(user__username__icontains=search_query)
             | Q(user__email__icontains=search_query)
+            | Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
         )
 
     if selected_role in ROSTER_ROLES:
         members = members.filter(role=selected_role)
+
+    if selected_committee:
+        member_ids = list(
+            CommitteeMember.objects.filter(committee_id=selected_committee).values_list("user_id", flat=True)
+        )
+        members = members.filter(user_id__in=member_ids)
+
+    if selected_status:
+        active_ids, pending_access_ids = status_ids or _roster_status_ids()
+        suspended = Q(is_suspended=True) | Q(suspension_update_pending=True)
+        if selected_status == "active":
+            members = members.filter(user_id__in=list(active_ids))
+        else:
+            members = members.exclude(user_id__in=list(active_ids))
+            if selected_status == "suspended":
+                members = members.filter(suspended)
+            else:
+                members = members.exclude(suspended)
+                if selected_status == "pending":
+                    members = members.filter(user_id__in=list(pending_access_ids))
+                else:
+                    members = members.exclude(user_id__in=list(pending_access_ids)).filter(user__is_active=False)
 
     committee_memberships = CommitteeMember.objects.select_related("committee")
     members = members.prefetch_related(
@@ -322,18 +390,27 @@ def _filter_roster_members(search_query, selected_role):
 
 @role_required(Role.MEMBER)
 def roster(request):
-    """Display the member roster with search, role, and committee information."""
+    """Display the member roster with search and role, committee and status filters (FR-2.2)."""
 
-    search_query = request.GET.get("q", "").strip()[:100]
-    selected_role = request.GET.get("role", "").strip().lower()
-    if selected_role not in ROSTER_ROLES:
-        selected_role = ""
+    from accounts.models import has_minimum_role
+    from committees.models import Committee
 
-    members = _filter_roster_members(search_query, selected_role)
+    search_query, selected_role, selected_committee, selected_status = _roster_filters(request)
+    can_see_status = has_minimum_role(get_role(request.user), Role.OFFICER)
+    status_ids = _roster_status_ids() if can_see_status else None
+
+    members = _filter_roster_members(
+        search_query, selected_role, selected_committee, selected_status, status_ids=status_ids,
+    )
 
     # Filter and paginate before fetching profiles/committee memberships. Large
     # rosters should not render every member on each request (SCRUM-80).
     page = Paginator(members, 25).get_page(request.GET.get("page"))
+    if can_see_status:
+        status_labels = dict(ROSTER_STATUSES)
+        for profile in page.object_list:
+            status = _account_status(profile, *status_ids)
+            profile.roster_status = status_labels.get(status, status.capitalize())
     params = request.GET.copy()
     params.pop("page", None)
 
@@ -343,6 +420,11 @@ def roster(request):
         "query_string": params.urlencode(),
         "search_query": search_query,
         "selected_role": selected_role,
+        "selected_committee": selected_committee,
+        "selected_status": selected_status,
+        "can_see_status": can_see_status,
+        "committees": Committee.objects.order_by("name"),
+        "status_choices": ROSTER_STATUSES,
         "role_choices": [
             (Role.MEMBER, "Member"),
             (Role.OFFICER, "Officer"),
@@ -351,7 +433,6 @@ def roster(request):
     }
 
     return render(request, "membership/roster.html", context)
-
 
 
 def _account_status(profile, active_ids, pending_access_ids):
@@ -384,18 +465,10 @@ def export_roster_csv(request):
     # Imported here to keep the shared import lines unchanged (other open
     # PRs add imports next to them).
     from core.csv_safe import escape_csv_cell
-    from tasks.models import eligible_assignees
 
-    search_query = request.GET.get("q", "").strip()[:100]
-    selected_role = request.GET.get("role", "").strip().lower()
-    if selected_role not in ROSTER_ROLES:
-        selected_role = ""
-
-    members = _filter_roster_members(search_query, selected_role)
-    active_ids = set(eligible_assignees().values_list("pk", flat=True))
-    pending_access_ids = set(
-        MembershipApplication.objects.filter(access_update_pending=True).values_list("user_id", flat=True)
-    )
+    filters = _roster_filters(request)
+    active_ids, pending_access_ids = _roster_status_ids()
+    members = _filter_roster_members(*filters, status_ids=(active_ids, pending_access_ids))
 
     # Dates use the organization's time zone, matching the roster page.
     today = timezone.localdate().strftime("%Y-%m-%d")
