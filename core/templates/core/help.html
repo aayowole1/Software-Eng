@@ -52,7 +52,7 @@
             {% for step in guide.steps %}<li>{{ step|help_text }}</li>{% endfor %}
           </ol>
           {% for note in guide.notes %}
-            <p class="muted help-note">{% if note.coming_soon %}<span class="badge">Coming soon</span> {% endif %}{{ note.text|cut:"Coming soon: "|help_text }}</p>
+            <p class="muted help-note">{% if note.coming_soon %}<span class="badge">Coming soon</span> {% endif %}{{ note.text|help_text }}</p>
           {% endfor %}
         </article>
       {% endfor %}

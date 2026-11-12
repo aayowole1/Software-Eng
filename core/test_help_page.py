@@ -1,5 +1,7 @@
 """SCRUM-50: in-app Help page with FAQ and role-based guides, mirrored in docs/."""
 
+from unittest.mock import patch
+
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils.html import escape
@@ -72,6 +74,42 @@ class HelpPageTests(TestCase):
         self.assertNotContains(self.client.get(reverse("accounts:login")), f'href="{HELP_URL}"')
 
 
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class FeatureNoteTests(TestCase):
+    """Notes for features in open PRs switch on automatically once the feature exists."""
+
+    def officer_page(self):
+        self.client.force_login(make_user("help-notes@example.com", Role.OFFICER))
+        return self.client.get(HELP_URL)
+
+    def test_notes_show_coming_soon_until_the_feature_exists(self):
+        with patch.dict("core.help_content.FEATURE_CHECKS", {"ai_fallback": lambda: False, "recording_upload": lambda: False}):
+            response = self.officer_page()
+        self.assertContains(response, "your notes will still be saved")
+        self.assertContains(response, "be able to upload a recording")
+        self.assertNotContains(response, "<strong>Manual summary</strong>", html=False)
+
+    def test_notes_show_the_finished_steps_once_the_feature_exists(self):
+        with patch.dict("core.help_content.FEATURE_CHECKS", {"ai_fallback": lambda: True, "recording_upload": lambda: True}):
+            response = self.officer_page()
+        self.assertContains(response, "<strong>Manual summary</strong>", html=False)
+        self.assertContains(response, "<strong>Upload a recording</strong>", html=False)
+        self.assertNotContains(response, "your notes will still be saved")
+
+    def test_each_note_switches_independently(self):
+        with patch.dict("core.help_content.FEATURE_CHECKS", {"ai_fallback": lambda: True, "recording_upload": lambda: False}):
+            response = self.officer_page()
+        self.assertContains(response, "<strong>Manual summary</strong>", html=False)
+        self.assertContains(response, "be able to upload a recording")
+
+    def test_feature_checks_match_the_current_code(self):
+        from core.help_content import FEATURE_CHECKS
+
+        for name, check in FEATURE_CHECKS.items():
+            with self.subTest(feature=name):
+                self.assertIsInstance(check(), bool)
+
+
 class HelpDocsTests(SimpleTestCase):
     def test_docs_copy_matches_the_in_app_guides(self):
         self.assertEqual(
@@ -85,6 +123,12 @@ class HelpDocsTests(SimpleTestCase):
             self.assertIn(guide["title"], text)
         for question, _ in FAQ:
             self.assertIn(question, text)
+
+    def test_docs_always_use_the_finished_text(self):
+        text = render_markdown()
+        self.assertIn("**Manual summary**", text)
+        self.assertIn("**Upload a recording**", text)
+        self.assertNotIn("will still be saved", text)
 
     def test_guides_have_unique_slugs(self):
         slugs = [guide["slug"] for guide in GUIDES]

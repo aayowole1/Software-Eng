@@ -89,8 +89,8 @@ _Shown to Officers and Admins._
 4. Choose a decision (**Approved**, **Revision requested** or **Rejected**) and choose **Submit review**. After a revision request, use **Revise notes and regenerate**.
 5. For an approved draft, choose **Create tasks from accepted action items** and then **Confirm and create tasks**. Nothing becomes a task without an officer's approval.
 
-> Coming soon: if the AI service is offline, your notes are still saved and you write the summary and action items yourself on the draft page.
-> Coming soon: upload a recording made elsewhere (phone, Zoom or Teams) instead of recording live.
+> If the AI service is offline, your notes are still saved as a draft marked **Manual summary**. Write the summary on the draft page, add action items under **Add action items (one per line)**, and submit the review. A summary is required to approve it.
+> To use a recording made elsewhere (phone, Zoom or Teams), choose **Upload a recording** on the Take notes page before **Submit Notes**. Use an mp3, m4a, wav, webm, ogg, flac or mp4 file up to 25 MB.
 
 ### Publish announcements and resources
 

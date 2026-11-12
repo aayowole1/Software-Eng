@@ -4,8 +4,11 @@ This module is the single source for both. The Help page shows each person the
 sections for their role; `manage.py export_help_docs` writes the same content to
 docs/user-and-admin-guide.md, and a test fails if that file is out of date.
 
-`coming_soon` marks a guide or note for a feature whose pull request has not
-merged yet. Set it to False (and drop "Coming soon" from the text) once it lands.
+`coming_soon` marks a whole guide for a feature that hasn't merged yet. A note
+can instead name a feature check in FEATURE_CHECKS: the Help page then shows the
+finished text once the feature is in the running code and a Coming soon version
+until then. docs/ always shows the finished text, since it is for the final
+package.
 """
 
 from accounts.models import Role
@@ -144,8 +147,16 @@ GUIDES = [
             "For an approved draft, choose **Create tasks from accepted action items** and then **Confirm and create tasks**. Nothing becomes a task without an officer's approval.",
         ],
         "notes": [
-            {"coming_soon": True, "text": "Coming soon: if the AI service is offline, your notes are still saved and you write the summary and action items yourself on the draft page."},
-            {"coming_soon": True, "text": "Coming soon: upload a recording made elsewhere (phone, Zoom or Teams) instead of recording live."},
+            {
+                "available": "ai_fallback",
+                "text": "If the AI service is offline, your notes are still saved as a draft marked **Manual summary**. Write the summary on the draft page, add action items under **Add action items (one per line)**, and submit the review. A summary is required to approve it.",
+                "coming_soon_text": "If the AI service is offline, your notes will still be saved and you'll write the summary and action items yourself on the draft page.",
+            },
+            {
+                "available": "recording_upload",
+                "text": "To use a recording made elsewhere (phone, Zoom or Teams), choose **Upload a recording** on the Take notes page before **Submit Notes**. Use an mp3, m4a, wav, webm, ogg, flac or mp4 file up to 25 MB.",
+                "coming_soon_text": "You'll be able to upload a recording made elsewhere (phone, Zoom or Teams) instead of recording live.",
+            },
         ],
     },
     {
@@ -243,6 +254,34 @@ FAQ = [
 ]
 
 
+def _ai_fallback_available():
+    from meetings.models import MeetingDraft
+
+    return any(field.name == "ai_unavailable" for field in MeetingDraft._meta.get_fields())
+
+
+def _recording_upload_available():
+    from meetings import stt
+
+    return hasattr(stt, "transcribe_uploaded_audio")
+
+
+# A note with "available" shows its finished text once that feature is in the
+# running code, and its coming_soon_text (with a Coming soon badge) until then,
+# so the Help page is right whichever order the feature PRs merge in.
+FEATURE_CHECKS = {
+    "ai_fallback": _ai_fallback_available,
+    "recording_upload": _recording_upload_available,
+}
+
+
+def _resolve_note(note):
+    check = FEATURE_CHECKS.get(note.get("available"))
+    if check is None or check():
+        return {"text": note["text"], "coming_soon": False}
+    return {"text": note["coming_soon_text"], "coming_soon": True}
+
+
 def guides_for(role_flags):
     """Return the audience sections visible to a viewer.
 
@@ -250,7 +289,14 @@ def guides_for(role_flags):
     {Role.MEMBER: True, Role.OFFICER: True, Role.ADMIN: False}.
     """
     return [
-        {"title": title, "intro": intro, "guides": [g for g in GUIDES if g["audience"] == role]}
+        {
+            "title": title,
+            "intro": intro,
+            "guides": [
+                {**g, "notes": [_resolve_note(note) for note in g.get("notes", [])]}
+                for g in GUIDES if g["audience"] == role
+            ],
+        }
         for role, title, intro in AUDIENCES
         if role_flags.get(role)
     ]
