@@ -55,7 +55,7 @@ class MeetingFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Add officer notes or record audio before submitting.")
+        self.assertContains(response, "Add officer notes, record audio or upload a recording before submitting.")
         self.assertContains(response, 'class="notes-submit-warning"')
         summarize.assert_not_called()
         self.assertFalse(MeetingDraft.objects.exists())
@@ -76,7 +76,7 @@ class MeetingFlowTests(TestCase):
         self.assertNotContains(response, 'class="meeting-transcript"')
         self.assertNotContains(response, "Click Start Notes and allow microphone access")
         self.assertContains(response, "Start Notes before selecting Stop Notes.")
-        self.assertContains(response, "Start Notes and record audio, or add officer notes before submitting.")
+        self.assertContains(response, "Start Notes and record audio, upload a recording, or add officer notes before submitting.")
         self.assertContains(response, "Submitting notes and preparing the draft")
         self.assertContains(response, "function showProcessingPage()")
         self.assertNotContains(response, "Start Notes to resume or Submit Notes to finish.")

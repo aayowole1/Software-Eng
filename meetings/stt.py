@@ -15,6 +15,19 @@ DEEPGRAM_URL = (
     "&smart_format=true&diarize=true&endpointing=500"
 )
 
+# Uploaded recordings (FR-7.1 / SCRUM-54) use Deepgram's pre-recorded API with the
+# same model and speaker settings as live notes. Deepgram decodes common audio
+# formats itself, so no local FFmpeg is needed, and the whole file is processed
+# in one request instead of the live stream's 60-second wait.
+DEEPGRAM_FILE_URL = (
+    "https://api.deepgram.com/v1/listen"
+    "?model=nova-3&language=en-US&smart_format=true&diarize=true"
+)
+UPLOAD_EXTENSIONS = (".mp3", ".m4a", ".wav", ".webm", ".ogg", ".flac", ".mp4")
+UPLOAD_MAX_BYTES = 25 * 1024 * 1024
+# Stay under the production server's 120-second request timeout.
+UPLOAD_TIMEOUT_SECONDS = 100
+
 
 class DeepgramTranscriber:
     """Save temporary PCM audio, transcribe it once, then delete the file."""
@@ -137,3 +150,46 @@ class DeepgramTranscriber:
         if current_words:
             grouped.append(f"Speaker {current_speaker}: {' '.join(current_words)}")
         return "\n".join(grouped) or text
+
+
+def transcribe_uploaded_audio(upload) -> str:
+    """Transcribe an uploaded recording with Deepgram; the audio is never stored.
+
+    Raises ValueError when Deepgram cannot read the file as audio, and
+    RuntimeError when transcription is unavailable (no key, network or provider
+    errors). Error messages never include the audio or provider credentials.
+    """
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    api_key = os.getenv("DEEPGRAM_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("DEEPGRAM_API_KEY is not configured.")
+    upload.seek(0)
+    request = Request(
+        DEEPGRAM_FILE_URL,
+        data=upload.read(),
+        headers={
+            "Authorization": f"Token {api_key}",
+            "Content-Type": getattr(upload, "content_type", "") or "application/octet-stream",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=UPLOAD_TIMEOUT_SECONDS) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        if error.code == 400:
+            raise ValueError("Deepgram could not read this file as audio.") from None
+        raise RuntimeError(f"Deepgram transcription failed with status {error.code}.") from None
+    except (URLError, TimeoutError, OSError) as error:
+        raise RuntimeError(f"Deepgram transcription is unavailable: {type(error).__name__}.") from None
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise RuntimeError("Deepgram returned an unreadable transcription response.") from None
+
+    channels = payload.get("results", {}).get("channels", [])
+    alternatives = channels[0].get("alternatives", []) if channels else []
+    if not alternatives:
+        return ""
+    text = alternatives[0].get("transcript", "").strip()
+    return DeepgramTranscriber._format_speakers(alternatives[0], text) if text else ""

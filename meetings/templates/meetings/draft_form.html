@@ -6,7 +6,7 @@
 {% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" {% if request.resolver_match.url_name != 'revise' %}action="{% url 'meetings:processing_start' %}"{% endif %} class="card meeting-form-card" novalidate id="meeting-form">
+  <form method="post" {% if request.resolver_match.url_name != 'revise' %}action="{% url 'meetings:processing_start' %}"{% endif %} class="card meeting-form-card" novalidate id="meeting-form" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.transcript }}
     {{ form.expected_generation }}
@@ -23,6 +23,12 @@
       {{ form.notes.label_tag }}
       {{ form.notes }}
       {{ form.notes.errors }}
+    </div>
+    <div class="meeting-upload-field">
+      {{ form.recording.label_tag }}
+      {{ form.recording }}
+      <p class="muted" id="recording-upload-help">{{ form.recording.help_text }}</p>
+      {{ form.recording.errors }}
     </div>
     <div class="meeting-actions" aria-describedby="recording-status">
       <div class="meeting-recording-actions">
@@ -46,6 +52,8 @@
       const submitButton = document.getElementById("submit-meeting");
       const status = document.getElementById("recording-status");
       const transcript = document.getElementById("id_transcript");
+      const recordingUpload = document.getElementById("id_recording");
+      const hasUpload = () => Boolean(recordingUpload && recordingUpload.files && recordingUpload.files.length);
       const transcribeUrl = "{% url 'meetings:transcribe' %}";
       const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
       let audioContext;
@@ -285,8 +293,8 @@
           status.hidden = false;
           status.classList.remove("notes-submit-warning", "muted");
           finalizeRecording().then(() => {
-            if (!notes.value.trim() && !transcript.value.trim()) {
-              throw new Error("No audio was found. Record audio or add officer notes before submitting.");
+            if (!notes.value.trim() && !transcript.value.trim() && !hasUpload()) {
+              throw new Error("No audio was found. Record audio, upload a recording or add officer notes before submitting.");
             }
             form.hidden = false;
             form.submit();
@@ -295,9 +303,9 @@
           });
           return;
         }
-        if (!notes.value.trim() && !transcript.value.trim()) {
+        if (!notes.value.trim() && !transcript.value.trim() && !hasUpload()) {
           event.preventDefault();
-          showFlowWarning("Start Notes and record audio, or add officer notes before submitting.");
+          showFlowWarning("Start Notes and record audio, upload a recording, or add officer notes before submitting.");
           return;
         }
       });

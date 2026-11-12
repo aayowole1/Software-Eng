@@ -195,6 +195,15 @@ stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
 the temporary file in all success and error paths. The officer can add notes
 before submitting; both sources are retained and passed to OpenRouter.
 
+**Uploading a recording (FR-7.1).** Officers can also upload a recording made
+elsewhere (phone, Zoom, Teams) on the Take notes or Revise page: mp3, m4a, wav,
+webm, ogg, flac or mp4, up to 25 MB. The file goes straight to Deepgram's
+pre-recorded API with the same model and speaker settings as live notes, the
+transcript is added after any live transcript, and the audio is never stored.
+No local FFmpeg is needed. If Deepgram is unavailable, the form keeps the
+officer's notes and asks them to retry or submit without the recording. The
+public proxy must allow 26 MB request bodies (see `docs/deployment-runbook.md`).
+
 ### Participation reports (WBS 1.8)
 
 Officers and admins open **Reports** in the sidebar (`/reports/`). Pick a start and

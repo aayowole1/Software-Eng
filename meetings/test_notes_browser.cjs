@@ -40,3 +40,10 @@ test("pause and resume remain separate from final submission", () => {
   assert.match(source, /if \(isRecording\) await stopRecording\(true\)/);
   assert.match(source, /stream\.getTracks\(\)\.forEach/);
 });
+
+test("form accepts an uploaded recording as submittable content", () => {
+  assert.match(source, /enctype="multipart\/form-data"/);
+  assert.match(source, /\{\{ form\.recording \}\}/);
+  assert.match(source, /const hasUpload = \(\) =>/);
+  assert.match(source, /!transcript\.value\.trim\(\) && !hasUpload\(\)/);
+});
