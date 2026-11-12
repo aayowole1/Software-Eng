@@ -48,6 +48,16 @@ def is_officer_or_admin(user) -> bool:
     )
 
 
+def can_delete_comment(user, comment) -> bool:
+    """Authors may remove their own comments; superusers may remove any comment."""
+    if comment.author_id == user.id or user.is_superuser:
+        return True
+    return (
+        is_officer_or_admin(user)
+        and get_role(comment.author) == Role.MEMBER
+    )
+
+
 def officer_view_access(view):
     """Require officer privileges while preserving member redirect behavior."""
     @login_required
@@ -449,6 +459,15 @@ def announcement_detail(request, pk):
             comment for comment in visible_comments
             if comment.moderation_status == "visible" or comment.author_id == request.user.id
         ]
+    for comment in visible_comments:
+        comment.can_delete_comment = can_delete_comment(request.user, comment)
+        comment.delete_warning = (
+            "You are deleting another member's comment."
+            if comment.author_id != request.user.id
+            and not request.user.is_superuser
+            and can_delete_comment(request.user, comment)
+            else ""
+        )
 
     context = {
         "announcement": announcement,
@@ -592,7 +611,7 @@ def announcement_comment_delete(request, pk, comment_pk):
         pk=comment_pk,
         announcement_id=pk,
     )
-    if comment.author_id != request.user.id and not is_officer_or_admin(request.user):
+    if not can_delete_comment(request.user, comment):
         raise PermissionDenied("You do not have permission to delete this comment.")
     AnnouncementCommentAudit.objects.create(
         announcement=comment.announcement,

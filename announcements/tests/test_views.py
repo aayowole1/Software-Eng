@@ -501,6 +501,38 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         )
         self.assertRedirects(response, self.detail_url)
 
+    def test_officer_cannot_delete_another_officers_comment(self):
+        another_officer = self.make_officer("another-officer")
+        comment = AnnouncementComment.objects.create(
+            announcement=self.announcement,
+            author=another_officer,
+            content="Officer comment",
+        )
+        self.login(self.officer)
+        response = self.client.post(
+            reverse("announcements:comment_delete", args=[self.announcement.pk, comment.pk]),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(AnnouncementComment.objects.filter(pk=comment.pk).exists())
+
+    def test_superuser_can_delete_an_officers_comment(self):
+        another_officer = self.make_officer("another-officer")
+        comment = AnnouncementComment.objects.create(
+            announcement=self.announcement,
+            author=another_officer,
+            content="Officer comment",
+        )
+        superuser = self.make_user("superuser")
+        superuser.is_superuser = True
+        superuser.is_staff = True
+        superuser.save(update_fields=["is_superuser", "is_staff"])
+        self.login(superuser)
+        response = self.client.post(
+            reverse("announcements:comment_delete", args=[self.announcement.pk, comment.pk]),
+        )
+        self.assertRedirects(response, self.detail_url)
+        self.assertFalse(AnnouncementComment.objects.filter(pk=comment.pk).exists())
+
     def test_officer_can_approve_flagged_comment(self):
         comment = AnnouncementComment.objects.create(
             announcement=self.announcement,
