@@ -93,6 +93,7 @@ select:focus-visible, textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 .sidebar-brand-row .brand {
   flex: 1;
@@ -105,13 +106,16 @@ select:focus-visible, textarea:focus-visible {
   width: 2rem;
   height: 2rem;
   place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  color: #64748b;
-  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.625rem;
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
   font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
 }
 .sidebar-collapse-toggle svg {
   width: 1.125rem;
@@ -129,6 +133,8 @@ select:focus-visible, textarea:focus-visible {
 .sidebar-collapse-toggle:hover {
   color: var(--accent);
   background: #f1f5f9;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 4px rgb(15 23 42 / 0.12);
 }
 .sidebar-nav-link {
   display: flex;
@@ -187,8 +193,13 @@ select:focus-visible, textarea:focus-visible {
 }
 .sidebar.collapsed .sidebar-collapse-toggle {
   position: absolute;
-  right: 0.5rem;
+  left: 50%;
+  right: auto;
   top: 0.75rem;
+  transform: translateX(-50%);
+}
+.sidebar-content > div > .space-y-1 + .space-y-1 {
+  margin-top: 0.75rem;
 }
 .sidebar.collapsed .sidebar-nav-link {
   justify-content: center;
