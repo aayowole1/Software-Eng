@@ -117,8 +117,8 @@ Each role includes everything the roles below it can do.
 | Role | Can |
 |------|-----|
 | `applicant` | Waiting on a membership application (default for new accounts) |
-| `member` | View the roster, committees and events; RSVP to events |
-| `officer` | Create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts; view participation reports |
+| `member` | View the roster (search by name, filter by role and committee), committees and events; RSVP to events |
+| `officer` | Everything a member can do, plus filter the roster by account status; create and manage events and record attendance; review applications, create committees and manage their rosters, submit and review meeting drafts; view participation reports |
 | `admin` | Change anyone's role, delete committees and drafts |
 
 Accounts created with `createsuperuser` are admins (see [Setup](#setup)).

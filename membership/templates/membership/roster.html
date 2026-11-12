@@ -20,7 +20,7 @@
         type="search"
         id="member-search"
         name="q"
-        placeholder="Search username or email"
+        placeholder="Search name, username or email"
         value="{{ search_query }}"
       >
     </div>
@@ -38,6 +38,28 @@
         {% endfor %}
       </select>
     </div>
+
+    <div>
+      <label for="committee-filter">Committee</label>
+      <select id="committee-filter" name="committee">
+        <option value="">All committees</option>
+        {% for committee in committees %}
+          <option value="{{ committee.pk }}" {% if selected_committee == committee.pk|stringformat:"s" %}selected{% endif %}>{{ committee.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if can_see_status %}
+    <div>
+      <label for="status-filter">Status</label>
+      <select id="status-filter" name="status">
+        <option value="">All statuses</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
 
     <div class="roster-actions">
       <button type="submit">Search / Filter</button>
@@ -63,6 +85,7 @@
         <th scope="col">Role</th>
         <th scope="col">Committees</th>
         <th scope="col">Member Since</th>
+        {% if can_see_status %}<th scope="col">Status</th>{% endif %}
       </tr>
     </thead>
 
@@ -92,11 +115,12 @@
           </td>
 
           <td>{{ p.created_at|date:"M j, Y" }}</td>
+          {% if can_see_status %}<td>{{ p.roster_status }}</td>{% endif %}
         </tr>
 
       {% empty %}
         <tr>
-          <td colspan="5" class="muted">
+          <td colspan="{% if can_see_status %}6{% else %}5{% endif %}" class="muted">
             No members found matching your search.
           </td>
         </tr>
