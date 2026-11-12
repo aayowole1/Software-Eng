@@ -41,26 +41,33 @@ class MeetingCreationRecoveryTests(TestCase):
         self.assertEqual(ActionItem.objects.count(), 1)
         self.assert_existing_unchanged()
 
-    def test_provider_failure_retains_form_and_creates_no_draft(self):
+    def test_provider_failure_saves_notes_for_manual_summary(self):
+        # FR-7.6: an AI outage keeps the officer's notes instead of discarding them.
         with patch("meetings.models.summarize_meeting", side_effect=RuntimeError("private provider details")):
-            response = self.submit()
-        self.assertContains(response, "No new draft was retained", status_code=503)
-        self.assertNotContains(response, "private provider details", status_code=503)
-        self.assertEqual(response.context["form"]["title"].value(), self.payload["title"])
-        self.assertEqual(response.context["form"]["notes"].value(), self.payload["notes"])
-        self.assert_no_new_attempt()
-
-    def test_retry_after_provider_failure_creates_exactly_one_complete_draft(self):
-        with patch("meetings.models.summarize_meeting", side_effect=[RuntimeError("Synthetic failure"), self.summary]):
-            self.assertEqual(self.submit().status_code, 503)
             response = self.submit()
         created = MeetingDraft.objects.get(title=self.payload["title"])
         self.assertRedirects(response, reverse("meetings:detail", args=[created.pk]))
-        self.assertEqual(MeetingDraft.objects.count(), 2)
+        self.assertTrue(created.ai_unavailable)
+        self.assertEqual((created.notes, created.summary), (self.payload["notes"], ""))
+        self.assertFalse(created.current_action_items.exists())
+        page = self.client.get(response.url)
+        self.assertContains(page, "AI summary unavailable")
+        self.assertNotContains(page, "private provider details")
+        self.assert_existing_unchanged()
+
+    def test_submission_after_provider_recovers_uses_the_ai_again(self):
+        with patch("meetings.models.summarize_meeting", side_effect=[RuntimeError("Synthetic failure"), self.summary]):
+            self.submit()
+            self.payload["title"] = "Second synthetic meeting"
+            response = self.submit()
+        created = MeetingDraft.objects.get(title=self.payload["title"])
+        self.assertRedirects(response, reverse("meetings:detail", args=[created.pk]))
+        self.assertFalse(created.ai_unavailable)
+        self.assertEqual(MeetingDraft.objects.count(), 3)
         self.assertEqual(list(created.action_items.values_list("description", flat=True)), self.summary.action_items)
         # A browser refresh follows GET rather than resubmitting the creation POST.
         self.assertEqual(self.client.get(response.url).status_code, 200)
-        self.assertEqual(MeetingDraft.objects.count(), 2)
+        self.assertEqual(MeetingDraft.objects.count(), 3)
         self.assert_existing_unchanged()
 
     def test_unknown_initial_database_write_does_not_change_existing_drafts(self):
