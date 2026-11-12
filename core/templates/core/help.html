@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load help_tags %}
+{% block title %}Help{% endblock %}
+{% block extra_css %}
+  <style>
+    /* The layout's reset removes list numbering and heading sizes; restore them here. */
+    .help-page h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 .25rem; }
+    .help-page h2 { font-size: 1.2rem; font-weight: 700; margin: 1.75rem 0 .25rem; }
+    .help-page .card h2 { margin-top: 0; }
+    .help-page h3 { font-size: 1rem; font-weight: 600; margin: 0 0 .5rem; }
+    .help-page ol { list-style: decimal; padding-left: 1.5rem; margin: 0; }
+    .help-page ol li { margin: .25rem 0; }
+    .help-page .help-contents ul { list-style: disc; padding-left: 1.25rem; margin: .25rem 0; }
+    .help-page .help-contents ul ul { list-style: circle; }
+    .help-page article.card { margin-bottom: .75rem; }
+    .help-page .help-note { margin: .5rem 0 0; }
+    .help-page dt { margin-top: .75rem; }
+    .help-page dt:first-child { margin-top: 0; }
+    .help-page dd { margin: .25rem 0 0; }
+  </style>
+{% endblock %}
+{% block content %}
+<div class="help-page">
+  <h1>Help</h1>
+  <p class="muted">Step-by-step guides and answers to common questions. You see the guides for your role.</p>
+
+  <nav aria-label="Help contents" class="card help-contents">
+    <h2>Contents</h2>
+    <ul>
+      {% for section in sections %}
+        <li>
+          <a href="#{{ section.guides.0.audience }}-guides">{{ section.title }}</a>
+          <ul>
+            {% for guide in section.guides %}
+              <li><a href="#{{ guide.slug }}">{{ guide.title }}</a>{% if guide.coming_soon %} <span class="badge">Coming soon</span>{% endif %}</li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+      <li><a href="#faq">Frequently asked questions</a></li>
+    </ul>
+  </nav>
+
+  {% for section in sections %}
+    <section aria-labelledby="{{ section.guides.0.audience }}-guides">
+      <h2 id="{{ section.guides.0.audience }}-guides">{{ section.title }}</h2>
+      <p class="muted">{{ section.intro }}</p>
+      {% for guide in section.guides %}
+        <article class="card" id="{{ guide.slug }}">
+          <h3>{{ guide.title }}{% if guide.coming_soon %} <span class="badge">Coming soon</span>{% endif %}</h3>
+          <ol>
+            {% for step in guide.steps %}<li>{{ step|help_text }}</li>{% endfor %}
+          </ol>
+          {% for note in guide.notes %}
+            <p class="muted help-note">{% if note.coming_soon %}<span class="badge">Coming soon</span> {% endif %}{{ note.text|cut:"Coming soon: "|help_text }}</p>
+          {% endfor %}
+        </article>
+      {% endfor %}
+    </section>
+  {% endfor %}
+
+  <section aria-labelledby="faq">
+    <h2 id="faq">Frequently asked questions</h2>
+    <dl class="card">
+      {% for question, answer in faq %}
+        <dt><strong>{{ question }}</strong></dt>
+        <dd>{{ answer }}</dd>
+      {% endfor %}
+    </dl>
+  </section>
+</div>
+{% endblock %}
