@@ -19,6 +19,16 @@
   --radius-base: 0.5rem;
 }
 
+html.dark {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #334155;
+  --accent: #93c5fd;
+  --accent-text: #0f172a;
+}
+
 * { box-sizing: border-box; }
 
 html {
@@ -35,6 +45,35 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+
+html.dark body,
+html.dark .bg-slate-50 { background: var(--bg) !important; color: var(--text); }
+html.dark .bg-white,
+html.dark .bg-slate-100 { background: var(--surface) !important; }
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-slate-600 { color: var(--text) !important; }
+html.dark .text-slate-500,
+html.dark .text-slate-400 { color: var(--muted) !important; }
+html.dark .border-slate-200,
+html.dark .border-slate-100 { border-color: var(--border) !important; }
+html.dark input,
+html.dark select,
+html.dark textarea,
+html.dark .user-filters,
+html.dark .users-table-wrap,
+html.dark .card,
+html.dark details {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+html.dark .users-table th { background: #273449; color: var(--text); }
+html.dark .users-table tbody tr:nth-child(even) { background: #172235; }
+html.dark .users-table tbody tr:hover { background: #223451; }
+html.dark .sidebar-nav-link:hover { color: var(--text); background: #273449; }
+html.dark .sidebar-footer { background: rgb(15 23 42 / 0.45); }
 
 a { color: var(--accent); }
 a:focus-visible, button:focus-visible, input:focus-visible,
@@ -69,6 +108,44 @@ select:focus-visible, textarea:focus-visible {
   flex-direction: column;
   transition: width 0.2s ease, flex-basis 0.2s ease;
 }
+
+.site-header {
+  display: flex;
+  min-height: 5.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+}
+.site-header-left,
+.site-header-left > .flex { min-width: 0; }
+.site-page-title {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-family-heading);
+  font-size: clamp(1.35rem, 2.5vw, 1.9rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+.theme-toggle {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 1.15rem;
+}
+.theme-toggle:hover { background: var(--bg); }
 
 .sidebar-toggle {
   display: none;

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ event.title }}{% endblock %}
+{% block page_heading %}{{ event.title }}{% endblock %}
 {% block content %}
   <h1>{{ event.title }}{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</h1>
   <div class="card">

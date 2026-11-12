@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Committees{% endblock %}
+{% block page_heading %}Committees{% endblock %}
 {% block content %}
   <h1>Committees</h1>
   {% if is_officer %}<p><a class="button" href="{% url 'committees:create' %}">New committee</a></p>{% endif %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Create tasks from meeting{% endblock %}
+{% block page_heading %}Create tasks from meeting{% endblock %}
 {% block content %}
   <h1>Create tasks from {{ draft.title }}</h1>
   <p><a href="{% url 'meetings:detail' draft.pk %}">Return to meeting draft</a></p>
