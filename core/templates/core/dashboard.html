@@ -91,6 +91,7 @@
       <h2>Needs your attention</h2>
       <ul>
         <li><a href="{% url 'membership:application_list' %}">{{ pending_applications }} membership application{{ pending_applications|pluralize }}</a> pending</li>
+        <li><a href="{% url 'membership:application_list' %}?type=officer">{{ pending_officer_applications }} officer application{{ pending_officer_applications|pluralize }}</a> pending{% if not is_admin %} <span class="muted">(an Admin reviews these)</span>{% endif %}</li>
         <li><a href="{% url 'meetings:list' %}">{{ pending_drafts }} meeting draft{{ pending_drafts|pluralize }}</a> pending review</li>
       </ul>
     </div>

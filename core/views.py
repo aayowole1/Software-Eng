@@ -70,8 +70,16 @@ def dashboard(request):
                 cancelled=False,
             ).count()
             context["summary_open_tasks"] = Task.objects.exclude(status=TaskStatus.DONE).count()
+            # FR-2.3 / FR-6.1: officer applications (#31) are pending approvals too.
+            from officer_applications.models import OfficerApplication
+
+            context["pending_officer_applications"] = OfficerApplication.objects.filter(
+                status=ApplicationStatus.PENDING
+            ).count()
             context["summary_pending_approvals"] = (
-                context["pending_applications"] + context["pending_drafts"]
+                context["pending_applications"]
+                + context["pending_officer_applications"]
+                + context["pending_drafts"]
             )
         if has_minimum_role(role, Role.MEMBER):
             assigned = Task.objects.visible_to(request.user).filter(assignee=request.user)
