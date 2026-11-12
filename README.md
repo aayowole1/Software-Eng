@@ -204,6 +204,29 @@ No local FFmpeg is needed. If Deepgram is unavailable, the form keeps the
 officer's notes and asks them to retry or submit without the recording. The
 public proxy must allow 26 MB request bodies (see `docs/deployment-runbook.md`).
 
+### Operations dashboard
+
+Officers and admins see four summary cards at the top of the **Dashboard**:
+
+* **Active members:** members, officers and admins whose accounts can be used
+  now (switched on, not suspended, and with no membership approval still
+  updating). This is the same rule that decides who can be assigned tasks.
+  Links to the Roster.
+* **Upcoming events:** non-cancelled events that haven't started yet. Links to
+  Events.
+* **Open tasks:** all tasks that aren't Done. Links to Tasks.
+* **Pending approvals:** pending membership applications plus meeting drafts
+  waiting for review, with links to each list.
+
+Members instead see **My tasks** (assigned, completed and overdue counts with
+their unfinished tasks), upcoming events, and **My attendance**, which links
+to the full attendance history on **My account**.
+
+To demo the dashboard and reports, `python manage.py seed_reports_demo` adds a
+small made-up organization to an empty database and prints one-time demo
+sign-ins; see the [reports and dashboard demo script](docs/reports-dashboard-demo.md)
+for the click-through and the exact numbers to expect.
+
 ### Participation reports (WBS 1.8)
 
 Officers and admins open **Reports** in the sidebar (`/reports/`). Pick a start and
