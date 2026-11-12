@@ -72,6 +72,11 @@ html.dark details {
 html.dark .users-table th { background: #273449; color: var(--text); }
 html.dark .users-table tbody tr:nth-child(even) { background: #172235; }
 html.dark .users-table tbody tr:hover { background: #223451; }
+html.dark .users-table td details {
+  border-color: transparent;
+  background: transparent;
+}
+html.dark .user-filters input::placeholder { color: #cbd5e1; opacity: 1; }
 html.dark .sidebar-nav-link:hover { color: var(--text); background: #273449; }
 html.dark .sidebar-footer { background: rgb(15 23 42 / 0.45); }
 
@@ -660,6 +665,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   background: var(--surface);
   color: var(--text);
 }
+.user-filters input::placeholder { color: #64748b; opacity: 1; }
 .users-table-wrap {
   overflow-x: hidden;
   border: 1px solid var(--border);
