@@ -37,18 +37,19 @@
     .help-page .help-contents a { display: block; padding: .45rem 0; font-weight: 600; text-decoration: none; }
     .help-page .help-contents .help-subcontents { padding-left: 1rem; }
     .help-page .help-contents .help-subcontents a { padding: .3rem 0; font-size: .9rem; font-weight: 500; }
-    .help-page .help-section { margin-top: 1rem; }
+    .help-page .help-section { margin-top: 1rem; background: transparent; box-shadow: none; }
     .help-page .help-section > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
+    .help-page .help-section:not([open]) > summary { border: 1px solid var(--border); background: var(--surface); }
     .help-page .help-section[open] > summary { border-radius: .6rem .6rem 0 0; border-bottom: 0; }
     .help-page .help-section[open] { padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; background: transparent; }
     .help-page .help-section[open] > summary { margin: -.75rem -.75rem 0; border: 0; border-bottom: 1px solid var(--border); }
-    .help-page .help-guide { margin: .5rem 1rem 0; padding: 0 .65rem; border: 1px solid var(--border); border-radius: .45rem; background: var(--bg); }
+    .help-page .help-guide { margin: .5rem 1rem 0; padding: 0 .65rem; border: 1px solid var(--border); border-radius: .45rem; background: var(--surface); box-shadow: none; }
     .help-page .help-guide > summary { padding: .65rem 0; }
     .help-page .help-guide-content { padding: 0 0 .75rem; }
     .help-page .help-note { margin: .5rem 0 0; }
-    .help-page .help-faq-list { margin: 0; padding: 0; border: 0; background: transparent; }
+    .help-page .help-faq { background: transparent; box-shadow: none; }
+    .help-page .help-faq-list { margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
     .help-page .help-faq-list p { margin: .5rem 0 0; color: var(--muted); }
-    .help-page .help-faq-list summary::after { display: none; }
     .help-page .badge { margin-left: .35rem; font-size: .75rem; }
     .help-top-button {
       position: fixed;
