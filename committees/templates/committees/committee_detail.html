@@ -11,6 +11,59 @@
     <p><a href="{% url 'tasks:list' %}?committee={{ committee.pk }}">View committee tasks</a>
       {% if can_create_tasks %} · <a href="{% url 'tasks:create' %}?committee={{ committee.pk }}">Create a task</a>{% endif %}
     </p>
+
+    <section aria-labelledby="task-board-heading" class="committee-task-board">
+      <h2 id="task-board-heading">Task board</h2>
+      {% if task_board.open_count %}
+        <h3 id="workload-heading">Workload</h3>
+        <div class="table-wrap">
+          <table aria-labelledby="workload-heading">
+            <thead><tr><th scope="col">Person</th><th scope="col">Open tasks</th><th scope="col">Overdue</th><th scope="col">Next due</th></tr></thead>
+            <tbody>
+              {% for row in task_board.workload %}
+                <tr>
+                  <td>{{ row.user.get_full_name|default:row.user.email|default:row.user.username }}</td>
+                  <td>{{ row.open }}</td>
+                  <td>{% if row.overdue %}<strong>{{ row.overdue }}</strong>{% else %}0{% endif %}</td>
+                  <td>{{ row.next_due|date:"M j, Y"|default:"—" }}</td>
+                </tr>
+              {% endfor %}
+              {% if task_board.unassigned.open %}
+                <tr>
+                  <td><em>Unassigned</em></td>
+                  <td>{{ task_board.unassigned.open }}</td>
+                  <td>{% if task_board.unassigned.overdue %}<strong>{{ task_board.unassigned.overdue }}</strong>{% else %}0{% endif %}</td>
+                  <td>—</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="open-tasks-heading">Open tasks by deadline</h3>
+        <div class="table-wrap">
+          <table aria-labelledby="open-tasks-heading">
+            <thead><tr><th scope="col">Task</th><th scope="col">Assignee</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Due</th></tr></thead>
+            <tbody>
+              {% for task in task_board.open_tasks %}
+                <tr>
+                  <td><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a></td>
+                  <td>{% if task.assignee %}{{ task.assignee.get_full_name|default:task.assignee.email|default:task.assignee.username }}{% else %}<em>Unassigned</em>{% endif %}</td>
+                  <td>{{ task.get_status_display }}</td>
+                  <td>{{ task.get_priority_display }}</td>
+                  <td>{% if task.due_date %}{{ task.due_date|date:"M j, Y" }}{% if task.due_date < task_board.today %} <span class="badge">Overdue</span>{% endif %}{% else %}—{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if task_board.more_count %}
+          <p><a href="{% url 'tasks:list' %}?committee={{ committee.pk }}">See {{ task_board.more_count }} more open task{{ task_board.more_count|pluralize }}</a></p>
+        {% endif %}
+      {% else %}
+        <p class="muted">No open tasks. Completed tasks are listed under View committee tasks.</p>
+      {% endif %}
+    </section>
   {% endif %}
 
   <h2>Roster</h2>
