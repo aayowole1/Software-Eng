@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{% if resource.pk %}Edit{% else %}Add{% endif %} resource{% endblock %}
+{% block page_heading %}{% if resource.pk %}Edit{% else %}Add{% endif %} resource{% endblock %}
 {% block content %}
 <h1>{% if resource.pk %}Edit{% else %}Add{% endif %} resource</h1>
 <p>Share a document or an external link with organization members.</p>

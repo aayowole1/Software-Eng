@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{{ draft.title }}{% endblock %}
+{% block page_heading %}{{ draft.title }}{% endblock %}
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
 {% endblock %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ task.title }}{% endblock %}
+{% block page_heading %}{{ task.title }}{% endblock %}
 {% block content %}
   <p><a href="{% url 'tasks:list' %}">All tasks</a></p>
   <h1>{{ task.title }}</h1>

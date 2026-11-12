@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
 {% block content %}
   <h1>{% if user.is_authenticated %}Dashboard{% else %}OrgFlow{% endif %}</h1>
 
