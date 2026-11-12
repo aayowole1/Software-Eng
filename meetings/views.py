@@ -14,7 +14,7 @@ from accounts.decorators import role_required
 from accounts.models import Role
 
 from .models import REVIEW_DECISIONS, ActionItem, DraftStatus, MeetingDraft, MeetingReviewConflict
-from .stt import DeepgramTranscriber
+from .stt import UPLOAD_EXTENSIONS, UPLOAD_MAX_BYTES, DeepgramTranscriber, transcribe_uploaded_audio
 
 
 _active_recordings = {}
@@ -40,6 +40,15 @@ def _action_item_parts(description):
 
 class MeetingNotesForm(forms.ModelForm):
     expected_generation = forms.CharField(required=False, max_length=32, widget=forms.HiddenInput)
+    recording = forms.FileField(
+        required=False,
+        label="Upload a recording",
+        help_text="Optional. An mp3, m4a, wav, webm, ogg, flac or mp4 file up to 25 MB. It is transcribed and not stored.",
+        widget=forms.ClearableFileInput(attrs={
+            "accept": "audio/*,video/mp4," + ",".join(UPLOAD_EXTENSIONS),
+            "aria-describedby": "recording-upload-help",
+        }),
+    )
 
     class Meta:
         model = MeetingDraft
@@ -61,11 +70,54 @@ class MeetingNotesForm(forms.ModelForm):
         self.fields["title"].required = False
         self.initial["expected_generation"] = self.instance.generation_token or ""
 
+    def clean_recording(self):
+        upload = self.cleaned_data.get("recording")
+        if not upload:
+            return None
+        if not upload.name.lower().endswith(UPLOAD_EXTENSIONS):
+            raise forms.ValidationError("Upload an mp3, m4a, wav, webm, ogg, flac or mp4 recording.")
+        if upload.size > UPLOAD_MAX_BYTES:
+            raise forms.ValidationError("Recordings must be 25 MB or smaller.")
+        return upload
+
     def clean(self):
         cleaned_data = super().clean()
-        if not cleaned_data.get("notes", "").strip() and not cleaned_data.get("transcript", "").strip():
-            raise forms.ValidationError("Add officer notes or record audio before submitting.")
+        if (
+            not cleaned_data.get("notes", "").strip()
+            and not cleaned_data.get("transcript", "").strip()
+            and not cleaned_data.get("recording")
+            and "recording" not in self.errors
+        ):
+            raise forms.ValidationError("Add officer notes, record audio or upload a recording before submitting.")
         return cleaned_data
+
+    def add_uploaded_transcript(self):
+        """Transcribe an uploaded recording into the transcript (FR-7.1).
+
+        Returns the HTTP status to re-render with when transcription fails, or
+        None when there was no upload or it was transcribed.
+        """
+        upload = self.cleaned_data.get("recording")
+        if not upload:
+            return None
+        try:
+            text = transcribe_uploaded_audio(upload)
+        except ValueError:
+            self.add_error("recording", "This file could not be read as audio. Upload a different recording.")
+            return 400
+        except RuntimeError:
+            logger.warning("Uploaded meeting recording could not be transcribed.")
+            self.add_error(
+                "recording",
+                "The recording could not be transcribed right now. Try again, or submit your notes without it.",
+            )
+            return 503
+        if not text.strip():
+            self.add_error("recording", "No speech was found in this recording.")
+            return 400
+        existing = self.cleaned_data.get("transcript", "").strip()
+        self.cleaned_data["transcript"] = "\n\n".join(part for part in (existing, text.strip()) if part)
+        return None
 
 
 class ReviewForm(forms.Form):
@@ -91,9 +143,13 @@ def draft_list(request):
 @role_required(Role.OFFICER)
 def draft_create(request):
     initial = request.session.get("meeting_processing") if request.method == "GET" else None
-    form = MeetingNotesForm(request.POST or None, initial=initial)
+    form = MeetingNotesForm(request.POST or None, request.FILES or None, initial=initial)
     if request.method == "POST" and form.is_valid():
+        upload_error = form.add_uploaded_transcript()
+        if upload_error:
+            return render(request, "meetings/draft_form.html", {"form": form, "heading": "Take notes"}, status=upload_error)
         draft = form.save(commit=False)
+        draft.transcript = form.cleaned_data["transcript"]
         draft.created_by = request.user
         draft.pk = ObjectId()
         if not draft.title:
@@ -152,13 +208,21 @@ def _create_draft(user, data):
 @role_required(Role.OFFICER)
 def meeting_processing(request):
     if request.method == "POST":
-        form = MeetingNotesForm(request.POST)
+        form = MeetingNotesForm(request.POST, request.FILES)
         if not form.is_valid():
             return render(
                 request,
                 "meetings/draft_form.html",
                 {"form": form, "heading": "Take notes"},
                 status=400,
+            )
+        upload_error = form.add_uploaded_transcript()
+        if upload_error:
+            return render(
+                request,
+                "meetings/draft_form.html",
+                {"form": form, "heading": "Take notes"},
+                status=upload_error,
             )
         data = {
             "title": form.cleaned_data["title"],
@@ -360,8 +424,14 @@ def draft_revise(request, pk):
     if draft.review_update_pending:
         messages.error(request, "Finish the recorded action-item review before revising notes.")
         return redirect("meetings:detail", pk=draft.pk)
-    form = MeetingNotesForm(request.POST or None, instance=draft)
+    form = MeetingNotesForm(request.POST or None, request.FILES or None, instance=draft)
     if request.method == "POST" and form.is_valid():
+        upload_error = form.add_uploaded_transcript()
+        if upload_error:
+            return render(
+                request, "meetings/draft_form.html",
+                {"form": form, "heading": f"Revise “{draft.title}”"}, status=upload_error,
+            )
         try:
             draft.revise(
                 form.cleaned_data["notes"], transcript=form.cleaned_data["transcript"],
