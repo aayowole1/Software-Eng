@@ -179,6 +179,13 @@ Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
 they are saved. The officer's notes are sent alongside the Deepgram transcript.
 Approved action items will become tasks once the task module (WBS 1.6) exists.
 
+Meeting recording uses Deepgram real-time transcription. The browser sends
+16 kHz mono PCM chunks to Django. Django writes the active session to a
+uniquely named temporary PCM file, sends that file to Deepgram when recording
+stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
+the temporary file in all success and error paths. The officer can add notes
+before submitting; both sources are retained and passed to OpenRouter.
+
 **Uploading a recording (FR-7.1).** Officers can also upload a recording made
 elsewhere (phone, Zoom, Teams) on the Take notes or Revise page: mp3, m4a, wav,
 webm, ogg, flac or mp4, up to 25 MB. The file goes straight to Deepgram's
@@ -187,13 +194,6 @@ transcript is added after any live transcript, and the audio is never stored.
 No local FFmpeg is needed. If Deepgram is unavailable, the form keeps the
 officer's notes and asks them to retry or submit without the recording. The
 public proxy must allow 26 MB request bodies (see `docs/deployment-runbook.md`).
-
-Meeting recording uses Deepgram real-time transcription. The browser sends
-16 kHz mono PCM chunks to Django. Django writes the active session to a
-uniquely named temporary PCM file, sends that file to Deepgram when recording
-stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
-the temporary file in all success and error paths. The officer can add notes
-before submitting; both sources are retained and passed to OpenRouter.
 
 ### Participation reports (WBS 1.8)
 
