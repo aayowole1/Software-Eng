@@ -11,6 +11,21 @@ script goes out of date.
 The demo needs a database **with no other user accounts**, because the numbers
 assume only the demo organization exists. Pick one of these:
 
+**Before you start: fill in the About section.** The public home page shows
+placeholder text ("Add your organization's name in ORG_NAME") until these
+settings are set. Add them to the `.env` file in the project folder (the app
+reads it on start), then start or restart the app:
+
+```bash
+ORG_NAME=Campus Community Volunteers
+ORG_MISSION=We connect students with local service projects and help members grow as leaders while giving back to the community.
+ORG_BENEFITS=Hands-on volunteer experience|Leadership roles on committees|Networking with local nonprofits|Service hours for your resume
+ORG_CONTACT_EMAIL=officers@example.org
+```
+
+`ORG_BENEFITS` is a list separated by `|`. Use your own organization's details
+for a real demo; these example values match the demo data.
+
 **A. A fresh setup** (a new clone, or a machine that has never run OrgFlow):
 
 ```bash
