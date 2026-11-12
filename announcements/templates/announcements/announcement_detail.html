@@ -206,10 +206,28 @@
           {% for comment in comments %}
             <div class="border-b border-slate-100 pb-3 last:border-0">
               <div class="flex items-center justify-between text-xs">
-                <strong class="text-slate-800">{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                <strong class="text-slate-800">
+                  {{ comment.author.get_full_name|default:comment.author.username }}
+                  {% if comment.moderation_status == "flagged" %}<span class="text-amber-700">(Flagged for review)</span>{% endif %}
+                </strong>
                 <time class="text-slate-400">{{ comment.created_at|localtime|date:"M j, Y g:i A" }}</time>
               </div>
               <p class="text-sm text-slate-600 mt-1 whitespace-pre-line">{{ comment.content }}</p>
+              <div class="mt-2 flex gap-2">
+                {% if comment.author_id == user.id or can_publish %}
+                  <form method="post" action="{% url 'announcements:comment_delete' announcement.id comment.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="text-xs text-rose-700 underline">Delete</button>
+                  </form>
+                {% endif %}
+                {% if can_publish and comment.moderation_status == "flagged" %}
+                  <form method="post" action="{% url 'announcements:comment_moderate' announcement.id comment.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit" class="text-xs text-emerald-700 underline">Approve</button>
+                  </form>
+                {% endif %}
+              </div>
             </div>
           {% empty %}
             <p class="text-sm text-slate-500">No comments yet.</p>

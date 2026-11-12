@@ -14,6 +14,7 @@ from announcements.models import (
     Announcement,
     AnnouncementAttachment,
     AnnouncementComment,
+    AnnouncementCommentAudit,
     AnnouncementReadReceipt,
 )
 from announcements.views import publish_due_announcements
@@ -456,6 +457,66 @@ class AnnouncementDetailAndEditTests(AnnouncementTestDataMixin, TestCase):
         )
         self.announcement.refresh_from_db()
         self.assertEqual(self.announcement.comments_count, 1)
+
+    def test_flagged_comment_is_hidden_from_other_members_but_visible_to_author(self):
+        self.announcement.comments_enabled = True
+        self.announcement.save(update_fields=["comments_enabled"])
+        self.login(self.member)
+        self.client.post(
+            reverse("announcements:comment_create", args=[self.announcement.pk]),
+            {"content": "You are an idiot."},
+        )
+        self.assertEqual(
+            self.client.get(self.detail_url).content.count(b"You are an idiot."),
+            1,
+        )
+        other_member = self.make_user("other-member")
+        self.login(other_member)
+        self.assertNotContains(self.client.get(self.detail_url), "You are an idiot.")
+        self.login(self.officer)
+        self.assertContains(self.client.get(self.detail_url), "You are an idiot.")
+        self.assertEqual(self.announcement.refresh_from_db(), None)
+        self.assertEqual(self.announcement.comments_count, 0)
+
+    def test_member_can_delete_own_comment_and_officer_can_delete_any_comment(self):
+        comment = AnnouncementComment.objects.create(
+            announcement=self.announcement, author=self.member, content="Remove me",
+        )
+        self.announcement.comments_count = 1
+        self.announcement.save(update_fields=["comments_count"])
+        self.login(self.member)
+        response = self.client.post(
+            reverse("announcements:comment_delete", args=[self.announcement.pk, comment.pk]),
+        )
+        self.assertRedirects(response, self.detail_url)
+        self.assertFalse(AnnouncementComment.objects.filter(pk=comment.pk).exists())
+        self.assertTrue(AnnouncementCommentAudit.objects.filter(action="deleted").exists())
+
+        other = AnnouncementComment.objects.create(
+            announcement=self.announcement, author=self.member, content="Officer remove me",
+        )
+        self.login(self.officer)
+        response = self.client.post(
+            reverse("announcements:comment_delete", args=[self.announcement.pk, other.pk]),
+        )
+        self.assertRedirects(response, self.detail_url)
+
+    def test_officer_can_approve_flagged_comment(self):
+        comment = AnnouncementComment.objects.create(
+            announcement=self.announcement,
+            author=self.member,
+            content="Needs review",
+            moderation_status="flagged",
+        )
+        self.login(self.officer)
+        response = self.client.post(
+            reverse("announcements:comment_moderate", args=[self.announcement.pk, comment.pk]),
+            {"action": "approve"},
+        )
+        self.assertRedirects(response, self.detail_url)
+        comment.refresh_from_db()
+        self.assertEqual(comment.moderation_status, "visible")
+        self.assertTrue(AnnouncementCommentAudit.objects.filter(action="approved").exists())
 
     def test_member_cannot_comment_when_disabled(self):
         self.login(self.member)
