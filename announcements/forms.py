@@ -20,6 +20,27 @@ from .models import (
 )
 
 
+class TagsField(forms.CharField):
+    """Comma-separated tags, stored lower-case and de-duplicated (SCRUM-95)."""
+
+    def __init__(self):
+        super().__init__(
+            required=False,
+            max_length=500,
+            help_text="Separate up to 10 tags with commas. Each tag can be up to 32 characters.",
+        )
+
+    def prepare_value(self, value):
+        return ", ".join(value) if isinstance(value, list) else value
+
+    def clean(self, value):
+        value = super().clean(value)
+        tags = list(dict.fromkeys(part.strip().casefold() for part in value.split(",") if part.strip()))
+        if len(tags) > 10 or any(len(tag) > 32 for tag in tags):
+            raise forms.ValidationError("Use up to 10 tags of 32 characters each.")
+        return tags
+
+
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
@@ -54,6 +75,8 @@ class AnnouncementForm(forms.ModelForm):
         )
     )
 
+    tags = TagsField()
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound and self.instance.pk is None:
@@ -71,6 +94,7 @@ class AnnouncementForm(forms.ModelForm):
             "title",
             "category",
             "committee",
+            "tags",
             "is_pinned",
             "is_urgent",
             "comments_enabled",
@@ -179,6 +203,14 @@ class AnnouncementForm(forms.ModelForm):
         return cleaned_data
 
 
+    def clean_committee(self):
+        # Older edit forms may omit the field. An explicit empty selection
+        # is required to change a committee notice to organization-wide.
+        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
+            return self.instance.committee
+        return self.cleaned_data["committee"]
+
+
 class AnnouncementCommentForm(forms.ModelForm):
     """Validate a member or officer announcement comment."""
 
@@ -238,6 +270,7 @@ class ResourceForm(forms.ModelForm):
     """Validate a resource backed by either a safe URL or uploaded file."""
 
     remove_file = forms.BooleanField(required=False)
+    tags = TagsField()
     file = forms.FileField(
         required=False,
         widget=forms.FileInput,
@@ -249,7 +282,7 @@ class ResourceForm(forms.ModelForm):
 
     class Meta:
         model = Resource
-        fields = ["title", "description", "category", "file", "url"]
+        fields = ["title", "description", "category", "tags", "file", "url"]
 
     def clean(self):
         cleaned_data = super().clean()

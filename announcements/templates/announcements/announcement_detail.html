@@ -61,6 +61,9 @@
             All members
           </span>
         {% endif %}
+        {% for tag in announcement.tags %}
+          <a href="{% url 'announcements:list' %}?tag={{ tag|urlencode }}" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">#{{ tag }}</a>
+        {% endfor %}
 
         {% if can_publish %}
           {% if announcement.status == 'published' %}

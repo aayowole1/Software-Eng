@@ -459,12 +459,16 @@ def update_member_role(request, pk, user_pk):
 @role_required(Role.ADMIN)
 def committee_delete(request, pk):
     committee = get_object_or_404(Committee, pk=pk)
-    # Let Django collect the cascade before changing the roster. A protected
-    # task must leave both the committee and its memberships intact.
+    # Let Django collect the cascade before changing the roster. Protected
+    # tasks and announcements must leave the committee and memberships intact.
     try:
         committee.delete()
     except ProtectedError:
-        messages.error(request, "Move this committee's tasks or clear their committee assignment before deleting the committee.")
+        messages.error(
+            request,
+            "Move this committee's tasks or clear their committee assignment. "
+            "Move or delete any committee announcements before deleting the committee.",
+        )
         return redirect("committees:detail", pk=committee.pk)
     messages.success(request, f"Committee “{committee.name}” deleted.")
     return redirect("committees:list")

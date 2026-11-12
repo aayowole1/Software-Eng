@@ -18,6 +18,8 @@
         {% if current_category %}
           <input type="hidden" name="category" value="{{ current_category }}">
         {% endif %}
+        <label for="announcement-tag" class="sr-only">Tag</label>
+        <input type="text" id="announcement-tag" name="tag" value="{{ selected_tag }}" maxlength="32" placeholder="Tag" class="w-24 text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
         <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements..." class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
         {% if search_query %}
           <button type="button" class="text-xs font-medium text-slate-500 hover:text-slate-900" onclick="this.form.querySelector('[name=q]').value=''; this.form.submit();">Clear</button>

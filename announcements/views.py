@@ -303,6 +303,7 @@ def announcements_list(request):
     # define filtering and search feature
     query = request.GET.get("q", "")
     category_slug = request.GET.get("category", "")
+    tag = request.GET.get("tag", "").strip().casefold()[:32]
     status_filter = request.GET.get("status", "all")
 
     announcements = Announcement.objects.select_related(
@@ -328,6 +329,8 @@ def announcements_list(request):
 
     if category_slug:
         announcements = announcements.filter(category__slug=category_slug)
+    if tag:
+        announcements = announcements.filter(tags__contains=[tag])
 
     announcements = list(announcements)
     if not is_admin:
@@ -376,6 +379,7 @@ def announcements_list(request):
         "can_publish": is_admin,
         "stats": stats,
         "current_category": category_slug,
+        "selected_tag": tag,
         "search_query": query,
         "status_filter": status_filter,
     }

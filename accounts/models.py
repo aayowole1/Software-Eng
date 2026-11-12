@@ -61,6 +61,7 @@ class Profile(models.Model):
         help_text="Administrative suspension independent of membership approval.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    graduation_year = models.PositiveSmallIntegerField(null=True, blank=True)
     role_version = models.PositiveIntegerField(default=0)
     role_history = models.JSONField(default=list, blank=True)
     suspension_was_active = models.BooleanField(default=None, null=True, blank=True)

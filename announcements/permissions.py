@@ -58,9 +58,9 @@ def visible_announcements(user, role):
         return Announcement.objects.all()
     if not has_minimum_role(role, Role.MEMBER):
         return Announcement.objects.none()
-    committee_ids = CommitteeMember.objects.filter(
-        user_id=user.pk,
-    ).values_list("committee_id", flat=True)
+    committee_ids = list(
+        CommitteeMember.objects.filter(user_id=user.pk).values_list("committee_id", flat=True)
+    )
     return Announcement.objects.filter(
         status="published",
     ).filter(

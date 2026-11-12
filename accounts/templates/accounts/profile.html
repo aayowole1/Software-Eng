@@ -2,6 +2,7 @@
 {% block title %}My account{% endblock %}
 {% block content %}
   <h1>My account</h1>
+  <p><a href="{% url 'accounts:edit_profile' %}">Edit profile</a></p>
   <div class="card">
     <p><strong>Email:</strong> {{ user.email|default:user.username }}</p>
     <p><strong>Role:</strong> <span class="badge">{{ role }}</span></p>
