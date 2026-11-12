@@ -5,7 +5,7 @@
   const closeButton = document.getElementById("sidebarToggle");
   const openButton = document.getElementById("sidebarToggleMobile");
   const collapseButton = document.getElementById("sidebarCollapseToggle");
-  if (!sidebar || !collapseButton) return;
+  if (!sidebar) return;
   const mobile = window.matchMedia("(max-width: 768px)");
   let open = false;
   let collapsed = false;
@@ -24,12 +24,14 @@
     sidebar.classList.toggle("collapsed", !mobile.matches && collapsed);
     if (openButton) openButton.hidden = !mobile.matches || open;
     if (closeButton) closeButton.hidden = !mobile.matches || !open;
-    collapseButton.hidden = mobile.matches;
-    collapseButton.setAttribute("aria-expanded", String(!collapsed));
-    collapseButton.setAttribute(
-      "aria-label",
-      collapsed ? "Expand navigation" : "Collapse navigation",
-    );
+    if (collapseButton) {
+      collapseButton.hidden = mobile.matches;
+      collapseButton.setAttribute("aria-expanded", String(!collapsed));
+      collapseButton.setAttribute(
+        "aria-label",
+        collapsed ? "Expand navigation" : "Collapse navigation",
+      );
+    }
     for (const button of [openButton, closeButton].filter(Boolean)) {
       button.setAttribute("aria-expanded", String(visible));
     }
@@ -48,7 +50,7 @@
     closeButton?.focus();
   });
   closeButton?.addEventListener("click", closeNavigation);
-  collapseButton.addEventListener("click", () => {
+  collapseButton?.addEventListener("click", () => {
     collapsed = !collapsed;
     try {
       window.localStorage.setItem("orgflow.sidebar.collapsed", String(collapsed));
