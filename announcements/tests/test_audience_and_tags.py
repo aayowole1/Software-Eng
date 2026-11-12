@@ -50,8 +50,12 @@ class AnnouncementAudienceTests(AnnouncementTestDataMixin, TestCase):
                 if allowed:
                     self.assertEqual(b"".join(download.streaming_content), b"committee-only briefing")
                 download.close()
-                self.assertEqual(self.client.post(self.read).status_code, 302 if allowed else 403)
-                self.assertEqual(AnnouncementReadReceipt.objects.filter(user=user, announcement=self.notice).exists(), allowed)
+                # Authors cannot mark their own announcement as read (#39).
+                can_mark = allowed and user != self.officer
+                self.assertEqual(self.client.post(self.read).status_code, 302 if can_mark else 403)
+                self.assertEqual(
+                    AnnouncementReadReceipt.objects.filter(user=user, announcement=self.notice).exists(), can_mark,
+                )
 
     def test_membership_removal_and_unpublished_status_revoke_access(self):
         self.login(self.member)
@@ -70,6 +74,8 @@ class AnnouncementAudienceTests(AnnouncementTestDataMixin, TestCase):
         self.assertTrue(CommitteeMember.objects.filter(pk=self.membership.pk).exists())
 
     def test_officer_can_set_audience_and_tags_and_explicitly_clear_audience(self):
+        # Officers can only target committees they belong to (#39).
+        CommitteeMember.objects.create(committee=self.committee, user=self.officer)
         self.login(self.officer)
         data = {
             "title": "New workshop",
@@ -94,6 +100,16 @@ class AnnouncementAudienceTests(AnnouncementTestDataMixin, TestCase):
         self.assertRedirects(self.client.post(edit, {**data, "committee": ""}), detail)
         notice.refresh_from_db()
         self.assertIsNone(notice.committee_id)
+
+
+    def test_officer_cannot_target_a_committee_they_are_not_in(self):
+        self.login(self.officer)
+        response = self.client.post(reverse("announcements:create"), {
+            "title": "Outside notice", "content": "Body.", "committee": str(self.committee.pk),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("committee", response.context["form"].errors)
+        self.assertFalse(Announcement.objects.filter(title="Outside notice").exists())
 
 
 class TagFilterTests(AnnouncementTestDataMixin, TestCase):

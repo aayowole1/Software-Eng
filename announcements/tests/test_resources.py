@@ -4,6 +4,7 @@ from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from accounts.models import Profile, Role
+from committees.models import Committee, CommitteeMember
 from announcements.forms import ResourceForm
 from announcements.models import Announcement, AnnouncementAttachment, AnnouncementReadReceipt, Resource
 from announcements.resource_views import resource_list
@@ -224,3 +225,17 @@ class DashboardAnnouncementTests(AnnouncementTestDataMixin, TestCase):
         response = self.client.get(self.url)
         self.assertEqual(len(response.context["recent_announcements"]), 3)
         self.assertNotContains(response, "Published dashboard notice")
+
+    def test_dashboard_hides_announcement_for_non_committee_member(self):
+        committee = Committee.objects.create(name="Outreach")
+        notice = self.make_announcement(
+            author=self.officer,
+            title="Committee-only dashboard notice",
+            committee=committee,
+        )
+        outsider = self.make_user()
+        self.login(outsider)
+        self.assertNotContains(self.client.get(self.url), notice.title)
+
+        CommitteeMember.objects.create(committee=committee, user=outsider)
+        self.assertContains(self.client.get(self.url), notice.title)
