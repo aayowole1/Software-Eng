@@ -46,3 +46,6 @@ meetings/benchmark_data/audio
 
 # Benchmark Artifacts
 meetings/benchmark/results
+
+# Local UI comparison page
+/sidebar-icon-options.html
