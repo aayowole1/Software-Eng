@@ -19,7 +19,7 @@
     </details>
   </div>
 
-  <form method="get" class="user-filters" aria-label="Filter users">
+  <form method="get" class="user-filters" id="user-filters" aria-label="Filter users">
     <div>
       <label for="filter-email">Email or username</label>
       <input id="filter-email" name="email" type="search" value="{{ filters.email }}" placeholder="Search users">
@@ -42,7 +42,6 @@
         <option value="inactive" {% if filters.status == "inactive" %}selected{% endif %}>Not active yet</option>
       </select>
     </div>
-    <button type="submit">Apply filters</button>
     {% if filter_query %}<a class="button secondary" href="{% url 'accounts:user_list' %}">Clear</a>{% endif %}
   </form>
 
@@ -160,7 +159,7 @@
 
     <div class="users-table-footer">
       <span class="muted">Showing {{ profiles|length }} of {{ total_profiles }} users.</span>
-      <button form="bulk-role-form" type="submit">Save role changes</button>
+      <button class="save-role-button" form="bulk-role-form" type="submit">Save role changes</button>
     </div>
 
   {% if has_more %}
@@ -171,4 +170,22 @@
     </div>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block extra_js %}
+  <script>
+    (() => {
+      const form = document.getElementById("user-filters");
+      if (!form) return;
+      let timeout;
+      const submit = () => {
+        window.clearTimeout(timeout);
+        timeout = window.setTimeout(() => form.requestSubmit(), 300);
+      };
+      form.querySelector('input[type="search"]')?.addEventListener("input", submit);
+      form.querySelectorAll("select").forEach((select) => {
+        select.addEventListener("change", () => form.requestSubmit());
+      });
+    })();
+  </script>
 {% endblock %}
