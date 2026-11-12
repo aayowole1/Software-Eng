@@ -46,14 +46,7 @@
     .help-page .help-guide > summary { padding: .65rem 0; }
     .help-page .help-guide-content { padding: 0 0 .75rem; }
     .help-page .help-note { margin: .5rem 0 0; }
-    .help-page .help-faq { margin-top: 1rem; }
-    .help-page .help-faq > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
-    .help-page .help-faq[open] > summary { border-radius: .6rem .6rem 0 0; border-bottom: 0; }
-    .help-page .help-faq[open] { border: 1px solid var(--border); border-radius: .6rem; background: transparent; }
-    .help-page .help-faq-list { margin: 0; padding: 0 1rem; border: 0; border-radius: 0; background: transparent; }
-    html.dark .help-page .help-faq-list { border: 0 !important; background: transparent !important; }
-    .help-page .help-faq-list details { padding: .8rem 0; border-bottom: 1px solid var(--border); }
-    .help-page .help-faq-list details:last-child { border-bottom: 0; }
+    .help-page .help-faq-list { margin: 0; padding: 0; border: 0; background: transparent; }
     .help-page .help-faq-list p { margin: .5rem 0 0; color: var(--muted); }
     .help-page .help-faq-list summary::after { display: none; }
     .help-page .badge { margin-left: .35rem; font-size: .75rem; }
@@ -112,11 +105,11 @@
     </details>
   {% endfor %}
 
-  <details class="help-faq" id="faq">
+  <details class="help-section help-faq" id="faq">
     <summary><h2>Frequently asked questions</h2></summary>
-    <div class="card help-faq-list">
+    <div class="help-faq-list">
     {% for question, answer in faq %}
-      <details>
+      <details class="help-guide">
         <summary><strong>{{ question }}</strong></summary>
         <p>{{ answer }}</p>
       </details>
