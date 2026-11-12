@@ -341,9 +341,48 @@ def committee_detail(request, pk):
     return _render_detail(request, committee)
 
 
+TASK_BOARD_LIMIT = 20
+PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
+
+
+def _task_board(visible_tasks):
+    """FR-4.4: open committee tasks by deadline, and each person's workload."""
+    today = timezone.localdate()
+    open_tasks = sorted(
+        visible_tasks.exclude(status=TaskStatus.DONE).select_related("assignee"),
+        key=lambda task: (task.due_date is None, task.due_date or today, PRIORITY_ORDER.get(task.priority, 9), task.title.casefold()),
+    )
+    workload = {}
+    unassigned = {"open": 0, "overdue": 0}
+    for task in open_tasks:
+        overdue = bool(task.due_date and task.due_date < today)
+        if task.assignee_id is None:
+            unassigned["open"] += 1
+            unassigned["overdue"] += overdue
+            continue
+        row = workload.setdefault(task.assignee_id, {"user": task.assignee, "open": 0, "overdue": 0, "next_due": None})
+        row["open"] += 1
+        row["overdue"] += overdue
+        if task.due_date and (row["next_due"] is None or task.due_date < row["next_due"]):
+            row["next_due"] = task.due_date
+    rows = sorted(
+        workload.values(),
+        key=lambda row: (-row["overdue"], -row["open"], (row["user"].get_full_name() or row["user"].get_username()).casefold()),
+    )
+    return {
+        "open_tasks": open_tasks[:TASK_BOARD_LIMIT],
+        "open_count": len(open_tasks),
+        "more_count": max(len(open_tasks) - TASK_BOARD_LIMIT, 0),
+        "workload": rows,
+        "unassigned": unassigned,
+        "today": today,
+    }
+
+
 def _render_detail(request, committee, *, role_form=None, role_user_id=None, status=200):
     visible_tasks = Task.objects.visible_to(request.user).filter(committee=committee)
     can_manage = can_manage_tasks(request.user)
+    can_see_tasks = can_manage or committee.members.filter(user=request.user).exists()
     roster = list(committee.members.select_related("user"))
     if can_manage:
         for membership in roster:
@@ -366,7 +405,8 @@ def _render_detail(request, committee, *, role_form=None, role_user_id=None, sta
             "add_form": AddMemberForm(committee),
             "can_manage_committee": can_manage,
             "can_create_tasks": can_manage_committee_tasks(request.user, committee),
-            "can_see_tasks": can_manage or committee.members.filter(user=request.user).exists(),
+            "can_see_tasks": can_see_tasks,
+            "task_board": _task_board(visible_tasks) if can_see_tasks else None,
             "task_counts": {
                 "total": visible_tasks.count(),
                 "completed": visible_tasks.filter(status=TaskStatus.DONE).count(),
