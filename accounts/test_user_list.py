@@ -1,5 +1,10 @@
+from unittest.mock import patch
+
+from django.db import DatabaseError
 from django.test import TestCase
 from django.urls import reverse
+
+from membership.models import MembershipApplication
 
 from .models import Profile, Role, get_role
 from .testing import make_user
@@ -52,3 +57,51 @@ class UserListTests(TestCase):
         self.assertRedirects(response, reverse("accounts:user_list"))
         self.assertEqual(get_role(member), Role.OFFICER)
         self.assertEqual(get_role(officer), Role.MEMBER)
+
+    def test_bulk_role_save_skips_unchanged_pending_accounts(self):
+        member = make_user("member@example.com", Role.MEMBER)
+        MembershipApplication.objects.create(user=member, statement="Pending review.")
+
+        response = self.client.post(
+            reverse("accounts:bulk_change_roles"),
+            {
+                f"role_{member.pk}": Role.MEMBER,
+                f"version_{member.pk}": "0",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Finish this account's membership review")
+        self.assertNotContains(response, "1 role change(s) saved.")
+
+    def test_bulk_role_save_rejects_unknown_role(self):
+        member = make_user("member@example.com", Role.MEMBER)
+
+        response = self.client.post(
+            reverse("accounts:bulk_change_roles"),
+            {
+                f"role_{member.pk}": "not-a-role",
+                f"version_{member.pk}": "0",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Invalid role.")
+
+    def test_bulk_role_save_hides_database_errors(self):
+        member = make_user("member@example.com", Role.MEMBER)
+        with patch("accounts.views.set_role", side_effect=DatabaseError("sensitive database details")):
+            response = self.client.post(
+                reverse("accounts:bulk_change_roles"),
+                {
+                    f"role_{member.pk}": Role.OFFICER,
+                    f"version_{member.pk}": "0",
+                },
+                follow=True,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The role change could not be confirmed.")
+        self.assertNotContains(response, "database")

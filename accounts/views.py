@@ -190,6 +190,12 @@ def bulk_change_roles(request):
         if target.is_superuser:
             errors.append("Superuser accounts always have the Admin role.")
             continue
+        if role not in Role.values:
+            errors.append("Invalid role.")
+            continue
+        current_role = Profile.objects.filter(user=target).values_list("role", flat=True).first()
+        if current_role == role:
+            continue
         try:
             expected_version = int(request.POST.get(f"version_{pk}", "0"))
         except ValueError:
@@ -204,8 +210,10 @@ def bulk_change_roles(request):
                 expected_version=expected_version,
                 reconcile_rejected=True,
             )
-        except (ValueError, DatabaseError) as error:
+        except ValueError as error:
             errors.append(str(error))
+        except DatabaseError:
+            errors.append("The role change could not be confirmed. Reload the users page before trying again.")
         else:
             changed += 1
     if changed:
