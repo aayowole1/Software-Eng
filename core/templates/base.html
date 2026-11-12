@@ -55,6 +55,7 @@
       <div class="sidebar-group">
         <h3>Account</h3>
         <ul>
+          <li><a href="{% url 'notifications:list' %}">Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}</a></li>
           <li><a href="{% url 'accounts:profile' %}">My account</a></li>
           <li>
             <form method="post" action="{% url 'accounts:logout' %}" class="inline">
@@ -199,6 +200,10 @@
 <!-- Quick Action Links (My Account & Sign Out) -->
 <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
 <a class="text-slate-500 hover:text-slate-900 font-medium" href="{% url 'accounts:profile' %}">My account</a>
+<a class="text-slate-500 hover:text-slate-900 font-medium inline-flex items-center gap-1" href="{% url 'notifications:list' %}" aria-label="Notifications{% if unread_notification_count %}, {{ unread_notification_count }} unread{% endif %}">
+                Notifications
+                {% if unread_notification_count %}<span class="inline-flex items-center justify-center min-w-[1.1rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold">{{ unread_notification_count }}</span>{% endif %}
+              </a>
 <!-- Clean CSRF Sign-Out Form Button -->
 <form action="{% url 'accounts:logout' %}" class="inline" method="post">
                 {% csrf_token %}
