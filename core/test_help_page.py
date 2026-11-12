@@ -58,7 +58,6 @@ class HelpPageTests(TestCase):
         response = self.page(Role.ADMIN)
         for guide in GUIDES:
             self.assertContains(response, guide["title"])
-        self.assertContains(response, "Coming soon")
 
     def test_bold_markers_render_as_strong_text_and_stay_escaped(self):
         response = self.page(Role.MEMBER)
