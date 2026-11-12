@@ -219,8 +219,18 @@ correctly in Excel. Attendance % is a plain number with one decimal place
 (e.g. `66.7`), and cells with no value are blank rather than `N/A`. Cells that
 start with `=`, `+`, `-`, `@`, tab or carriage return are escaped so
 spreadsheets do not interpret them as formulas. An end date before the start
-date, or an unknown report choice, is rejected with HTTP 400. Charts are not
-included yet (SCRUM-37).
+date, or an unknown report choice, is rejected with HTTP 400.
+
+**Charts** (SCRUM-37) appear below the date form in a "Charts" section. Three
+interactive Chart.js 4 charts visualise the report data for the selected range:
+a grouped bar chart of RSVPs vs attended per event, a bar chart of attendance %
+per committee (committees with no events show "No events" instead of a bar), and
+a stacked bar chart of completed, open and overdue tasks per committee. Charts
+resize to fit phone-width screens. When JavaScript is unavailable or Chart.js
+fails to load the data tables remain fully visible. An empty range shows "No data
+for this range." Animation is suppressed for users who prefer reduced motion
+(`prefers-reduced-motion: reduce`). Each chart canvas carries `role="img"` and
+an `aria-label` summary (WCAG 2.1 AA).
 
 ### Tasks and committee work
 
@@ -280,8 +290,8 @@ accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 Announcements are integrated in this working branch; see the
 [integration notes](docs/announcements-integration.md) for access rules, private
 file storage and remaining committee-targeting/notification work. Participation
-reports (1.8) are available to officers and admins; charts (SCRUM-37) are not
-included yet. Task change history is included;
+reports (1.8) with interactive charts (SCRUM-37) are available to officers and
+admins. Task change history is included;
 an organization-wide audit system remains separate. Live OpenAI summarization and
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh
