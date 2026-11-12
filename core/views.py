@@ -17,8 +17,7 @@ from events.models import AttendanceAuditLog, AttendanceAuditStatus, Event
 from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
-from announcements.models import Announcement
-from announcements.permissions import effective_role
+from announcements.permissions import effective_role, visible_announcements
 
 
 def dashboard(request):
@@ -47,10 +46,11 @@ def dashboard(request):
             context["upcoming_events"] = Event.objects.filter(
                 starts_at__gte=timezone.now(), cancelled=False
             )[:3]
-            if has_minimum_role(effective_role(request.user), Role.MEMBER):
-                context["recent_announcements"] = Announcement.objects.filter(
-                    status="published",
-                ).order_by("-published_at", "-id")[:3]
+            announcement_role = effective_role(request.user)
+            if has_minimum_role(announcement_role, Role.MEMBER):
+                context["recent_announcements"] = visible_announcements(
+                    request.user, announcement_role
+                ).filter(status="published").order_by("-published_at", "-id")[:3]
         if has_minimum_role(role, Role.OFFICER):
             context["pending_applications"] = MembershipApplication.objects.filter(
                 status=ApplicationStatus.PENDING

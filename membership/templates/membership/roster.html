@@ -71,7 +71,7 @@
         <tr>
           <td>
                <a href="{% url 'membership:member_detail' p.pk %}">
-                 {{ p.user.username }}
+                 {{ p.user.get_full_name|default:p.user.username }}
                </a>
          </td>
           <td>{{ p.user.email|default:"—" }}</td>

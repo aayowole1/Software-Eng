@@ -1,23 +1,49 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Notes{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
+{% endblock %}
 {% block content %}
-  <h1>Notes</h1>
-  <p><a class="button" href="{% url 'meetings:create' %}">Create new note</a></p>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th scope="col">Title</th><th scope="col">Status</th><th scope="col">Submitted by</th><th scope="col">Date</th></tr></thead>
-      <tbody>
-        {% for d in drafts %}
-          <tr>
-            <td><a href="{% url 'meetings:detail' d.pk %}">{{ d.title }}</a></td>
-            <td><span class="badge">{{ d.get_status_display }}</span>{% if d.review_update_pending %} <strong>Action updates unfinished</strong>{% endif %}</td>
-            <td>{{ d.created_by.email|default:"—" }}</td>
-            <td>{{ d.created_at|date:"M j, Y" }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="4" class="muted">No notes yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="note-list-page">
+    <header class="note-list-header">
+      <a class="button button-primary note-list-create" href="{% url 'meetings:create' %}">Start Note Transcription</a>
+    </header>
+
+    <section class="card note-list-panel">
+      <div class="table-wrap">
+        <table class="note-list-table">
+          <thead>
+            <tr>
+              <th scope="col">Title</th>
+              <th scope="col">Status</th>
+              <th scope="col">Submitted by</th>
+              <th scope="col">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in drafts %}
+              <tr>
+                <td data-label="Title"><a class="note-list-title" href="{% url 'meetings:detail' d.pk %}">{{ d.title }}</a></td>
+                <td data-label="Status">
+                  <span class="badge">{{ d.get_status_display }}</span>
+                  {% if d.review_update_pending %}<span class="note-list-warning">Action updates unfinished</span>{% endif %}
+                </td>
+                <td data-label="Submitted by">{{ d.created_by.email|default:"—" }}</td>
+                <td data-label="Date">{{ d.created_at|date:"M j, Y" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4">
+                  <div class="note-list-empty">
+                    <span class="muted">No notes yet.</span>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 {% endblock %}

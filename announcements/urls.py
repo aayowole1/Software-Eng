@@ -14,12 +14,17 @@ app_name = "announcements"
 
 # === URL PATTERNS
 urlpatterns = [
-    path("attachments/<oid:pk>/", views.attachment_download, name="attachment_download"),
     path("", views.announcements_list, name="list"),
     # Management routes:
     path("create/", views.announcement_create, name="create"),
-    path("<oid:pk>/edit/", views.announcement_edit, name="edit"),
-    path("<oid:pk>/delete/", views.announcement_delete, name="delete"),
-    path("<oid:pk>/", views.announcement_detail, name="detail"),
-    path("<oid:pk>/read/", views.announcement_mark_read, name="mark_read"),
+    path(
+        "attachments/<str:pk>/download/",
+        views.announcement_attachment_download,
+        name="attachment_download",
+    ),
+    path("<str:pk>/edit/", views.announcement_edit, name="edit"),
+    path("<str:pk>/delete/", views.announcement_delete, name="delete"),
+    path("<str:pk>/read/", views.announcement_mark_read, name="mark_read"),
+    path("<str:pk>/comments/", views.announcement_comment_create, name="comment_create"),
+    path("<str:pk>/", views.announcement_detail, name="detail"),
 ]

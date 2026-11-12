@@ -57,9 +57,9 @@ INSTALLED_APPS = [
     "committees.apps.CommitteesConfig",
     "reports.apps.ReportsConfig",
     "meetings.apps.MeetingsConfig",
+    "announcements.apps.AnnouncementsConfig",
     "tasks.apps.TasksConfig",
     "events.apps.EventsConfig",
-    "announcements.apps.AnnouncementsConfig",
 ]
 
 MIDDLEWARE = [
@@ -205,4 +205,3 @@ MIGRATION_MODULES = {
     "auth": "mongo_migrations.auth",
     "contenttypes": "mongo_migrations.contenttypes",
 }
-

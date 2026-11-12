@@ -16,15 +16,18 @@ from .permissions import announcement_access
 def resource_list(request):
     query = request.GET.get("q", "").strip()[:100]
     category = request.GET.get("category", "").strip()[:64]
+    tag = request.GET.get("tag", "").strip().casefold()
     resources = Resource.objects.all()
     if query:
         resources = resources.filter(Q(title__icontains=query) | Q(description__icontains=query))
     if category:
         resources = resources.filter(category=category)
+    if tag:
+        resources = resources.filter(tags__contains=[tag])
     categories = sorted(set(Resource.objects.exclude(category="").values_list("category", flat=True)))
     return render(request, "announcements/resource_list.html", {
         "resources": resources, "categories": categories, "query": query,
-        "selected_category": category,
+        "selected_category": category, "selected_tag": tag,
         "can_manage": has_minimum_role(request.announcement_role, Role.OFFICER),
     })
 

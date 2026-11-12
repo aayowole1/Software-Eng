@@ -19,20 +19,20 @@
       {{ form.title }}
       {{ form.title.errors }}
     </p>
-    <p>
+    <div class="meeting-notes-field">
       {{ form.notes.label_tag }}
       {{ form.notes }}
       {{ form.notes.errors }}
-    </p>
-    <div class="meeting-actions">
+    </div>
+    <div class="meeting-actions" aria-describedby="recording-status">
       <div class="meeting-recording-actions">
-        <button type="button" id="start-recording">Start Notes</button>
-        <button type="button" id="stop-recording" class="stop-meeting">
+        <button type="button" id="start-recording" class="button button-primary">Start Notes</button>
+        <button type="button" id="stop-recording" class="button button-danger" disabled>
           <span aria-hidden="true">■</span>
           Stop Notes
         </button>
       </div>
-      <button type="submit" id="submit-meeting">Submit Notes</button>
+      <button type="submit" id="submit-meeting" class="button button-primary">Submit Notes</button>
     </div>
   </form>
   <p id="recording-status" class="notes-flow-status" role="status" hidden></p>

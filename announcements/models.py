@@ -8,7 +8,10 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django_mongodb_backend.fields import ArrayField
 
+from accounts.models import ROSTER_ROLES
+from committees.models import Committee
 
 # === CONFIG
 User = get_user_model()
@@ -18,6 +21,13 @@ class Category(models.Model):
     """Manage the announcement categories."""
     name = models.CharField(max_length=64)
     slug = models.SlugField(unique=True)
+    committee = models.ForeignKey(
+        Committee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="announcement_categories",
+    )
 
     class Meta:
         """Define the category metadata."""
@@ -26,6 +36,29 @@ class Category(models.Model):
     # === DUNDER METHODS
     def __str__(self) -> str:
         return self.name
+
+
+class Resource(models.Model):
+    """Define a member-accessible resource library item."""
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, max_length=5000)
+    category = models.CharField(max_length=64, blank=True)
+    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
+    file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
+    url = models.URLField(max_length=2000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    class Meta:
+        ordering = ["title", "id"]
+
+    def __str__(self) -> str:
+        return self.title
 
 
 # === [CLASS] ANNOUNCEMENT
@@ -37,7 +70,6 @@ class Announcement(models.Model):
         ("published", "Published"),
         ("archived", "Archived"),
     ]
-
     title = models.CharField(max_length=255)
     content = models.TextField()
     status = models.CharField(
@@ -53,6 +85,14 @@ class Announcement(models.Model):
         null=True,
         related_name="announcements",
     )
+    committee = models.ForeignKey(
+        Committee,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="announcements",
+    )
+    tags = ArrayField(models.CharField(max_length=32), max_size=10, default=list, blank=True)
 
     author = models.ForeignKey(
         User,
@@ -70,6 +110,7 @@ class Announcement(models.Model):
     scheduled_for = models.DateTimeField(
         null=True, blank=True
     )
+    comments_enabled = models.BooleanField(default=False)
     created_at = models.DateTimeField(
         auto_now_add=True
     )
@@ -89,7 +130,6 @@ class Announcement(models.Model):
 
     # telemetry and engagement
     read_count = models.PositiveIntegerField(default=0)
-    target_reach = models.PositiveIntegerField(default=165)
     comments_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -105,12 +145,24 @@ class Announcement(models.Model):
 
     # === PROPERTIES
     @property
+    def audience_count(self) -> int:
+        """Return the current number of users who can receive this post."""
+        if self.committee_id:
+            return self.committee.members.filter(
+                user__profile__role__in=ROSTER_ROLES
+            ).exclude(user_id=self.author_id).count()
+        return User.objects.filter(
+            profile__role__in=ROSTER_ROLES
+        ).exclude(pk=self.author_id).count()
+
+    @property
     def read_percentage(self) -> int:
-        """Return read percentage of announcement post."""
-        if self.target_reach > 0:
+        """Return the current read percentage for the announcement audience."""
+        audience_count = self.audience_count
+        if audience_count > 0:
             return min(
                 100,
-                int((self.read_count / self.target_reach) * 100)
+                int(((self.read_count or 0) / audience_count) * 100)
             )
 
         return 0
@@ -158,20 +210,23 @@ class AnnouncementReadReceipt(models.Model):
         unique_together = ("user", "announcement")
 
 
-class Resource(models.Model):
-    """A shared organization file or external HTTP(S) link."""
-
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True, max_length=5000)
-    category = models.CharField(max_length=64, blank=True)
-    file = models.FileField(upload_to="resources/%Y/%m/", blank=True)
-    url = models.URLField(max_length=2000, blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+class AnnouncementComment(models.Model):
+    """Store a comment posted on an announcement."""
+    announcement = models.ForeignKey(
+        Announcement,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="announcement_comments",
+    )
+    content = models.TextField(max_length=2000)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["title", "id"]
+        ordering = ["created_at"]
 
-    def __str__(self):
-        return self.title
+    def __str__(self) -> str:
+        return f"Comment by {self.author} on {self.announcement}"
