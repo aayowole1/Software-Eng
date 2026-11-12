@@ -4,8 +4,9 @@ This module is the single source for both. The Help page shows each person the
 sections for their role; `manage.py export_help_docs` writes the same content to
 docs/user-and-admin-guide.md, and a test fails if that file is out of date.
 
-`coming_soon` marks a whole guide for a feature that hasn't merged yet. A note
-can instead name a feature check in FEATURE_CHECKS: the Help page then shows the
+`coming_soon` marks a whole guide for a feature that hasn't merged yet. A guide
+(with `coming_soon_steps`) or a note (with `coming_soon_text`) can instead name a
+feature check in FEATURE_CHECKS: the Help page then shows the
 finished text once the feature is in the running code and a Coming soon version
 until then. docs/ always shows the finished text, since it is for the final
 package.
@@ -64,6 +65,20 @@ GUIDES = [
     },
     {
         "audience": Role.MEMBER,
+        "slug": "task-board",
+        "title": "See a committee's task board",
+        "available": "task_board",
+        "steps": [
+            "Open **Committees** and choose a committee you're on. Officers and Admins can open any committee.",
+            "Under **Task board**, the **Workload** table shows each person's open and overdue tasks and their next due date, plus **Unassigned** work nobody has claimed yet.",
+            "**Open tasks by deadline** lists the committee's open tasks by due date, then priority. Late ones are marked **Overdue**. Choose a task to open it.",
+        ],
+        "coming_soon_steps": [
+            "Committee pages will show a task board with each person's workload and the open tasks by deadline.",
+        ],
+    },
+    {
+        "audience": Role.MEMBER,
         "slug": "announcements",
         "title": "Read announcements",
         "steps": [
@@ -75,11 +90,41 @@ GUIDES = [
     },
     {
         "audience": Role.MEMBER,
+        "slug": "notifications",
+        "title": "Check your notifications",
+        "available": "notifications",
+        "steps": [
+            "Choose **Notifications** in the sidebar. The number next to it is how many you haven't read.",
+            "You get a notification when an announcement is published for you (organization-wide, or for a committee you're on) and when a task is assigned to you.",
+            "Choose a notification to open the announcement or task. Opening it marks it as read.",
+            "Choose **Mark all as read** to clear the count.",
+        ],
+        "coming_soon_steps": [
+            "You'll get in-app notifications for new announcements and for tasks assigned to you.",
+        ],
+    },
+    {
+        "audience": Role.MEMBER,
         "slug": "resources",
         "title": "Download resources",
         "steps": [
             "Open **Resources**. Search, or filter by category or tag.",
             "Choose **Download document** for a file or **Open link** for an external link.",
+        ],
+    },
+    {
+        "audience": Role.MEMBER,
+        "slug": "roster",
+        "title": "Find people in the roster",
+        "available": "roster_filters",
+        "steps": [
+            "Open **Roster**.",
+            "Under **Search members**, type a name, username or email. You can also filter by **Organization role** and **Committee**. Choose **Search / Filter**, or **Reset** to clear the filters.",
+            "Officers and Admins can also filter by **Status** (Active, Suspended, Pending approval or Disabled) and see a Status column.",
+        ],
+        "coming_soon_steps": [
+            "Open **Roster** to search by username or email and filter by **Organization role**, then choose **Search / Filter**.",
+            "Coming soon: search by name, filter by committee, and (for Officers and Admins) filter by account status.",
         ],
     },
     {
@@ -269,10 +314,40 @@ def _recording_upload_available():
 # A note with "available" shows its finished text once that feature is in the
 # running code, and its coming_soon_text (with a Coming soon badge) until then,
 # so the Help page is right whichever order the feature PRs merge in.
+def _notifications_available():
+    from django.apps import apps
+
+    return apps.is_installed("notifications")
+
+
+def _roster_filters_available():
+    from membership import views
+
+    return hasattr(views, "ROSTER_STATUSES")
+
+
+def _task_board_available():
+    from committees import views
+
+    return hasattr(views, "_task_board")
+
+
 FEATURE_CHECKS = {
     "ai_fallback": _ai_fallback_available,
     "recording_upload": _recording_upload_available,
+    "notifications": _notifications_available,
+    "roster_filters": _roster_filters_available,
+    "task_board": _task_board_available,
 }
+
+
+def _resolve_guide(guide):
+    """A guide with "available" shows coming_soon_steps (and a badge) until its feature exists."""
+    resolved = {**guide, "notes": [_resolve_note(note) for note in guide.get("notes", [])]}
+    check = FEATURE_CHECKS.get(guide.get("available"))
+    if check is not None and not check():
+        resolved.update(steps=guide["coming_soon_steps"], coming_soon=True)
+    return resolved
 
 
 def _resolve_note(note):
@@ -292,10 +367,7 @@ def guides_for(role_flags):
         {
             "title": title,
             "intro": intro,
-            "guides": [
-                {**g, "notes": [_resolve_note(note) for note in g.get("notes", [])]}
-                for g in GUIDES if g["audience"] == role
-            ],
+            "guides": [_resolve_guide(g) for g in GUIDES if g["audience"] == role],
         }
         for role, title, intro in AUDIENCES
         if role_flags.get(role)

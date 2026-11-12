@@ -33,6 +33,12 @@ _For everyone with an account._
 3. To report progress on your task, open it, choose **Update progress**, pick a status (To Do, In Progress, Under Review or Done) and choose **Save status**.
 4. The **Task history** on each task shows every change.
 
+### See a committee's task board
+
+1. Open **Committees** and choose a committee you're on. Officers and Admins can open any committee.
+2. Under **Task board**, the **Workload** table shows each person's open and overdue tasks and their next due date, plus **Unassigned** work nobody has claimed yet.
+3. **Open tasks by deadline** lists the committee's open tasks by due date, then priority. Late ones are marked **Overdue**. Choose a task to open it.
+
 ### Read announcements
 
 1. Open **Announcements**. Search by keyword, or filter by category or tag (click a tag on any post to filter by it).
@@ -40,10 +46,23 @@ _For everyone with an account._
 3. If comments are enabled, add yours and choose **Post comment**.
 4. Committee announcements are only shown to that committee's members.
 
+### Check your notifications
+
+1. Choose **Notifications** in the sidebar. The number next to it is how many you haven't read.
+2. You get a notification when an announcement is published for you (organization-wide, or for a committee you're on) and when a task is assigned to you.
+3. Choose a notification to open the announcement or task. Opening it marks it as read.
+4. Choose **Mark all as read** to clear the count.
+
 ### Download resources
 
 1. Open **Resources**. Search, or filter by category or tag.
 2. Choose **Download document** for a file or **Open link** for an external link.
+
+### Find people in the roster
+
+1. Open **Roster**.
+2. Under **Search members**, type a name, username or email. You can also filter by **Organization role** and **Committee**. Choose **Search / Filter**, or **Reset** to clear the filters.
+3. Officers and Admins can also filter by **Status** (Active, Suspended, Pending approval or Disabled) and see a Status column.
 
 ### Edit your profile
 

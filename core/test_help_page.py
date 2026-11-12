@@ -16,7 +16,7 @@ HELP_URL = reverse("core:help")
 
 
 def titles(role):
-    return [guide["title"] for guide in GUIDES if guide["audience"] == role]
+    return [escape(guide["title"]) for guide in GUIDES if guide["audience"] == role]
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -57,7 +57,7 @@ class HelpPageTests(TestCase):
     def test_admins_see_every_guide(self):
         response = self.page(Role.ADMIN)
         for guide in GUIDES:
-            self.assertContains(response, guide["title"])
+            self.assertContains(response, escape(guide["title"]))
 
     def test_bold_markers_render_as_strong_text_and_stay_escaped(self):
         response = self.page(Role.MEMBER)
@@ -109,6 +109,33 @@ class FeatureNoteTests(TestCase):
                 self.assertIsInstance(check(), bool)
 
 
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class FeatureGuideTests(TestCase):
+    """Whole guides for features in open PRs switch on once the feature exists."""
+
+    def member_page(self, available):
+        checks = {"notifications": lambda: available, "roster_filters": lambda: available, "task_board": lambda: available}
+        self.client.force_login(make_user(f"help-guides-{available}@example.com", Role.MEMBER))
+        with patch.dict("core.help_content.FEATURE_CHECKS", checks):
+            return self.client.get(HELP_URL)
+
+    def test_guides_show_coming_soon_until_the_feature_exists(self):
+        response = self.member_page(False)
+        for title in ("Check your notifications", "Find people in the roster", "See a committee&#x27;s task board"):
+            self.assertContains(response, title)
+        self.assertContains(response, "You&#x27;ll get in-app notifications")
+        self.assertContains(response, "Committee pages will show a task board")
+        self.assertNotContains(response, "<strong>Mark all as read</strong>", html=False)
+        self.assertNotContains(response, "<strong>Workload</strong>", html=False)
+
+    def test_guides_show_the_finished_steps_once_the_feature_exists(self):
+        response = self.member_page(True)
+        self.assertContains(response, "<strong>Mark all as read</strong>", html=False)
+        self.assertContains(response, "<strong>Workload</strong>", html=False)
+        self.assertContains(response, "<strong>Committee</strong>", html=False)
+        self.assertNotContains(response, "Committee pages will show a task board")
+
+
 class HelpDocsTests(SimpleTestCase):
     def test_docs_copy_matches_the_in_app_guides(self):
         self.assertEqual(
@@ -125,6 +152,10 @@ class HelpDocsTests(SimpleTestCase):
 
     def test_docs_always_use_the_finished_text(self):
         text = render_markdown()
+        self.assertIn("**Mark all as read**", text)
+        self.assertIn("**Workload**", text)
+        self.assertIn("**Status** (Active, Suspended, Pending approval or Disabled)", text)
+        self.assertNotIn("Committee pages will show a task board", text)
         self.assertIn("**Manual summary**", text)
         self.assertIn("**Upload a recording**", text)
         self.assertNotIn("will still be saved", text)
