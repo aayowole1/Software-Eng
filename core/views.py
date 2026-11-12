@@ -150,7 +150,7 @@ def audit_history(request):
 
     # --- Role change history (from Profile.role_history) ---
     for profile in Profile.objects.select_related("user").order_by("user__username") if wanted("role") else []:
-        for entry in profile.role_history:
+        for entry in profile.role_history or []:
             entries.append({
                 "type": "role",
                 "type_label": "Role change",
@@ -167,7 +167,7 @@ def audit_history(request):
     # --- Membership application history ---
     applications = MembershipApplication.objects.select_related("user").order_by("-submitted_at")
     for app in applications if wanted("membership") else []:
-        for entry in app.history:
+        for entry in app.history or []:
             action = entry.get("action", "")
             entries.append({
                 "type": "membership",
@@ -202,7 +202,7 @@ def audit_history(request):
 
     # --- Task history ---
     for task in Task.objects.select_related("committee").order_by("-created_at") if wanted("task") else []:
-        for entry in task.history:
+        for entry in task.history or []:
             action = entry.get("action", "updated")
             changes = entry.get("changes", {})
             change_fields = ", ".join(changes.keys()) if changes else ""
