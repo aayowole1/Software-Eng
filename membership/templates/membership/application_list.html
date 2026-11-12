@@ -8,7 +8,7 @@
 <h1>Membership Applications</h1>
 
 <p class="muted">
-  Review membership requests and manage application decisions.
+  Review requests to join the organization or become an officer.
 </p>
 
 <div class="application-summary">
@@ -66,6 +66,15 @@
       </select>
     </div>
 
+    <div>
+      <label for="type-filter">Application type</label>
+      <select name="type" id="type-filter">
+        <option value="">All types</option>
+        <option value="member" {% if selected_type == "member" %}selected{% endif %}>Member</option>
+        <option value="officer" {% if selected_type == "officer" %}selected{% endif %}>Officer</option>
+      </select>
+    </div>
+
     <div class="roster-actions">
       <button type="submit">Search / Filter</button>
       <a href="{% url 'membership:application_list' %}">Reset</a>
@@ -81,6 +90,7 @@
     <div class="card">
       <p>
         <strong>{{ a.user.email|default:a.user.username }}</strong>
+        <span class="badge">{% if a.is_officer_application %}Officer{% else %}Member{% endif %}</span>
         <span class="muted">
           Submitted {{ a.submitted_at|date:"M j, Y" }}
         </span>
@@ -88,10 +98,16 @@
 
       <p>{{ a.statement|linebreaksbr }}</p>
 
-      <form method="post"
-            action="{% url 'membership:review_application' a.pk %}">
+      {% if a.is_officer_application and not can_review_officer %}
+        <p class="muted">An admin will review this application.</p>
+      {% else %}
+      <form method="post" action="{% if a.is_officer_application %}{% url 'membership:review_officer_application' a.pk %}{% else %}{% url 'membership:review_application' a.pk %}{% endif %}">
         {% csrf_token %}
 
+        {% if a.approval_in_progress %}
+          <p>Approval started. Finish it to confirm the role update.</p>
+          <button type="submit" name="decision" value="approve">Finish approval</button>
+        {% else %}
         <label for="note-{{ a.pk }}">
           Reason (required when rejecting)
         </label>
@@ -114,7 +130,9 @@
                 class="secondary">
           Reject
         </button>
+        {% endif %}
       </form>
+      {% endif %}
     </div>
   {% empty %}
     <p class="muted">No pending applications found.</p>
@@ -129,6 +147,7 @@
       <thead>
         <tr>
           <th scope="col">Applicant</th>
+          <th scope="col">Type</th>
           <th scope="col">Status</th>
           <th scope="col">Reviewed By</th>
           <th scope="col">Reviewed Date</th>
@@ -141,6 +160,7 @@
         {% for a in reviewed %}
           <tr>
             <td>{{ a.user.email|default:a.user.username }}</td>
+            <td>{% if a.is_officer_application %}Officer{% else %}Member{% endif %}</td>
             <td>{{ a.get_status_display }}</td>
             <td>{{ a.reviewed_by.email|default:"—" }}</td>
             <td>{{ a.reviewed_at|date:"M j, Y" }}</td>
@@ -154,7 +174,7 @@
           </tr>
         {% empty %}
           <tr>
-            <td colspan="6" class="muted">
+            <td colspan="7" class="muted">
               No reviewed applications found.
             </td>
           </tr>
@@ -165,8 +185,8 @@
 {% endif %}
 
 <p class="muted">
-  Rejected applicants can sign in to see the rejection reason
-  and reapply after 1 day. Rejected application records are
+  Rejected membership applicants can sign in to see the reason
+  and reapply after 1 day. Rejected membership application records are
   deleted {{ retention_days }} days after the decision once the account access update is complete.
 </p>
 
