@@ -104,8 +104,7 @@ _Shown to Officers and Admins._
 1. Open **Reports** under Officer Tools. Pick a start and end date and choose **Generate report**.
 2. The report shows each event's RSVPs and attendance, each member's attendance and tasks, and each committee's attendance and tasks. **How numbers are calculated** explains each figure.
 3. Under **Download CSV**, choose a report (all reports as a ZIP, or one table) and choose **Download**.
-
-> Coming soon: charts of attendance and tasks for the selected dates.
+4. Scroll down to **Charts** for attendance by event, attendance by committee and tasks by committee for the same dates. The tables above stay available if the charts can't load.
 
 ## Admin guides
 
