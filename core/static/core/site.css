@@ -762,14 +762,17 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 }
 .audit-help {
   display: flex;
-  width: auto;
+  width: max-content;
+  min-height: 0;
   justify-content: flex-end;
   margin: 0 0 0.5rem;
-  background: transparent;
-  border: 0;
+  margin-left: auto;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
   padding: 0;
 }
-.audit-help summary { background: transparent; }
+.audit-help summary { background: transparent !important; }
 .audit-help [role="tooltip"] {
   right: 0;
 }
