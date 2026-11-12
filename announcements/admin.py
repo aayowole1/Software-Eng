@@ -12,6 +12,6 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "audience", "status", "author")
-    list_filter = ("audience", "status", "category")
+    list_display = ("title", "category", "committee", "status", "author")
+    list_filter = ("committee", "status", "category")
     search_fields = ("title", "content")

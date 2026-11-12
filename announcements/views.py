@@ -27,7 +27,11 @@ from .models import (
     Category,
 )
 from .forms import AnnouncementForm, AnnouncementAttachmentForm, AnnouncementCommentForm
-from .permissions import announcement_access, effective_role
+from .permissions import (
+    announcement_access,
+    effective_role,
+    visible_announcements,
+)
 
 
 # === HELPERS
@@ -77,10 +81,10 @@ def get_author_role(user) -> str:
 
 def can_receive_announcement(user, announcement) -> bool:
     """Return whether a user belongs to an announcement's audience."""
-    if announcement.audience_id is None:
+    if announcement.committee_id is None:
         return True
 
-    return announcement.audience.members.filter(user=user).exists()
+    return announcement.committee.members.filter(user=user).exists()
 
 
 def publish_due_announcements() -> int:
@@ -299,23 +303,21 @@ def announcements_list(request):
     # define filtering and search feature
     query = request.GET.get("q", "")
     category_slug = request.GET.get("category", "")
+    tag = request.GET.get("tag", "").strip().casefold()[:32]
     status_filter = request.GET.get("status", "all")
 
     announcements = Announcement.objects.select_related(
-        "author", "category", "audience"
+        "author", "category", "committee"
     ).prefetch_related("attachments")
 
 
     if not is_admin:
-        # regular members can only see published posts
-        announcements = announcements.filter(
-            status="published"
-        ).filter(
-            Q(audience__isnull=True)
-            | Q(
-                audience__members__user=request.user,
-            )
-        ).distinct()
+        announcements = visible_announcements(
+            request.user,
+            request.announcement_role,
+        ).select_related("author", "category", "committee").prefetch_related(
+            "attachments",
+        )
     elif status_filter != "all":
         announcements = announcements.filter(status=status_filter)
 
@@ -327,6 +329,8 @@ def announcements_list(request):
 
     if category_slug:
         announcements = announcements.filter(category__slug=category_slug)
+    if tag:
+        announcements = announcements.filter(tags__contains=[tag])
 
     announcements = list(announcements)
     if not is_admin:
@@ -375,6 +379,7 @@ def announcements_list(request):
         "can_publish": is_admin,
         "stats": stats,
         "current_category": category_slug,
+        "selected_tag": tag,
         "search_query": query,
         "status_filter": status_filter,
     }
@@ -392,7 +397,7 @@ def announcement_detail(request, pk):
     publish_due_announcements()
     announcement = get_object_or_404(
         Announcement.objects.select_related(
-            "author", "category", "audience"
+            "author", "category", "committee"
         ).prefetch_related("attachments", "comments__author"),
         pk=pk
     )

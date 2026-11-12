@@ -20,12 +20,34 @@ from .models import (
 )
 
 
+class TagsField(forms.CharField):
+    """Comma-separated tags, stored lower-case and de-duplicated (SCRUM-95)."""
+
+    def __init__(self):
+        super().__init__(
+            required=False,
+            max_length=500,
+            help_text="Separate up to 10 tags with commas. Each tag can be up to 32 characters.",
+        )
+
+    def prepare_value(self, value):
+        return ", ".join(value) if isinstance(value, list) else value
+
+    def clean(self, value):
+        value = super().clean(value)
+        tags = list(dict.fromkeys(part.strip().casefold() for part in value.split(",") if part.strip()))
+        if len(tags) > 10 or any(len(tag) > 32 for tag in tags):
+            raise forms.ValidationError("Use up to 10 tags of 32 characters each.")
+        return tags
+
+
 # === [CLASS] ANNOUNCEMENT FORM
 class AnnouncementForm(forms.ModelForm):
     """Manage announcement forms."""
-    audience = forms.ModelChoiceField(
+    committee = forms.ModelChoiceField(
         queryset=Committee.objects.none(),
         required=False,
+        label="Audience",
         empty_label="All members",
     )
     category = forms.ModelChoiceField(
@@ -53,14 +75,24 @@ class AnnouncementForm(forms.ModelForm):
         )
     )
 
+    tags = TagsField()
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["tags"].widget.attrs.update({
+            "placeholder": "e.g., budget, workshop",
+            "class": (
+                "w-full text-sm bg-white border border-slate-200 rounded-lg"
+                " px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400"
+                " focus:ring-2 focus:ring-slate-800 focus:outline-none"
+            ),
+        })
         if not self.is_bound and self.instance.pk is None:
             self.initial["scheduled_for"] = ""
         if user is not None:
-            self.fields["audience"].queryset = (
+            self.fields["committee"].queryset = (
                 Committee.objects.filter(members__user=user)
-                | Committee.objects.filter(pk=self.instance.audience_id)
+                | Committee.objects.filter(pk=self.instance.committee_id)
             ).distinct()
 
     class Meta:
@@ -69,7 +101,8 @@ class AnnouncementForm(forms.ModelForm):
         fields = [
             "title",
             "category",
-            "audience",
+            "committee",
+            "tags",
             "is_pinned",
             "is_urgent",
             "comments_enabled",
@@ -95,7 +128,7 @@ class AnnouncementForm(forms.ModelForm):
                     )
                 }
             ),
-            "audience": forms.Select(
+            "committee": forms.Select(
                 attrs={
                     "class": (
                         "w-full text-sm bg-white border"
@@ -178,6 +211,14 @@ class AnnouncementForm(forms.ModelForm):
         return cleaned_data
 
 
+    def clean_committee(self):
+        # Older edit forms may omit the field. An explicit empty selection
+        # is required to change a committee notice to organization-wide.
+        if self.add_prefix("committee") not in self.data and self.instance.committee_id:
+            return self.instance.committee
+        return self.cleaned_data["committee"]
+
+
 class AnnouncementCommentForm(forms.ModelForm):
     """Validate a member or officer announcement comment."""
 
@@ -237,6 +278,7 @@ class ResourceForm(forms.ModelForm):
     """Validate a resource backed by either a safe URL or uploaded file."""
 
     remove_file = forms.BooleanField(required=False)
+    tags = TagsField()
     file = forms.FileField(
         required=False,
         widget=forms.FileInput,
@@ -248,7 +290,7 @@ class ResourceForm(forms.ModelForm):
 
     class Meta:
         model = Resource
-        fields = ["title", "description", "category", "file", "url"]
+        fields = ["title", "description", "category", "tags", "file", "url"]
 
     def clean(self):
         cleaned_data = super().clean()
