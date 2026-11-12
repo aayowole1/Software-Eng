@@ -142,7 +142,11 @@
                   <summary>View ({{ p.role_history|length }})</summary>
                   <ul>
                     {% for entry in p.role_history %}
-                      <li><strong>{{ entry.old_role|capfirst }} to {{ entry.new_role|capfirst }}</strong><br>{{ entry.actor }} · <time datetime="{{ entry.at }}">{{ entry.at }}</time></li>
+                      <li>
+                        <strong>{{ entry.old_role|capfirst }} to {{ entry.new_role|capfirst }}</strong><br>
+                        {{ entry.actor }} · <time datetime="{{ entry.at }}">{{ entry.at }}</time><br>
+                        <span class="muted">{{ entry.source }}</span>
+                      </li>
                     {% empty %}
                       <li class="muted">No recorded role changes.</li>
                     {% endfor %}
