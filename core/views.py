@@ -285,3 +285,20 @@ def readiness(request):
     except (DatabaseError, PyMongoError):
         return JsonResponse({"status": "unavailable"}, status=503)
     return JsonResponse({"status": "ready"})
+
+
+def help_page(request):
+    """SCRUM-50: FAQ and step-by-step guides; officer and admin guides by role."""
+    from django.contrib.auth.views import redirect_to_login
+
+    from .help_content import FAQ, guides_for
+
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    role = get_role(request.user)
+    sections = guides_for({
+        Role.MEMBER: True,
+        Role.OFFICER: has_minimum_role(role, Role.OFFICER),
+        Role.ADMIN: has_minimum_role(role, Role.ADMIN),
+    })
+    return render(request, "core/help.html", {"sections": sections, "faq": FAQ})

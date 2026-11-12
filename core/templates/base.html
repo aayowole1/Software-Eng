@@ -80,6 +80,7 @@
           <h3>Navigation</h3>
           <ul>
             <li><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
+            <li><a href="{% url 'core:help' %}">Help</a></li>
             {% if is_member %}
               <li><a href="{% url 'membership:roster' %}">Roster</a></li>
               <li><a href="{% url 'committees:list' %}">Committees</a></li>
@@ -212,6 +213,7 @@
 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
 </button>
 </form>
+<a class="text-slate-500 hover:text-slate-900 font-medium" href="{% url 'core:help' %}">Help</a>
 </div>
 </div>
 </div>
