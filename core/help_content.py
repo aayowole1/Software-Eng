@@ -186,10 +186,11 @@ GUIDES = [
         "audience": Role.ADMIN,
         "slug": "officer-applications",
         "title": "Approve officer applications",
-        "coming_soon": True,
         "steps": [
-            "Coming soon: members will apply to become an officer from their dashboard.",
-            "Open **Applications** and filter the type to Officer. Approve to promote the member, or reject with a reason.",
+            "Members apply with **Apply to become an officer** on their dashboard.",
+            "Open **Applications** and set **Application type** to Officer. Officers can see these requests, but only Admins can decide them.",
+            "Approve to promote the member to Officer, or reject with a reason (a reason is required to reject). The member sees the decision under their officer applications.",
+            "If an approval is interrupted, choose **Finish approval** to complete it.",
         ],
     },
     {

@@ -116,10 +116,12 @@ _Shown to Admins only._
 1. Open **Users** under Admin.
 2. Find the person, choose their new role and choose **Save**. Every role change is recorded in the audit history.
 
-### Approve officer applications (coming soon)
+### Approve officer applications
 
-1. Coming soon: members will apply to become an officer from their dashboard.
-2. Open **Applications** and filter the type to Officer. Approve to promote the member, or reject with a reason.
+1. Members apply with **Apply to become an officer** on their dashboard.
+2. Open **Applications** and set **Application type** to Officer. Officers can see these requests, but only Admins can decide them.
+3. Approve to promote the member to Officer, or reject with a reason (a reason is required to reject). The member sees the decision under their officer applications.
+4. If an approval is interrupted, choose **Finish approval** to complete it.
 
 ### Suspend and reinstate accounts
 
