@@ -179,12 +179,53 @@ Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
 they are saved. The officer's notes are sent alongside the Deepgram transcript.
 Approved action items will become tasks once the task module (WBS 1.6) exists.
 
+**Manual fallback (FR-7.6).** If OpenRouter is offline, not configured, or
+returns an unusable response, the notes are still saved as a draft marked
+**Manual summary**. The draft page explains that the AI was unavailable, and the
+officer writes the summary and adds action items before submitting the review.
+A summary is required to approve such a draft. On a revision while the AI is
+down, the current summary and kept action items carry over for editing. Officers
+can also edit an AI-written summary during review. Provider error details are
+never shown. The next submission or revision uses the AI again once it is back.
+
 Meeting recording uses Deepgram real-time transcription. The browser sends
 16 kHz mono PCM chunks to Django. Django writes the active session to a
 uniquely named temporary PCM file, sends that file to Deepgram when recording
 stops, saves the returned transcript in `MeetingDraft.transcript`, and deletes
 the temporary file in all success and error paths. The officer can add notes
 before submitting; both sources are retained and passed to OpenRouter.
+
+**Uploading a recording (FR-7.1).** Officers can also upload a recording made
+elsewhere (phone, Zoom, Teams) on the Take notes or Revise page: mp3, m4a, wav,
+webm, ogg, flac or mp4, up to 25 MB. The file goes straight to Deepgram's
+pre-recorded API with the same model and speaker settings as live notes, the
+transcript is added after any live transcript, and the audio is never stored.
+No local FFmpeg is needed. If Deepgram is unavailable, the form keeps the
+officer's notes and asks them to retry or submit without the recording. The
+public proxy must allow 26 MB request bodies (see `docs/deployment-runbook.md`).
+
+### Operations dashboard
+
+Officers and admins see four summary cards at the top of the **Dashboard**:
+
+* **Active members:** members, officers and admins whose accounts can be used
+  now (switched on, not suspended, and with no membership approval still
+  updating). This is the same rule that decides who can be assigned tasks.
+  Links to the Roster.
+* **Upcoming events:** non-cancelled events that haven't started yet. Links to
+  Events.
+* **Open tasks:** all tasks that aren't Done. Links to Tasks.
+* **Pending approvals:** pending membership applications plus meeting drafts
+  waiting for review, with links to each list.
+
+Members instead see **My tasks** (assigned, completed and overdue counts with
+their unfinished tasks), upcoming events, and **My attendance**, which links
+to the full attendance history on **My account**.
+
+To demo the dashboard and reports, `python manage.py seed_reports_demo` adds a
+small made-up organization to an empty database and prints one-time demo
+sign-ins; see the [reports and dashboard demo script](docs/reports-dashboard-demo.md)
+for the click-through and the exact numbers to expect.
 
 ### Participation reports (WBS 1.8)
 
@@ -219,8 +260,18 @@ correctly in Excel. Attendance % is a plain number with one decimal place
 (e.g. `66.7`), and cells with no value are blank rather than `N/A`. Cells that
 start with `=`, `+`, `-`, `@`, tab or carriage return are escaped so
 spreadsheets do not interpret them as formulas. An end date before the start
-date, or an unknown report choice, is rejected with HTTP 400. Charts are not
-included yet (SCRUM-37).
+date, or an unknown report choice, is rejected with HTTP 400.
+
+**Charts** (SCRUM-37) appear below the date form in a "Charts" section. Three
+interactive Chart.js 4 charts visualise the report data for the selected range:
+a grouped bar chart of RSVPs vs attended per event, a bar chart of attendance %
+per committee (committees with no events show "No events" instead of a bar), and
+a stacked bar chart of completed, open and overdue tasks per committee. Charts
+resize to fit phone-width screens. When JavaScript is unavailable or Chart.js
+fails to load the data tables remain fully visible. An empty range shows "No data
+for this range." Animation is suppressed for users who prefer reduced motion
+(`prefers-reduced-motion: reduce`). Each chart canvas carries `role="img"` and
+an `aria-label` summary (WCAG 2.1 AA).
 
 ### Tasks and committee work
 
@@ -280,8 +331,8 @@ accuracy. The current acceptance thresholds are 35% WER and 25% CER.
 Announcements are integrated in this working branch; see the
 [integration notes](docs/announcements-integration.md) for access rules, private
 file storage and remaining committee-targeting/notification work. Participation
-reports (1.8) are available to officers and admins; charts (SCRUM-37) are not
-included yet. Task change history is included;
+reports (1.8) with interactive charts (SCRUM-37) are available to officers and
+admins. Task change history is included;
 an organization-wide audit system remains separate. Live OpenAI summarization and
 Deepgram transcription still need configured credentials and provider checks.
 Existing local Google checks are recorded in the Accounts checkpoint; a fresh

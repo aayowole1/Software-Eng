@@ -18,6 +18,7 @@ from django.db.models import F, Q
 from django.views.decorators.http import require_POST
 
 from accounts.models import Profile, ROSTER_ROLES, Role, get_role
+from notifications.services import notify_announcement_published
 
 from .models import (
     Announcement,
@@ -96,9 +97,13 @@ def publish_due_announcements() -> int:
     )
     published_count = 0
     for announcement in due_announcements:
-        published_count += Announcement.objects.filter(
+        published = Announcement.objects.filter(
             pk=announcement.pk, status="scheduled", scheduled_for__lte=now,
         ).update(status="published", published_at=now, updated_at=now)
+        if published:
+            announcement.status = "published"
+            notify_announcement_published(announcement)
+        published_count += published
     return published_count
 
 
@@ -164,6 +169,8 @@ def announcement_create(request):
                 announcement.published_at = timezone.now()
 
             announcement.save()
+            if announcement.status == "published":
+                notify_announcement_published(announcement)
 
             # handle file attachments
             for uploaded_file in files:
@@ -217,6 +224,8 @@ def announcement_edit(request, pk):
     ):
         raise PermissionDenied("You do not have permission to edit this announcement.")
 
+    was_published = announcement.status == "published"
+
     if request.method == "POST":
         form = AnnouncementForm(
             request.POST,
@@ -254,6 +263,8 @@ def announcement_edit(request, pk):
                 announcement.published_at = timezone.now()
 
             announcement.save()
+            if announcement.status == "published" and not was_published:
+                notify_announcement_published(announcement)
 
             # delete selected attachments
             if delete_attachment_ids:

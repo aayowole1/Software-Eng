@@ -44,6 +44,12 @@ ordinary HTTP requests redirect to HTTPS. A proxy on another machine needs a
 separately reviewed private network arrangement; exposing the app port publicly
 is not the configuration provided here.
 
+The proxy must accept request bodies of at least 26 MB (for example nginx
+`client_max_body_size 26m;`). Resource documents and uploaded meeting recordings
+are each limited to 25 MB by the app, and many proxies default to 1 MB. Keep the
+proxy's read timeout above the app's 120-second Gunicorn timeout so a long
+recording upload is not cut off before Django responds.
+
 Set real DNS, a valid public certificate, renewal, firewall policy and proxy
 request limits at the target host. HSTS defaults to 3,600 seconds. Enable
 `DJANGO_HSTS_INCLUDE_SUBDOMAINS` or `DJANGO_HSTS_PRELOAD` only after confirming the

@@ -59,6 +59,20 @@
     </div>
 
     {% if user.is_authenticated %}
+        <div class="space-y-1">
+          <span class="sidebar-section-title">Account</span>
+          <ul class="space-y-1">
+            <li>
+              <a class="sidebar-nav-link" href="{% url 'notifications:list' %}" aria-label="Notifications{% if unread_notification_count %}, {{ unread_notification_count }} unread{% endif %}">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8.5 9a2.5 2.5 0 0 0 5 0"/></svg>
+                <span class="sidebar-label">Notifications</span>
+                {% if unread_notification_count %}
+                  <span class="sidebar-notification-count" aria-hidden="true">{{ unread_notification_count }}</span>
+                {% endif %}
+              </a>
+            </li>
+          </ul>
+        </div>
         {% if is_admin %}
           <div class="space-y-1">
             <span class="sidebar-section-title">Admin</span>
@@ -193,6 +207,10 @@
 <!-- Quick Action Links (My Account & Sign Out) -->
 <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
 <a class="text-slate-500 hover:text-slate-900 font-medium" href="{% url 'accounts:profile' %}">My account</a>
+<a class="text-slate-500 hover:text-slate-900 font-medium inline-flex items-center gap-1" href="{% url 'notifications:list' %}" aria-label="Notifications{% if unread_notification_count %}, {{ unread_notification_count }} unread{% endif %}">
+                Notifications
+                {% if unread_notification_count %}<span class="inline-flex items-center justify-center min-w-[1.1rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold">{{ unread_notification_count }}</span>{% endif %}
+              </a>
 <!-- Clean CSRF Sign-Out Form Button -->
 <form action="{% url 'accounts:logout' %}" class="inline" method="post">
                 {% csrf_token %}

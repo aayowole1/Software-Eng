@@ -54,12 +54,14 @@ INSTALLED_APPS = [
     "core.apps.CoreConfig",
     "accounts.apps.AccountsConfig",
     "membership.apps.MembershipConfig",
+    "officer_applications",
     "committees.apps.CommitteesConfig",
     "reports.apps.ReportsConfig",
     "meetings.apps.MeetingsConfig",
     "announcements.apps.AnnouncementsConfig",
     "tasks.apps.TasksConfig",
     "events.apps.EventsConfig",
+    "notifications.apps.NotificationsConfig",
 ]
 
 MIDDLEWARE = [
@@ -88,6 +90,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'accounts.context_processors.roles',
+                'notifications.context_processors.unread_notification_count',
             ],
         },
     },

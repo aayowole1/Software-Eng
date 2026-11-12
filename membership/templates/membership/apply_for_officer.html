@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Officer application{% endblock %}
+{% block content %}
+  <h1>Officer application</h1>
+  {% if can_apply %}
+    <form method="post" class="card">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Submit officer application</button>
+    </form>
+  {% endif %}
+  <h2>My officer applications</h2>
+  {% for application in applications %}
+    <article class="card">
+      <p><span class="badge">{{ application.get_status_display }}</span> · {{ application.submitted_at|date:"M j, Y" }}</p>
+      <p>{{ application.statement|linebreaksbr }}</p>
+      {% if application.status == "rejected" %}<p><strong>Reason:</strong> {{ application.review_note }}</p>{% endif %}
+    </article>
+  {% empty %}
+    <p>You haven’t submitted an officer application.</p>
+  {% endfor %}
+{% endblock %}

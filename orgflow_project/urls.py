@@ -23,4 +23,5 @@ urlpatterns = [
     path('tasks/', include('tasks.urls')),
     path('events/', include('events.urls')),
     path('resources/', include('announcements.resource_urls')),
+    path('notifications/', include('notifications.urls')),
 ]

@@ -3,6 +3,7 @@ import csv
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError
 from django.core.paginator import Paginator
 from django.http import HttpResponse
@@ -13,6 +14,7 @@ from django.db.models import Q, Prefetch
 from committees.models import CommitteeMember
 from accounts.decorators import role_required
 from accounts.models import ROSTER_ROLES, Profile, Role, get_role
+from officer_applications.models import OfficerApplication
 
 from .emails import send_application_approved, send_application_rejected
 from .models import (
@@ -43,6 +45,62 @@ class ReviewForm(forms.Form):
         if cleaned.get("decision") == "reject" and not (cleaned.get("note") or "").strip():
             raise forms.ValidationError("Give a reason when rejecting. The applicant will see it.")
         return cleaned
+
+
+class OfficerApplicationForm(forms.ModelForm):
+    class Meta:
+        model = OfficerApplication
+        fields = ["statement"]
+        labels = {"statement": "Why do you want to become an officer?"}
+        widgets = {"statement": forms.Textarea(attrs={"rows": 4})}
+
+
+@role_required(Role.MEMBER)
+def apply_for_officer(request):
+    applications = OfficerApplication.objects.filter(user=request.user)
+    pending = applications.filter(status=ApplicationStatus.PENDING)
+    is_member = get_role(request.user) == Role.MEMBER
+    form = OfficerApplicationForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST":
+        if not is_member:
+            raise PermissionDenied("Only members can apply to become an officer.")
+        if pending.exists():
+            messages.error(request, "You already have a pending officer application.")
+            return redirect("membership:apply_for_officer")
+        if form.is_valid():
+            application = form.save(commit=False)
+            application.user = request.user
+            try:
+                application.save()
+            except DatabaseError:
+                messages.error(request, "Submission could not be confirmed. Check your applications before trying again.")
+            else:
+                messages.success(request, "Officer application submitted. An admin will review it.")
+            return redirect("membership:apply_for_officer")
+    return render(request, "membership/apply_for_officer.html", {
+        "form": form, "applications": applications,
+        "can_apply": is_member and not pending.exists(),
+    })
+
+
+@require_POST
+@role_required(Role.ADMIN)
+def review_officer_application(request, pk):
+    application = get_object_or_404(OfficerApplication, pk=pk)
+    form = ReviewForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, " ".join(form.non_field_errors()) or "Choose approve or reject.")
+    else:
+        approve = form.cleaned_data["decision"] == "approve"
+        try:
+            application.review(request.user, approve, form.cleaned_data["note"])
+        except ValueError as error:
+            messages.error(request, str(error))
+        except DatabaseError:
+            messages.error(request, "The review could not be confirmed. Reload the queue and finish the approval if it is still pending.")
+        else:
+            messages.success(request, "Officer application approved." if approve else "Officer application rejected.")
+    return redirect("membership:application_list")
 
 
 @login_required
@@ -80,35 +138,34 @@ def apply(request):
 
 @role_required(Role.OFFICER)
 def application_list(request):
-    """Display membership applications with search and status filtering."""
+    """Display member and officer applications in one review queue."""
 
     search_query = request.GET.get("q", "").strip()[:100]
     selected_status = request.GET.get("status", "").strip().lower()
-
-    applications = MembershipApplication.objects.select_related(
-        "user", "reviewed_by"
-    )
+    selected_type = request.GET.get("type", "")
+    if selected_type not in {"member", "officer"}:
+        selected_type = ""
+    applications = [
+        model.objects.select_related("user", "reviewed_by")
+        for application_type, model in (
+            ("member", MembershipApplication), ("officer", OfficerApplication),
+        )
+        if not selected_type or application_type == selected_type
+    ]
 
     # Count all applications before applying filters.
     application_counts = {
-        "all": applications.count(),
-        "pending": applications.filter(
-            status=ApplicationStatus.PENDING
-        ).count(),
-        "approved": applications.filter(
-            status=ApplicationStatus.APPROVED
-        ).count(),
-        "rejected": applications.filter(
-            status=ApplicationStatus.REJECTED
-        ).count(),
+        "all": sum(queryset.count() for queryset in applications),
+        **{
+            status: sum(queryset.filter(status=status).count() for queryset in applications)
+            for status in ApplicationStatus.values
+        },
     }
 
     # Search by applicant username or email.
     if search_query:
-        applications = applications.filter(
-            Q(user__username__icontains=search_query)
-            | Q(user__email__icontains=search_query)
-        )
+        search = Q(user__username__icontains=search_query) | Q(user__email__icontains=search_query)
+        applications = [queryset.filter(search) for queryset in applications]
 
     valid_statuses = {
         ApplicationStatus.PENDING,
@@ -118,16 +175,17 @@ def application_list(request):
 
     # Only permit supported application status values.
     if selected_status in valid_statuses:
-        applications = applications.filter(status=selected_status)
+        applications = [queryset.filter(status=selected_status) for queryset in applications]
     else:
         selected_status = ""
 
-    pending = applications.filter(
-        status=ApplicationStatus.PENDING
+    pending = sorted(
+        (item for queryset in applications for item in queryset.filter(status=ApplicationStatus.PENDING)),
+        key=lambda item: (item.submitted_at, item.pk), reverse=True,
     )
-
-    reviewed = applications.exclude(
-        status=ApplicationStatus.PENDING
+    reviewed = sorted(
+        (item for queryset in applications for item in queryset.exclude(status=ApplicationStatus.PENDING)),
+        key=lambda item: (item.submitted_at, item.pk), reverse=True,
     )
 
     context = {
@@ -135,6 +193,8 @@ def application_list(request):
         "reviewed": reviewed,
         "search_query": search_query,
         "selected_status": selected_status,
+        "selected_type": selected_type,
+        "can_review_officer": get_role(request.user) == Role.ADMIN,
         "application_counts": application_counts,
         "review_form": ReviewForm(),
         "retention_days": REJECTED_RETENTION.days,

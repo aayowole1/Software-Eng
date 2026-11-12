@@ -153,7 +153,7 @@ class MembershipApplication(models.Model):
             "action": "approved" if approve else "rejected",
             "note": note,
         }
-        new_history = [*current.history, review_entry]
+        new_history = [*(current.history or []), review_entry]
         changed = type(self).objects.filter(
             pk=self.pk, status=ApplicationStatus.PENDING
         ).update(

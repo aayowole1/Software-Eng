@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Participation Report{% endblock %}
+{% block extra_head %}
+<script src="{% static 'reports/vendor/chart.umd.min.js' %}" defer></script>
+<script src="{% static 'reports/charts.js' %}" defer></script>
+{% endblock %}
 {% block content %}
 <h1>Participation &amp; Engagement Report</h1>
 
@@ -57,6 +62,41 @@
     <li>Only tasks created within the selected date range are counted.</li>
     <li>Dates use the organization's time zone and include the whole start and end day.</li>
   </ul>
+</section>
+
+{{ chart_data|json_script:"chart-data" }}
+
+<section aria-label="Charts" class="report-charts">
+  <h2>Charts</h2>
+  <p id="charts-no-data" hidden>No data for this range.</p>
+
+  <div class="report-chart-grid">
+
+    <div class="report-chart-item">
+      <h3>Attendance by event</h3>
+      <canvas id="chart-attendance-event"
+              role="img"
+              aria-label="Attendance by event chart"
+              class="report-canvas"></canvas>
+    </div>
+
+    <div class="report-chart-item">
+      <h3>Attendance by committee</h3>
+      <canvas id="chart-attendance-committee"
+              role="img"
+              aria-label="Attendance by committee chart"
+              class="report-canvas"></canvas>
+    </div>
+
+    <div class="report-chart-item">
+      <h3>Tasks by committee</h3>
+      <canvas id="chart-tasks-committee"
+              role="img"
+              aria-label="Tasks by committee chart"
+              class="report-canvas"></canvas>
+    </div>
+
+  </div>
 </section>
 
 <section aria-label="Events in range">
