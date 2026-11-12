@@ -79,6 +79,14 @@ class AnnouncementForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["tags"].widget.attrs.update({
+            "placeholder": "e.g., budget, workshop",
+            "class": (
+                "w-full text-sm bg-white border border-slate-200 rounded-lg"
+                " px-3.5 py-2.5 text-slate-900 placeholder:text-slate-400"
+                " focus:ring-2 focus:ring-slate-800 focus:outline-none"
+            ),
+        })
         if not self.is_bound and self.instance.pk is None:
             self.initial["scheduled_for"] = ""
         if user is not None:
