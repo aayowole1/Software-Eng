@@ -9,7 +9,7 @@
     .help-page h3 { font-size: 1rem; font-weight: 600; margin: 0; }
     .help-page ol { list-style: decimal; padding-left: 1.5rem; margin: 0; }
     .help-page ol li { margin: .25rem 0; }
-    .help-page .help-contents { padding: 0 1rem .5rem; overflow: hidden; }
+    .help-page .help-contents { padding: 0; overflow: hidden; }
     .help-page > .help-contents { margin-bottom: 0; }
     .help-page .help-section > summary,
     .help-page .help-guide > summary,
@@ -30,21 +30,28 @@
       font-weight: 400;
     }
     .help-page details[open] > summary::after { content: "−"; }
-    .help-page .help-contents ul { list-style: none; padding: 0; margin: 0; }
+    .help-page .help-contents-header { display: block; padding: .75rem 1rem; border-bottom: 1px solid var(--border); color: var(--accent); font-size: 1rem; }
+    .help-page .help-contents ul { list-style: none; padding: .35rem 1rem .65rem; margin: 0; }
     .help-page .help-contents li { border-bottom: 1px solid var(--border); }
     .help-page .help-contents li:last-child { border-bottom: 0; }
     .help-page .help-contents a { display: block; padding: .45rem 0; font-weight: 600; text-decoration: none; }
     .help-page .help-contents .help-subcontents { padding-left: 1rem; }
     .help-page .help-contents .help-subcontents a { padding: .3rem 0; font-size: .9rem; font-weight: 500; }
-    .help-page .help-section { margin-top: 1rem; padding: 0 1rem .75rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
-    .help-page .help-section > summary { margin: 0 -1rem; padding: .75rem 1rem; border-bottom: 1px solid var(--border); background: var(--surface); }
-    .help-page .help-guide { margin: .5rem 0 0; padding: 0 .75rem; border: 1px solid var(--border); border-radius: .45rem; background: var(--bg); }
+    .help-page .help-section { margin-top: 1rem; }
+    .help-page .help-section > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
+    .help-page .help-section[open] > summary { border-radius: .6rem .6rem 0 0; border-bottom: 0; }
+    .help-page .help-section[open] { padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; background: transparent; }
+    .help-page .help-section[open] > summary { margin: -.75rem -.75rem 0; border: 0; border-bottom: 1px solid var(--border); }
+    .help-page .help-guide { margin: .5rem 1rem 0; padding: 0 .65rem; border: 1px solid var(--border); border-radius: .45rem; background: var(--bg); }
     .help-page .help-guide > summary { padding: .65rem 0; }
     .help-page .help-guide-content { padding: 0 0 .75rem; }
     .help-page .help-note { margin: .5rem 0 0; }
     .help-page .help-faq { margin-top: 1rem; }
-    .help-page .help-faq > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem .6rem 0 0; background: var(--surface); }
-    .help-page .help-faq-list { margin: 0; padding: 0 1rem; border-top: 0; border-radius: 0 0 .6rem .6rem; }
+    .help-page .help-faq > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
+    .help-page .help-faq[open] > summary { border-radius: .6rem .6rem 0 0; border-bottom: 0; }
+    .help-page .help-faq[open] { border: 1px solid var(--border); border-radius: .6rem; background: transparent; }
+    .help-page .help-faq-list { margin: 0; padding: 0 1rem; border: 0; border-radius: 0; background: transparent; }
+    html.dark .help-page .help-faq-list { border: 0 !important; background: transparent !important; }
     .help-page .help-faq-list details { padding: .8rem 0; border-bottom: 1px solid var(--border); }
     .help-page .help-faq-list details:last-child { border-bottom: 0; }
     .help-page .help-faq-list p { margin: .5rem 0 0; color: var(--muted); }
@@ -70,7 +77,7 @@
 {% block content %}
 <div class="help-page" id="help-top">
   <nav aria-label="Help contents" class="card help-contents">
-    <strong>Table of contents</strong>
+    <strong class="help-contents-header">Table of contents</strong>
     <ul>
       {% for section in sections %}
         <li>
@@ -118,4 +125,20 @@
   </details>
   <a class="help-top-button" href="#help-top">Back to top</a>
 </div>
+<script>
+    document.querySelectorAll('.help-contents a[href^="#"]').forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const target = document.querySelector(link.hash);
+        if (!target) return;
+        event.preventDefault();
+        let details = target.closest("details");
+        while (details) {
+          details.open = true;
+          details = details.parentElement.closest("details");
+        }
+        window.history.replaceState(null, "", link.hash);
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+</script>
 {% endblock %}
