@@ -2,14 +2,17 @@
 {% block title %}Committees{% endblock %}
 {% block page_heading %}Committees{% endblock %}
 {% block content %}
-  <h1>Committees</h1>
-  {% if is_officer %}<p><a class="button" href="{% url 'committees:create' %}">New committee</a></p>{% endif %}
-  {% for c in committees %}
-    <div class="card">
-      <h2><a href="{% url 'committees:detail' c.pk %}">{{ c.name }}</a></h2>
-      {% if c.description %}<p>{{ c.description }}</p>{% endif %}
+  <section class="committees-page">
+    {% if is_officer %}<div class="committees-actions"><a class="users-action-button" href="{% url 'committees:create' %}">New committee</a></div>{% endif %}
+    <div class="committee-list">
+      {% for c in committees %}
+        <article class="committee-card">
+          <h2><a href="{% url 'committees:detail' c.pk %}">{{ c.name }}</a></h2>
+          {% if c.description %}<p>{{ c.description }}</p>{% else %}<p class="muted">No description provided.</p>{% endif %}
+        </article>
+      {% empty %}
+        <p class="muted">No committees yet.</p>
+      {% endfor %}
     </div>
-  {% empty %}
-    <p class="muted">No committees yet.</p>
-  {% endfor %}
+  </section>
 {% endblock %}
