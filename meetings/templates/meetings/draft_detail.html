@@ -38,10 +38,23 @@
       <textarea aria-label="Officer notes" name="notes" rows="14" {% if not can_review %}readonly{% endif %}>{{ draft.notes }}</textarea>
     </div>
     <div class="card note-review-panel">
-      <h2>AI summary</h2>
-      <div class="meeting-summary-scroll">
-        <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
-      </div>
+      {% if draft.ai_unavailable %}
+        <div class="notes-flow-status" role="status">
+          <strong>AI summary unavailable.</strong>
+          The summarizer was offline when these notes were processed{% if can_review %}. Write the summary and add action items yourself; they still need a review decision before anything becomes official{% endif %}.
+        </div>
+      {% endif %}
+      <h2 id="summary-heading">{% if draft.ai_unavailable %}Summary{% else %}AI summary{% endif %}</h2>
+      {% if can_review %}
+        <div class="meeting-summary-scroll">
+          <textarea name="summary" rows="8" aria-labelledby="summary-heading" aria-describedby="summary-help" maxlength="10000">{{ draft.summary }}</textarea>
+        </div>
+        <p class="muted" id="summary-help">You can edit the summary.{% if draft.ai_unavailable %} Write one before approving.{% endif %}</p>
+      {% else %}
+        <div class="meeting-summary-scroll">
+          <p>{{ draft.summary|default:"(No summary generated.)" }}</p>
+        </div>
+      {% endif %}
       <h2>Action items</h2>
       {% if can_review %}
         <p class="muted">Keep checked items, edit their text, or uncheck an item to undo/delete it. Add new items below.</p>

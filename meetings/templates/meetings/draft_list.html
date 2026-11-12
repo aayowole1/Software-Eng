@@ -26,7 +26,7 @@
               <tr>
                 <td data-label="Title"><a class="note-list-title" href="{% url 'meetings:detail' d.pk %}">{{ d.title }}</a></td>
                 <td data-label="Status">
-                  <span class="badge">{{ d.get_status_display }}</span>
+                  <span class="badge">{{ d.get_status_display }}</span>{% if d.ai_unavailable %} <span class="badge">Manual summary</span>{% endif %}
                   {% if d.review_update_pending %}<span class="note-list-warning">Action updates unfinished</span>{% endif %}
                 </td>
                 <td data-label="Submitted by">{{ d.created_by.email|default:"—" }}</td>

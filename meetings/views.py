@@ -20,6 +20,12 @@ from .stt import DeepgramTranscriber
 _active_recordings = {}
 logger = logging.getLogger(__name__)
 
+MANUAL_FALLBACK_MESSAGE = (
+    "The AI summarizer is unavailable, so your notes were saved without an AI summary. "
+    "Write the summary and action items below, then submit the review."
+)
+SUMMARY_MAX_LENGTH = 10000
+
 
 def _action_item_parts(description):
     parts = {}
@@ -126,7 +132,10 @@ def draft_create(request):
                 {"form": form, "heading": "Take notes"},
                 status=503,
             )
-        messages.success(request, "Notes created.")
+        if draft.ai_unavailable:
+            messages.warning(request, MANUAL_FALLBACK_MESSAGE)
+        else:
+            messages.success(request, "Notes created.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": "Take notes"})
 
@@ -210,6 +219,8 @@ def meeting_process(request):
     if request.session.get("meeting_processing_submission_id") == submission_id:
         request.session.pop("meeting_processing_submission_id", None)
         request.session.pop("meeting_processing", None)
+    if draft.ai_unavailable:
+        messages.warning(request, MANUAL_FALLBACK_MESSAGE)
     request.session.save()
     return JsonResponse({"redirect": reverse("meetings:detail", args=[draft.pk])})
 
@@ -304,9 +315,19 @@ def draft_review(request, pk):
     for line in (line.strip() for line in form.cleaned_data["new_items"].splitlines() if line.strip()):
         item_intent.append({"id": str(ObjectId()), "description": line, "accepted": True})
 
+    # FR-7.6: officers can write or correct the summary themselves.
+    summary = request.POST.get("summary", draft.summary).strip()
+    if len(summary) > SUMMARY_MAX_LENGTH:
+        messages.error(request, f"Keep the summary under {SUMMARY_MAX_LENGTH:,} characters.")
+        return redirect("meetings:detail", pk=draft.pk)
+    if form.cleaned_data["decision"] == DraftStatus.APPROVED and draft.ai_unavailable and not summary:
+        messages.error(request, "Write a summary before approving these notes.")
+        return redirect("meetings:detail", pk=draft.pk)
+
     try:
         draft.notes = request.POST.get("notes", draft.notes)
-        draft.save(update_fields=["notes"])
+        draft.summary = summary
+        draft.save(update_fields=["notes", "summary"])
         draft.review(
             request.user, form.cleaned_data["decision"], form.cleaned_data["note"],
             item_intent=item_intent, expected_generation=form.cleaned_data["expected_generation"],
@@ -383,7 +404,14 @@ def draft_revise(request, pk):
                 {"form": form, "heading": f"Revise “{draft.title}”"},
                 status=503,
             )
-        messages.success(request, "Notes revised and AI draft regenerated.")
+        if draft.ai_unavailable:
+            messages.warning(
+                request,
+                "The AI summarizer is unavailable, so the revised notes kept the current summary and "
+                "action items. Update them below, then submit the review.",
+            )
+        else:
+            messages.success(request, "Notes revised and AI draft regenerated.")
         return redirect("meetings:detail", pk=draft.pk)
     return render(request, "meetings/draft_form.html", {"form": form, "heading": f"Revise “{draft.title}”"})
 

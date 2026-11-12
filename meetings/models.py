@@ -22,7 +22,7 @@ from django.db import DatabaseError, IntegrityError, models
 from django.db.models import Q
 from django.utils import timezone
 
-from .ai import generate_meeting_title, summarize_meeting
+from .ai import MeetingSummary, generate_meeting_title, summarize_meeting
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +78,9 @@ class MeetingDraft(models.Model):
     review_update_pending = models.BooleanField(default=False)
     review_item_intent = models.JSONField(default=None, null=True, blank=True, editable=False)
     generation_token = models.CharField(max_length=32, default="", blank=True, editable=False)
+    # FR-7.6: set when the AI summarizer was offline or failed for this version
+    # of the notes, so an officer writes the summary and action items instead.
+    ai_unavailable = models.BooleanField(default=False, editable=False)
 
     class Meta:
         ordering = ["-created_at"]
@@ -109,8 +112,16 @@ class MeetingDraft(models.Model):
     def _publish_generation(self, transcript, notes, title, *, new, expected_generation=""):
         self._staged_generation = None
         self._publication_uncertain = False
-        result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
-        if title.endswith(" - Untitled Notes"):
+        ai_unavailable = False
+        try:
+            result = summarize_meeting(transcript, notes) if transcript.strip() else summarize_meeting(notes)
+        except RuntimeError:
+            # FR-7.6 manual fallback: keep the officer's notes and let them write
+            # the summary and action items. Provider details are not shown.
+            logger.warning("Meeting summarization is unavailable; saving the notes for manual entry.")
+            ai_unavailable = True
+            result = self._manual_fallback_result(new)
+        if title.endswith(" - Untitled Notes") and not ai_unavailable:
             try:
                 title = generate_meeting_title(transcript, notes)
             except (RuntimeError, ValueError):
@@ -131,6 +142,7 @@ class MeetingDraft(models.Model):
                 self.summary = result.summary
                 self.generation_token = token
                 self.status = DraftStatus.PENDING_REVIEW
+                self.ai_unavailable = ai_unavailable
                 self.save(force_insert=True)
             else:
                 changed = type(self).objects.filter(
@@ -138,7 +150,7 @@ class MeetingDraft(models.Model):
                     status=DraftStatus.REVISION_REQUESTED,
                 ).exclude(review_update_pending=True).update(
                     title=title, transcript=transcript, notes=notes, summary=result.summary,
-                    generation_token=token, status=DraftStatus.PENDING_REVIEW,
+                    generation_token=token, status=DraftStatus.PENDING_REVIEW, ai_unavailable=ai_unavailable,
                     reviewed_by=None, reviewed_at=None, review_note="",
                     review_item_intent=None, review_update_pending=False,
                 )
@@ -166,6 +178,18 @@ class MeetingDraft(models.Model):
             raise
         self.refresh_from_db()
         return self
+
+    def _manual_fallback_result(self, new):
+        """Start a manual draft: empty for new notes; a revision keeps the current text."""
+        if new:
+            return MeetingSummary(summary="", action_items=[])
+        current = type(self).objects.get(pk=self.pk)
+        return MeetingSummary(
+            summary=current.summary,
+            action_items=list(
+                current.current_action_items.filter(accepted=True).values_list("description", flat=True)
+            ),
+        )
 
     def generate(self, *, force_insert=False):
         """Generate a new draft, or safely revise an existing revision request."""

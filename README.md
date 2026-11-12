@@ -179,6 +179,15 @@ Action items are normalized to start with `Action:`, `TODO:`, or `- [ ]` before
 they are saved. The officer's notes are sent alongside the Deepgram transcript.
 Approved action items will become tasks once the task module (WBS 1.6) exists.
 
+**Manual fallback (FR-7.6).** If OpenRouter is offline, not configured, or
+returns an unusable response, the notes are still saved as a draft marked
+**Manual summary**. The draft page explains that the AI was unavailable, and the
+officer writes the summary and adds action items before submitting the review.
+A summary is required to approve such a draft. On a revision while the AI is
+down, the current summary and kept action items carry over for editing. Officers
+can also edit an AI-written summary during review. Provider error details are
+never shown. The next submission or revision uses the AI again once it is back.
+
 Meeting recording uses Deepgram real-time transcription. The browser sends
 16 kHz mono PCM chunks to Django. Django writes the active session to a
 uniquely named temporary PCM file, sends that file to Deepgram when recording
