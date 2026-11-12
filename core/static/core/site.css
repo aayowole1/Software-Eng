@@ -757,8 +757,7 @@ html.dark .audit-filters input[type="date"] {
   color-scheme: dark;
 }
 html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
-  opacity: 0.9;
+  opacity: 1;
 }
 .filter-submit-button {
   min-height: 2.5rem;
