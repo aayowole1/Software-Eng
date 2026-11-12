@@ -387,3 +387,21 @@ class AnnouncementAudienceNotificationTests(TestCase):
         Announcement.objects.filter(pk=announcement.pk).update(committee=self.committee)
         self.assertFalse(self._headline_shown_to(self.outsider, "Narrowed notice"))
         self.assertTrue(self._headline_shown_to(self.insider, "Narrowed notice"))
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ScheduledAnnouncementNotificationTests(TestCase):
+    def test_scheduled_announcement_notifies_once_when_it_goes_live(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from announcements.views import publish_due_announcements
+
+        officer = make_user("sched-officer@example.com", Role.OFFICER)
+        member = make_user("sched-member@example.com", Role.MEMBER)
+        announcement = _make_announcement(officer, status="scheduled", title="Scheduled notice")
+        Announcement.objects.filter(pk=announcement.pk).update(scheduled_for=timezone.now() - timedelta(minutes=1))
+        self.assertEqual(publish_due_announcements(), 1)
+        self.assertEqual(publish_due_announcements(), 0)
+        self.assertEqual(
+            Notification.objects.filter(user=member, object_id=str(announcement.pk)).count(), 1,
+        )
