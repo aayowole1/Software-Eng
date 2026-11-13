@@ -2,21 +2,22 @@
 {% block title %}Sign in{% endblock %}
 {% block page_heading %}Sign in{% endblock %}
 {% block content %}
-  <h1>Sign in</h1>
+<div class="account-flow">
   <form method="post" action="{% url 'accounts:login' %}" class="card" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-    {{ form.username.label_tag }} {{ form.username }} {{ form.username.errors }}
-    <p></p>
-    {{ form.password.label_tag }} {{ form.password }} {{ form.password.errors }}
+    <div class="account-field">{{ form.username.label_tag }} {{ form.username }} {{ form.username.errors }}</div>
+    <div class="account-field">{{ form.password.label_tag }} {{ form.password }} {{ form.password.errors }}</div>
     <input type="hidden" name="next" value="{{ next }}">
-    <p></p>
-    <button type="submit">Sign in</button>
-    <p><a href="{% url 'accounts:password_reset' %}">Forgot your password?</a></p>
+    <div class="account-actions">
+      <button type="submit">Sign in</button>
+      <a href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
+    </div>
   </form>
   {% if google_enabled %}
     <p>Or sign in with Google</p>
     {% include "accounts/_google_button.html" with button_text="signin_with" %}
   {% endif %}
   <p>New here? <a href="{% url 'accounts:register' %}">Create an account and apply to join</a></p>
+</div>
 {% endblock %}

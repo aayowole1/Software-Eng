@@ -2,8 +2,8 @@
 {% block title %}Create account{% endblock %}
 {% block page_heading %}Create account{% endblock %}
 {% block content %}
-  <h1>Create an account</h1>
-  <p>Creating an account also applies for membership. You can sign in once an officer approves your application.</p>
+<div class="account-flow">
+  <p class="muted">Create an account and tell the officers why you’d like to join. Once approved, you can sign in.</p>
   <form method="post" class="card" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
@@ -18,4 +18,5 @@
     {% include "accounts/_google_button.html" with button_text="signup_with" %}
   {% endif %}
   <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
+</div>
 {% endblock %}
