@@ -15,7 +15,7 @@
     </div>
   </form>
   {% if google_enabled %}
-    <p>Or sign in with Google</p>
+    <p class="muted">or</p>
     {% include "accounts/_google_button.html" with button_text="signin_with" %}
   {% endif %}
   <p>New here? <a href="{% url 'accounts:register' %}">Create an account and apply to join</a></p>

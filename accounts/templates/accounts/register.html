@@ -14,7 +14,7 @@
     <button class="button" type="submit">Create account and apply</button>
   </form>
   {% if google_enabled %}
-    <p>Or sign up with Google. You'll answer the same question next.</p>
+    <p class="muted">Or use Google. You'll answer the same question next.</p>
     {% include "accounts/_google_button.html" with button_text="signup_with" %}
   {% endif %}
   <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
