@@ -138,21 +138,6 @@
 </div>
           {% endif %}
 
-          <!-- Group: Admin Actions -->
-          {% if user_role == 'admin' %}
-            <div class="space-y-1">
-<span class="sidebar-section-title">Administration</span>
-<ul class="space-y-1">
-<li>
-<a class="sidebar-nav-link" href="{% url 'accounts:user_list' %}">
-<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m8-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6-3a4 4 0 0 1 0 7.75M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
-<span class="sidebar-label">Users &amp; Permissions</span>
-</a>
-</li>
-</ul>
-</div>
-          {% endif %}
-
           <!-- Group: Notes Actions -->
           {% if is_officer %}
 <div class="space-y-1">
