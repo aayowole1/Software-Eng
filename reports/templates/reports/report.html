@@ -7,10 +7,8 @@
 <script src="{% static 'reports/charts.js' %}" defer></script>
 {% endblock %}
 {% block content %}
-<h1>Participation &amp; Engagement Report</h1>
-
-<section aria-label="Date range">
-  <form method="get" action="">
+<section class="officer-panel report-filter-panel" aria-label="Date range">
+  <form method="get" action="" class="officer-filter-form">
     <div>
       <label for="{{ form.start_date.id_for_label }}">Start date</label>
       {{ form.start_date }}
@@ -29,14 +27,14 @@
         </ul>
       {% endif %}
     </div>
-    <button type="submit">Generate report</button>
+    <button type="submit" class="officer-action-button">Generate report</button>
   </form>
 </section>
 
 {% if data %}
 
-<section aria-labelledby="download-heading">
-  <h2 id="download-heading">Download CSV</h2>
+<section class="officer-panel report-download-panel" aria-labelledby="download-heading">
+  <h2 id="download-heading" class="report-section-heading">Download CSV</h2>
   <form method="get" action="{% url 'reports:download' %}" class="report-download">
     <input type="hidden" name="start_date" value="{{ data.start_date|date:'Y-m-d' }}">
     <input type="hidden" name="end_date" value="{{ data.end_date|date:'Y-m-d' }}">
@@ -47,28 +45,30 @@
       <option value="members">Members</option>
       <option value="committees">Committees</option>
     </select>
-    <button type="submit">Download</button>
+    <button type="submit" class="officer-action-button">Download</button>
   </form>
   <p class="muted">Downloads use the date range above. "All reports" is a ZIP file with the Events, Members and Committees CSVs.</p>
-</section>
-
-<section aria-label="Definitions">
-  <h2>How numbers are calculated</h2>
-  <ul>
-    <li><strong>Attendance %</strong> = events attended ÷ events held in range since the member's membership started × 100</li>
-    <li><strong>Committee attendance %</strong> = total attendances by committee members ÷ the events each member could attend since their membership started × 100</li>
-    <li>A member's membership starts when their application was last approved (or when the account was created, for accounts added without an application).</li>
-    <li><strong>Overdue tasks</strong> = tasks with a past due date that are not yet Done, as of today</li>
-    <li>Events held are non-cancelled events that started within the selected range and have already taken place. Cancelled and upcoming events are not counted.</li>
-    <li>Only tasks created within the selected date range are counted.</li>
-    <li>Dates use the organization's time zone and include the whole start and end day.</li>
-  </ul>
+  <details class="help-tooltip report-help report-help-download">
+    <summary aria-label="Show report calculation information">?</summary>
+    <div role="tooltip">
+      <strong>How numbers are calculated</strong>
+      <ul>
+        <li><strong>Attendance %</strong> = events attended ÷ events held in range since the member's membership started × 100</li>
+        <li><strong>Committee attendance %</strong> = total attendances by committee members ÷ the events each member could attend since their membership started × 100</li>
+        <li>A member's membership starts when their application was last approved (or when the account was created, for accounts added without an application).</li>
+        <li><strong>Overdue tasks</strong> = tasks with a past due date that are not yet Done, as of today</li>
+        <li>Events held are non-cancelled events that started within the selected range and have already taken place. Cancelled and upcoming events are not counted.</li>
+        <li>Only tasks created within the selected date range are counted.</li>
+        <li>Dates use the organization's time zone and include the whole start and end day.</li>
+      </ul>
+    </div>
+  </details>
 </section>
 
 {{ chart_data|json_script:"chart-data" }}
 
-<section aria-label="Charts" class="report-charts">
-  <h2>Charts</h2>
+<section aria-label="Charts" class="report-charts report-section">
+  <h2 class="report-section-heading">Charts</h2>
   <p id="charts-no-data" hidden>No data for this range.</p>
 
   <div class="report-chart-grid">
@@ -100,11 +100,11 @@
   </div>
 </section>
 
-<section aria-label="Events in range">
-  <h2>Events ({{ data.start_date }} – {{ data.end_date }})</h2>
+<section aria-label="Events in range" class="report-section report-table-section">
+  <h2 class="report-section-heading">Events ({{ data.start_date }} – {{ data.end_date }})</h2>
   <p>Events held (non-cancelled): <strong>{{ data.events_held }}</strong></p>
   {% if data.per_event %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Event</th>
@@ -123,16 +123,16 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No events were held in this range.</p>
   {% endif %}
 </section>
 
-<section aria-label="Per-member report">
+<section aria-label="Per-member report" class="report-section report-table-section">
   <h2>Per-member report</h2>
   {% if data.per_member %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Member</th>
@@ -157,16 +157,16 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No roster members found.</p>
   {% endif %}
 </section>
 
-<section aria-label="Per-committee report">
+<section aria-label="Per-committee report" class="report-section report-table-section">
   <h2>Per-committee report</h2>
   {% if data.per_committee %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Committee</th>
@@ -189,7 +189,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No committees found.</p>
   {% endif %}
