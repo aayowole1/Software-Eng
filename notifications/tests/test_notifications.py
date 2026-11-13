@@ -407,3 +407,37 @@ class ScheduledAnnouncementNotificationTests(TestCase):
         self.assertEqual(
             Notification.objects.filter(user=member, object_id=str(announcement.pk)).count(), 1,
         )
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class HeaderBellTests(TestCase):
+    """The header bell links to notifications and shows its dot only when something is unread."""
+
+    BELL_DOT = 'rounded-full bg-amber-500 ring-2 ring-white" aria-hidden="true"'
+
+    def setUp(self):
+        self.officer = make_user("bell-officer@example.com", Role.OFFICER)
+        self.member = make_user("bell-member@example.com", Role.MEMBER)
+        self.client.force_login(self.member)
+
+    def _notify(self, is_read):
+        ann = _make_announcement(self.officer, title="Bell test")
+        return Notification.objects.create(
+            user=self.member,
+            kind=NotificationKind.ANNOUNCEMENT,
+            object_id=str(ann.pk),
+            headline="Bell test",
+            is_read=is_read,
+        )
+
+    def test_no_dot_without_unread_notifications(self):
+        self._notify(is_read=True)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'href="%s" aria-label="Notifications"' % reverse("notifications:list"))
+        self.assertNotContains(response, self.BELL_DOT)
+
+    def test_dot_and_count_with_unread_notifications(self):
+        self._notify(is_read=False)
+        response = self.client.get(reverse("core:dashboard"))
+        self.assertContains(response, 'aria-label="Notifications, 1 unread"')
+        self.assertContains(response, self.BELL_DOT)
