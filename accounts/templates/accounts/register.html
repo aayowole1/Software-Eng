@@ -17,6 +17,9 @@
     <p class="muted">Or use Google. You'll answer the same question next.</p>
     {% include "accounts/_google_button.html" with button_text="signup_with" %}
   {% endif %}
-  <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
+  <div class="account-actions account-signup">
+    <span>Already have an account?</span>
+    <a class="button secondary" href="{% url 'accounts:login' %}">Sign in</a>
+  </div>
 </div>
 {% endblock %}

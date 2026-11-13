@@ -2,11 +2,11 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_heading %}Dashboard{% endblock %}
 {% block content %}
-  <h1>{% if user.is_authenticated %}Dashboard{% else %}OrgFlow{% endif %}</h1>
-
+<div class="dashboard">
   {% if user.is_authenticated %}
-    <p>Signed in as <strong>{{ user.email|default:user.username }}</strong> · <span class="badge">{{ role }}</span></p>
+    <p class="dashboard-welcome">Signed in as <strong>{{ user.email|default:user.username }}</strong> <span class="badge">{{ role|capfirst }}</span></p>
   {% else %}
+    <h1>OrgFlow</h1>
     <section class="about-section" aria-label="About {{ org_name }}">
       <h2>About {{ org_name }}</h2>
       <p>{{ org_mission }}</p>
@@ -25,10 +25,10 @@
         <p>Contact an officer after you sign in.</p>
       {% endif %}
     </section>
-    <p>
+    <div class="account-actions dashboard-join">
       <a class="button" href="{% url 'accounts:register' %}">Create an account and apply</a>
-      <a href="{% url 'accounts:login' %}">or sign in</a>
-    </p>
+      <a class="button secondary" href="{% url 'accounts:login' %}">Sign in</a>
+    </div>
     <div class="card">
       <h2>How joining works</h2>
       <ol>
@@ -83,11 +83,18 @@
       </div>
       <div class="card summary-card">
         <strong>{{ summary_pending_approvals }}</strong>
-        <span>Pending approvals
-          (<a href="{% url 'membership:application_list' %}">applications</a>
-          / <a href="{% url 'meetings:list' %}">drafts</a>)</span>
+        <span>Pending approvals</span>
+        <span class="summary-card-links"><a href="{% url 'membership:application_list' %}">Applications</a> · <a href="{% url 'meetings:list' %}">Drafts</a></span>
       </div>
     </section>
+  {% endif %}
+
+  {% if role == "member" %}
+    <p><a class="button" href="{% url 'membership:apply_for_officer' %}">Apply to become an officer</a></p>
+  {% endif %}
+
+  {% if user.is_authenticated %}<div class="dashboard-grid">{% endif %}
+  {% if is_officer %}
     <div class="card">
       <h2>Needs your attention</h2>
       <ul>
@@ -99,33 +106,30 @@
   {% endif %}
 
   {% if is_member %}
-    {% if role == "member" %}
-      <p><a class="button" href="{% url 'membership:apply_for_officer' %}">Apply to become an officer</a></p>
-    {% endif %}
     <div class="card">
       <h2>Recent announcements</h2>
       <ul>
         {% for announcement in recent_announcements %}
           <li><a href="{% url 'announcements:detail' announcement.pk %}">{{ announcement.title }}</a> <span class="muted">{{ announcement.published_at|date:"M j, Y" }}</span></li>
-        {% empty %}<li>No published announcements yet.</li>{% endfor %}
+        {% empty %}<li class="muted">No published announcements yet.</li>{% endfor %}
       </ul>
-      <p><a href="{% url 'announcements:list' %}">All announcements</a></p>
+      <p class="dashboard-more"><a href="{% url 'announcements:list' %}">All announcements &rarr;</a></p>
     </div>
     <div class="card">
       <h2>My tasks</h2>
-      <p>{{ my_task_counts.total }} assigned · {{ my_task_counts.completed }} completed · {{ my_task_counts.overdue }} overdue</p>
+      <p class="muted">{{ my_task_counts.total }} assigned · {{ my_task_counts.completed }} completed · {{ my_task_counts.overdue }} overdue</p>
       <ul>
         {% for task in my_tasks %}
           <li><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a>
             <span class="badge">{{ task.get_status_display }}</span>
             {% if task.due_date %}<span class="muted">Due {{ task.due_date|date:"M j, Y" }}</span>{% endif %}
-            {% if task.is_overdue %}<strong>Overdue</strong>{% endif %}
+            {% if task.is_overdue %}<strong class="dashboard-overdue">Overdue</strong>{% endif %}
           </li>
         {% empty %}
           <li class="muted">No unfinished tasks assigned to you.</li>
         {% endfor %}
       </ul>
-      <p><a href="{% url 'tasks:list' %}">View tasks and committee work</a></p>
+      <p class="dashboard-more"><a href="{% url 'tasks:list' %}">View tasks and committee work &rarr;</a></p>
     </div>
     <div class="card">
       <h2>Upcoming events</h2>
@@ -134,7 +138,7 @@
       {% empty %}
         <p class="muted">No upcoming events.</p>
       {% endfor %}
-      <p><a href="{% url 'events:list' %}">All events</a></p>
+      <p class="dashboard-more"><a href="{% url 'events:list' %}">All events &rarr;</a></p>
     </div>
     <div class="card">
       <h2>My attendance</h2>
@@ -168,4 +172,6 @@
       <p class="muted">No committees yet.</p>
     {% endfor %}
   </div>
+  {% if user.is_authenticated %}</div>{% endif %}
+</div>
 {% endblock %}
