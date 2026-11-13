@@ -591,6 +591,26 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
 .helptext { display: block; color: var(--muted); font-size: 0.9rem; }
 .errorlist { color: var(--error); margin: 4px 0; padding-left: 18px; }
 
+.account-flow { max-width: 36rem; }
+.account-field { margin-bottom: 1rem; }
+.account-actions,
+.account-profile-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.account-profile-header { justify-content: space-between; }
+.account-profile-header h2 { margin: 0; }
+.account-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.account-details dt { color: var(--muted); font-size: 0.875rem; }
+.account-details dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+
 button, .button {
   display: inline-block;
   padding: 8px 14px;

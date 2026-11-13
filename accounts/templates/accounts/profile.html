@@ -2,18 +2,26 @@
 {% block title %}My account{% endblock %}
 {% block page_heading %}My account{% endblock %}
 {% block content %}
-  <h1>My account</h1>
-  <p><a href="{% url 'accounts:edit_profile' %}">Edit profile</a></p>
-  <div class="card">
-    <p><strong>Email:</strong> {{ user.email|default:user.username }}</p>
-    <p><strong>Role:</strong> <span class="badge">{{ role }}</span></p>
-    <p><strong>Joined:</strong> {{ user.date_joined|date:"M j, Y" }}</p>
-  </div>
+  <section class="card account-profile">
+    <div class="account-profile-header">
+      <h2>{{ user.get_full_name|default:user.username }}</h2>
+      <a class="button secondary" href="{% url 'accounts:edit_profile' %}">Edit profile</a>
+    </div>
+    <dl class="account-details">
+      <div><dt>Email</dt><dd>{{ user.email|default:"Not provided" }}</dd></div>
+      <div><dt>Username</dt><dd>{{ user.username }}</dd></div>
+      <div><dt>Role</dt><dd><span class="role-pill role-pill--{{ role }}">{{ role|capfirst }}</span></dd></div>
+      <div><dt>Account created</dt><dd>{{ user.date_joined|date:"M j, Y" }}</dd></div>
+      {% if user.profile.graduation_year %}
+        <div><dt>Graduation year</dt><dd>{{ user.profile.graduation_year|stringformat:"d" }}</dd></div>
+      {% endif %}
+    </dl>
+  </section>
   <h2>Committees</h2>
   {% for m in committees %}
     <p><a href="{% url 'committees:detail' m.committee.pk %}">{{ m.committee.name }}</a> <span class="badge">{{ m.get_role_display }}</span></p>
   {% empty %}
-    <p class="muted">You're not on any committees.</p>
+    <p class="muted">You’re not on any committees.{% if show_attendance %} <a href="{% url 'committees:list' %}">Browse committees</a>.{% endif %}</p>
   {% endfor %}
   {% if show_attendance %}
     <h2 id="attendance">My attendance</h2>
