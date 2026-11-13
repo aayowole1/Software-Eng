@@ -734,6 +734,37 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   color: #ffffff;
   background: #163a66;
 }
+.committees-page { max-width: 100%; }
+.committees-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.committee-list {
+  display: grid;
+  gap: 1rem;
+}
+.committee-card {
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid #60a5fa;
+  border-radius: .75rem;
+  background: var(--surface);
+  box-shadow: 0 3px 10px rgb(15 23 42 / .06);
+}
+.committee-card:nth-child(3n + 2) { border-left-color: #34d399; }
+.committee-card:nth-child(3n + 3) { border-left-color: #f59e0b; }
+.committee-card h2 { margin: 0 0 .45rem; font-size: 1.1rem; }
+.committee-card h2 a { text-decoration: none; }
+.committee-card p { margin: 0; color: var(--muted); }
+.committee-form { max-width: none; }
+.committee-form input,
+.committee-form select,
+.committee-form textarea {
+  max-width: none;
+}
+.committee-form .users-action-button { margin-right: .5rem; }
+html.dark .committee-card { box-shadow: 0 3px 10px rgb(0 0 0 / .2); }
 .users-action-button:focus-visible,
 .button.secondary:focus-visible,
 button.secondary:focus-visible {
