@@ -2,36 +2,39 @@
 {% block title %}Events{% endblock %}
 {% block page_heading %}Events{% endblock %}
 {% block content %}
-  <h1>Events</h1>
-  {% if is_officer %}<p><a class="button" href="{% url 'events:create' %}">New event</a></p>{% endif %}
+  {% if user.profile.role == "officer" or user.profile.role == "admin" or user.is_superuser %}
+    <p class="events-actions"><a class="button" href="{% url 'events:create' %}">New event</a></p>
+  {% endif %}
 
-  <h2>Upcoming</h2>
+  <section class="events-section" aria-labelledby="upcoming-events-heading">
+    <h2 id="upcoming-events-heading">Upcoming</h2>
   {% for event, my_response in upcoming %}
-    <div class="card">
-      <h3><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a>{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</h3>
-      <p class="muted">{{ event.starts_at|date:"D, M j, Y · g:i A" }} · {{ event.location }}</p>
+    <article class="card event-card{% if event.cancelled %} event-card-cancelled{% endif %}">
+      <div class="event-card-heading">
+        <h3><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a></h3>
+        {% if event.cancelled %}<span class="badge event-badge-cancelled">Cancelled</span>{% endif %}
+      </div>
+      <p class="event-card-meta">{{ event.starts_at|date:"D, M j, Y · g:i A" }} · {{ event.location }}</p>
       {% if my_response == "going" %}<p><span class="badge">You're going</span></p>
       {% elif my_response == "not_going" %}<p><span class="badge">You're not going</span></p>{% endif %}
-    </div>
+    </article>
   {% empty %}
     <p class="muted">No upcoming events.</p>
   {% endfor %}
+  </section>
 
-  <h2>Past</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th scope="col">Event</th><th scope="col">Date</th><th scope="col">Location</th></tr></thead>
-      <tbody>
-        {% for event in past %}
-          <tr>
-            <td><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a>{% if event.cancelled %} <span class="badge">Cancelled</span>{% endif %}</td>
-            <td>{{ event.starts_at|date:"M j, Y" }}</td>
-            <td>{{ event.location }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="3" class="muted">No past events.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <section class="events-section" aria-labelledby="past-events-heading">
+    <h2 id="past-events-heading">Past</h2>
+    {% for event in past %}
+      <article class="card event-card{% if event.cancelled %} event-card-cancelled{% endif %}">
+        <div class="event-card-heading">
+          <h3><a href="{% url 'events:detail' event.pk %}">{{ event.title }}</a></h3>
+          {% if event.cancelled %}<span class="badge event-badge-cancelled">Cancelled</span>{% endif %}
+        </div>
+        <p class="event-card-meta">{{ event.starts_at|date:"D, M j, Y · g:i A" }} · {{ event.location }}</p>
+      </article>
+    {% empty %}
+      <p class="muted">No past events.</p>
+    {% endfor %}
+  </section>
 {% endblock %}

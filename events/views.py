@@ -61,7 +61,11 @@ def event_create(request):
         event.save()
         messages.success(request, f"Event “{event.title}” created.")
         return redirect("events:detail", pk=event.pk)
-    return render(request, "events/event_form.html", {"form": form, "heading": "New event"})
+    return render(
+        request,
+        "events/event_form.html",
+        {"form": form, "heading": "New event", "editing": False},
+    )
 
 
 @role_required(Role.OFFICER)
@@ -72,7 +76,11 @@ def event_edit(request, pk):
         form.save()
         messages.success(request, "Event updated.")
         return redirect("events:detail", pk=event.pk)
-    return render(request, "events/event_form.html", {"form": form, "heading": f"Edit “{event.title}”"})
+    return render(
+        request,
+        "events/event_form.html",
+        {"form": form, "heading": f"Edit “{event.title}”", "editing": True, "event": event},
+    )
 
 
 @require_POST
