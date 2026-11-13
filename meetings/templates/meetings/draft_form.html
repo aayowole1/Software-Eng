@@ -33,12 +33,12 @@
     <div class="meeting-actions" aria-describedby="recording-status">
       <div class="meeting-recording-actions">
         <button type="button" id="start-recording" class="button button-primary">Start Notes</button>
-        <button type="button" id="stop-recording" class="button button-danger" disabled>
-          <span aria-hidden="true">■</span>
-          Stop Notes
+        <button type="button" id="stop-recording" class="button button-pause" disabled>
+          <span aria-hidden="true">Ⅱ</span>
+          Pause recording
         </button>
       </div>
-      <button type="submit" id="submit-meeting" class="button button-primary">Submit Notes</button>
+      <button type="submit" id="submit-meeting" class="button button-danger">Submit Notes</button>
     </div>
   </form>
   <p id="recording-status" class="notes-flow-status" role="status" hidden></p>
@@ -177,7 +177,7 @@
       async function stopRecording(forSubmission = false) {
         if (isStopping) return;
         if (!isRecording) {
-          showFlowWarning("Start Notes before selecting Stop Notes.");
+          showFlowWarning("Start Notes before selecting Stop Notes. Pause recording is available after recording starts.");
           return;
         }
         isRecording = false;

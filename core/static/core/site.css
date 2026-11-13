@@ -991,7 +991,9 @@ html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 1rem;
-    margin: 1.5rem 0;
+    width: 100%;
+    max-width: 80rem;
+    margin: 0 auto 1.5rem;
     align-items: stretch;
 }
 
@@ -1070,6 +1072,35 @@ html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
   border-bottom: 2px solid var(--color-brand-accent);
   font-size: 1.45rem;
 }
+.report-help {
+  position: relative;
+  display: flex;
+  width: max-content;
+  min-height: 0;
+  justify-content: flex-end;
+  margin: 0 0 0.5rem auto;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+}
+.report-help summary { background: transparent !important; }
+.report-help [role="tooltip"] { right: 0; }
+.report-help [role="tooltip"] ul { margin: 0.4rem 0 0; padding-left: 1.25rem; }
+.report-help-download {
+  margin-top: 1.25rem;
+  margin-bottom: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border) !important;
+}
+.report-help-download summary { margin-left: auto; }
+.report-filter-panel input[type="date"] {
+  color-scheme: light;
+}
+.report-filter-panel input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  filter: brightness(0.7);
+}
 .report-table-section h2 { margin-bottom: 1rem; }
 .report-table-section + .report-table-section { margin-top: 3.5rem; }
 .report-table-section .officer-table-wrap {
@@ -1108,6 +1139,16 @@ html.dark .report-download { background: #172235; }
 html.dark .officer-action-button { background: #1e3a5f; border-color: #93c5fd; }
 html.dark .officer-action-button:hover { background: #274c77; }
 html.dark .report-section-heading { color: var(--text); }
+html.dark .report-help-tooltip summary {
+  border-color: #bfdbfe;
+  color: #bfdbfe;
+}
+html.dark .report-filter-panel input[type="date"] {
+  color-scheme: dark;
+}
+html.dark .report-filter-panel input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.5);
+}
 .officer-secondary-button,
 .button.secondary {
   background: var(--surface);

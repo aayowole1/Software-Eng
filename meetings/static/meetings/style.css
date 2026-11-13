@@ -567,6 +567,28 @@ html.dark .meeting-review-columns textarea {
     border-color: #8f1d14;
 }
 
+.button-pause {
+    background-color: #f59e0b;
+    border-color: #d97706;
+    color: #1f2937;
+}
+
+.button-pause:hover:not(:disabled) {
+    background-color: #fbbf24;
+    border-color: #b45309;
+}
+
+html.dark .button-pause {
+    background-color: #fbbf24;
+    border-color: #fcd34d;
+    color: #111827;
+}
+
+html.dark .button-pause:hover:not(:disabled) {
+    background-color: #fcd34d;
+    border-color: #fde68a;
+}
+
 @media (max-width: 600px) {
     .meeting-actions,
     .meeting-recording-actions {
