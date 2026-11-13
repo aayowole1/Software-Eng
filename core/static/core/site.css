@@ -1916,16 +1916,47 @@ html.dark .officer-table th { background: #273449; color: var(--text); }
 }
 
 .status-guide {
-    margin: 0.5rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 0.75rem 0 0;
 }
 
+.status-guide-item {
+    --status-color: #64748b;
+    padding: 0.85rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--status-color) 30%, var(--border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--status-color) 8%, var(--surface));
+}
+
+.status-guide-pending { --status-color: #b45309; }
+.status-guide-approved { --status-color: #15803d; }
+.status-guide-rejected { --status-color: #be123c; }
+html.dark .status-guide-pending { --status-color: #fbbf24; }
+html.dark .status-guide-approved { --status-color: #4ade80; }
+html.dark .status-guide-rejected { --status-color: #fb7185; }
+
 .status-guide dt {
-    font-weight: 600;
-    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    color: var(--status-color);
+}
+
+.status-guide-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: var(--status-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 22%, transparent);
 }
 
 .status-guide dd {
-    margin: 0.2rem 0 0 0;
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text);
 }
 
 @media (max-width: 375px) {

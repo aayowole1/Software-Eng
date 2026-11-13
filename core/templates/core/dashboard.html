@@ -38,10 +38,18 @@
       </ol>
       <h3>Application statuses</h3>
       <dl class="status-guide">
-        <dt><span class="badge">Pending</span></dt>
-        <dd>Your application is waiting for an officer to review it. You can't sign in yet.</dd>
-        <dt><span class="badge">Not approved</span></dt>
-        <dd>You'll see the officer's reason when you sign in. You can apply again after {{ reapply_wait_days }} day{{ reapply_wait_days|pluralize }}.</dd>
+        <div class="status-guide-item status-guide-pending">
+          <dt><span class="status-guide-dot" aria-hidden="true"></span>Pending</dt>
+          <dd>Your application is waiting for an officer to review it. You can't sign in yet.</dd>
+        </div>
+        <div class="status-guide-item status-guide-approved">
+          <dt><span class="status-guide-dot" aria-hidden="true"></span>Approved</dt>
+          <dd>You're a member. Sign in to see events, tasks, committees and the roster.</dd>
+        </div>
+        <div class="status-guide-item status-guide-rejected">
+          <dt><span class="status-guide-dot" aria-hidden="true"></span>Not approved</dt>
+          <dd>You'll see the officer's reason when you sign in. You can apply again after {{ reapply_wait_days }} day{{ reapply_wait_days|pluralize }}.</dd>
+        </div>
       </dl>
     </div>
   {% endif %}
