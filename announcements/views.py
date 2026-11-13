@@ -389,9 +389,6 @@ def announcements_list(request):
             "officer_total": Profile.objects.filter(
                 role__in=[Role.OFFICER, Role.ADMIN]
             ).count(),
-            "applicant_total": Profile.objects.filter(
-                role=Role.APPLICANT
-            ).count(),
         }
 
     categories = Category.objects.all()
