@@ -2,22 +2,65 @@
 {% block title %}Resources{% endblock %}
 {% block page_heading %}Resources{% endblock %}
 {% block content %}
-<h1>Resource library</h1>
-<p>Shared organization documents and links. External links open their destination website.</p>
-{% if can_manage %}<p><a class="button" href="{% url 'resources:create' %}">Add resource</a></p>{% endif %}
-<form method="get" class="card" role="search">
-<p><label for="resource-search">Search resources</label><input id="resource-search" name="q" value="{{ query }}" maxlength="100"></p>
-<p><label for="resource-category">Category</label><select id="resource-category" name="category"><option value="">All categories</option>{% for category in categories %}<option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></p>
-<p><label for="resource-tag">Tag</label><input id="resource-tag" name="tag" value="{{ selected_tag }}" maxlength="32"></p>
-<button type="submit">Apply filters</button> <a href="{% url 'resources:list' %}">Clear filters</a>
+<p class="resources-lede">Shared organization documents and links. External links open their destination website.</p>
+<form method="get" class="resource-filters" role="search">
+  <div>
+    <label for="resource-search">Search resources</label>
+    <input id="resource-search" name="q" value="{{ query }}" maxlength="100">
+  </div>
+  <div>
+    <label for="resource-category">Category</label>
+    <select id="resource-category" name="category">
+      <option value="">All categories</option>
+      {% for category in categories %}<option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="resource-tag">Tag</label>
+    <input id="resource-tag" name="tag" value="{{ selected_tag }}" maxlength="32">
+  </div>
+  <div class="resource-filter-actions">
+    <button class="resource-action-button" type="submit">Apply filters</button>
+    <a class="button secondary resource-action-button" href="{% url 'resources:list' %}">Clear filters</a>
+  </div>
 </form>
 {% for resource in resources %}
-<article class="card">
-<h2>{{ resource.title }}</h2><p class="muted">{{ resource.category|default:"General" }} · {% if resource.url %}External link{% else %}Document{% endif %}</p>
-{% for tag in resource.tags %}<a class="badge" href="{% url 'resources:list' %}?tag={{ tag|urlencode }}">{{ tag }}</a> {% endfor %}
-{{ resource.description|linebreaks }}
-<p><a href="{% url 'resources:open' resource.pk %}">{% if resource.url %}Open link{% else %}Download document{% endif %}</a></p>
-{% if can_manage %}<p><a href="{% url 'resources:edit' resource.pk %}">Edit</a> · <a href="{% url 'resources:delete' resource.pk %}">Remove</a></p>{% endif %}
+<article class="card resource-card">
+  <div class="resource-card-content">
+    <h2>{{ resource.title }}</h2>
+    <p class="muted">{{ resource.category|default:"General" }} · {% if resource.url %}External link{% else %}Document{% endif %}</p>
+    {% for tag in resource.tags %}<a class="badge" href="{% url 'resources:list' %}?tag={{ tag|urlencode }}">{{ tag }}</a> {% endfor %}
+    {{ resource.description|linebreaks }}
+  </div>
+  <div class="resource-card-actions">
+  <a class="button resource-action-button" href="{% url 'resources:open' resource.pk %}" aria-label="{% if resource.url %}Open link{% else %}Download document{% endif %}">
+    {% if resource.url %}
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 3h7v7m-1-6L10 14m-5 7h12a2 2 0 0 0 2-2v-5M5 5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/></svg>
+      <span>Open link</span>
+    {% else %}
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14"/></svg>
+      <span>Download document</span>
+    {% endif %}
+  </a>
+  {% if can_manage %}
+    <a class="button secondary resource-icon-button" href="{% url 'resources:edit' resource.pk %}" aria-label="Edit {{ resource.title }}" title="Edit resource">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-.8 4.8L8 20l11.5-11.5a2.1 2.1 0 0 0-3-3L5 17m9-9 3 3"/></svg>
+    </a>
+    <a class="button danger resource-icon-button" href="{% url 'resources:delete' resource.pk %}" aria-label="Remove {{ resource.title }}" title="Remove resource">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7V4h6v3m-9 0 1 13h10l1-13"/></svg>
+    </a>
+  {% endif %}
+  </div>
 </article>
-{% empty %}<p>No resources match these filters.</p>{% endfor %}
+{% empty %}
+<div class="resource-empty-table" role="status">
+  <div class="resource-empty-table-header">
+    <span>Resource</span>
+    <span>Details</span>
+    <span>Actions</span>
+  </div>
+  <p>No resources match these filters.</p>
+</div>
+{% endfor %}
+{% if can_manage %}<p><a class="button resource-action-button" href="{% url 'resources:create' %}">Add resource</a></p>{% endif %}
 {% endblock %}

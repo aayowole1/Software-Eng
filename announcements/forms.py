@@ -292,6 +292,11 @@ class ResourceForm(forms.ModelForm):
         model = Resource
         fields = ["title", "description", "category", "tags", "file", "url"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.pk:
+            self.fields.pop("remove_file", None)
+
     def clean(self):
         cleaned_data = super().clean()
         file = self.files.get("file")
