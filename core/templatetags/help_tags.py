@@ -1,7 +1,7 @@
 """Render the help guides' **bold** markers safely (SCRUM-50)."""
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
 
 from django import template
 from django.utils.html import escape
@@ -30,5 +30,5 @@ def human_datetime(value):
         except (TypeError, ValueError):
             return value
     if timezone.is_naive(moment):
-        moment = moment.replace(tzinfo=timezone.utc)
+        moment = moment.replace(tzinfo=dt_timezone.utc)
     return timezone.localtime(moment).strftime("%b %-d, %Y, %-I:%M %p")
