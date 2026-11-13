@@ -298,9 +298,10 @@
       <footer class="py-5 px-6 lg:px-8 border-t border-slate-200 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white mt-auto">
 <p>&copy; {% now "Y" %} OrgFlow Student Portal. Campus Governance &amp; Operations.</p>
 <div class="flex items-center gap-4 text-slate-500">
-<a class="hover:text-slate-800 transition" href="#">Accessibility</a>
-<a class="hover:text-slate-800 transition" href="#">Bylaws &amp; Governance</a>
-<a class="hover:text-slate-800 transition" href="#">Privacy</a>
+<a class="hover:text-slate-800 transition" href="{% url 'core:about' %}">About us</a>
+<a class="hover:text-slate-800 transition" href="{% url 'core:accessibility' %}">Accessibility</a>
+<a class="hover:text-slate-800 transition" href="{% url 'core:bylaws' %}">Bylaws &amp; Governance</a>
+<a class="hover:text-slate-800 transition" href="{% url 'core:privacy' %}">Privacy</a>
 </div>
 </footer>
       {% endblock %}

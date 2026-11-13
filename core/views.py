@@ -97,6 +97,33 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
+def public_info_page(request, page):
+    """Render public information pages that do not require authentication."""
+    pages = {
+        "about": {
+            "title": "About OrgFlow",
+            "eyebrow": "Our story",
+            "intro": "OrgFlow is a student-led organization helping other student organizations find their flow.",
+        },
+        "accessibility": {
+            "title": "Accessibility",
+            "eyebrow": "Everyone belongs here",
+            "intro": "OrgFlow is committed to making organization tools and information usable by as many people as possible.",
+        },
+        "bylaws": {
+            "title": "Bylaws & Governance",
+            "eyebrow": "How we work",
+            "intro": "These guidelines describe the principles we use to operate OrgFlow and support the organizations we serve.",
+        },
+        "privacy": {
+            "title": "Privacy",
+            "eyebrow": "Your information",
+            "intro": "We collect and use information thoughtfully so OrgFlow can support organization operations without losing sight of student privacy.",
+        },
+    }
+    return render(request, "core/public_info.html", {"page": pages[page], "page_key": page})
+
+
 AUDIT_TYPES = [
     ("role", "Role change"),
     ("membership", "Membership"),

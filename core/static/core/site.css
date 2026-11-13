@@ -576,6 +576,81 @@ html.dark .header-signout-button:hover {
   margin-left: auto;
 }
 
+.public-info-page {
+  max-width: 62rem;
+  margin: 0 auto;
+}
+.public-info-page-header,
+.public-info-hero,
+.public-info-section,
+.public-info-card,
+.public-info-callout {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-base);
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.public-info-page-header {
+  display: flex;
+  min-height: 7rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.public-info-page-header h1 {
+  margin: 0;
+  font-family: var(--font-family-heading);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.1;
+}
+.public-info-hero {
+  background: linear-gradient(135deg, var(--surface), color-mix(in srgb, var(--accent) 8%, var(--surface)));
+  border-top: 4px solid var(--color-brand-accent);
+}
+.public-info-eyebrow {
+  margin: 0 0 .4rem;
+  color: var(--accent);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.public-info-hero h1 { margin: 0; }
+.public-info-intro {
+  max-width: 48rem;
+  margin: .75rem 0 0;
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+.public-info-section { margin-top: 1rem; }
+.public-info-section h2,
+.public-info-card h2,
+.public-info-callout h2 { margin: 0 0 .65rem; }
+.public-info-section h2:not(:first-child) { margin-top: 1.5rem; }
+.public-info-section p:last-child,
+.public-info-section ul:last-child,
+.public-info-section ol:last-child { margin-bottom: 0; }
+.public-info-section li + li { margin-top: .55rem; }
+.public-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.public-info-card { border-top: 3px solid var(--color-brand-accent); }
+.public-info-card p { margin-bottom: 0; color: var(--muted); }
+.public-info-callout {
+  margin-top: 1rem;
+  background: color-mix(in srgb, var(--color-brand-accent) 10%, var(--surface));
+}
+.public-info-callout p { margin-bottom: 0; }
+.public-info-cta { margin-top: 1.75rem; }
+@media (max-width: 700px) {
+  .public-info-grid { grid-template-columns: 1fr; }
+}
+
 h1 { font-size: 1.6rem; margin-top: 0; }
 h2 { font-size: 1.2rem; margin-top: 32px; }
 h1, h2, h3, h4 { font-family: var(--font-family-heading); }
