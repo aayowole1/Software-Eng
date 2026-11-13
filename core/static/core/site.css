@@ -72,6 +72,11 @@ html.dark details {
 html.dark .users-table th { background: #273449; color: var(--text); }
 html.dark .users-table tbody tr:nth-child(even) { background: #172235; }
 html.dark .users-table tbody tr:hover { background: #223451; }
+html.dark .users-table td details {
+  border-color: transparent;
+  background: transparent;
+}
+html.dark .user-filters input::placeholder { color: #cbd5e1; opacity: 1; }
 html.dark .sidebar-nav-link:hover { color: var(--text); background: #273449; }
 html.dark .sidebar-footer { background: rgb(15 23 42 / 0.45); }
 
@@ -597,7 +602,12 @@ button, .button {
   cursor: pointer;
   text-decoration: none;
 }
-button.secondary { background: var(--surface); color: var(--accent); }
+button.secondary,
+.button.secondary {
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+}
 button.danger { background: var(--error); border-color: var(--error); }
 .link-button { background: none; border: none; color: var(--accent); padding: 0; text-decoration: underline; }
 .sidebar-link.link-button {
@@ -625,6 +635,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 .user-filters {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   align-items: flex-end;
   gap: 0.75rem;
   margin-bottom: 1rem;
@@ -634,6 +645,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   background: var(--surface);
 }
 .user-filters > div { min-width: 12rem; }
+.roster-page .user-filters > div:first-child { min-width: 18rem; }
 .user-filters label {
   display: block;
   margin-bottom: 0.25rem;
@@ -641,6 +653,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   font-size: 0.75rem;
   font-weight: 700;
 }
+.roster-page .user-filters label { text-align: center; }
 .user-filters input,
 .user-filters select,
 .users-table select {
@@ -652,6 +665,7 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   background: var(--surface);
   color: var(--text);
 }
+.user-filters input::placeholder { color: #64748b; opacity: 1; }
 .users-table-wrap {
   overflow-x: hidden;
   border: 1px solid var(--border);
@@ -668,6 +682,17 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 .users-table .users-col-change { width: 17%; }
 .users-table .users-col-actions { width: 18%; }
 .users-table .users-col-history { width: 18%; }
+.roster-table .roster-col-member { width: 19%; }
+.roster-table .roster-col-email { width: 19%; }
+.roster-table .roster-col-role { width: 13%; }
+.roster-table .roster-col-committees { width: 25%; }
+.roster-table .roster-col-since { width: 12%; }
+.roster-table .roster-col-status { width: 12%; }
+.roster-committee + .roster-committee { margin-top: 0.5rem; }
+.roster-table--with-status td:last-child {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
 .users-table th {
   background: #f1f5f9;
   color: #334155;
@@ -680,6 +705,41 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 .users-table td,
 .users-table th { overflow-wrap: anywhere; }
 .users-table select { max-width: 10rem; }
+.roster-page .user-filters .filter-action-slot {
+  display: flex;
+  min-width: 4.5rem;
+  min-height: 2.25rem;
+  align-items: flex-end;
+  justify-content: center;
+}
+.roster-export {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.users-action-button {
+  display: inline-block;
+  padding: 0.7rem 1.15rem;
+  border: 1px solid #0c2340;
+  border-radius: 0.375rem;
+  color: #ffffff;
+  background: #0c2340;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+.users-action-button:hover {
+  border-color: #163a66;
+  color: #ffffff;
+  background: #163a66;
+}
+.users-action-button:focus-visible,
+.button.secondary:focus-visible,
+button.secondary:focus-visible {
+  outline: 3px solid var(--color-brand-accent);
+  outline-offset: 3px;
+}
 .user-secondary {
   display: block;
   margin-top: 0.2rem;
@@ -801,18 +861,6 @@ html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
 .audit-table th:nth-child(3) { width: 18%; }
 .audit-table th:nth-child(4) { width: 27%; }
 .audit-table th:nth-child(5) { width: 22%; }
-.save-role-button {
-  padding: 0.7rem 1.15rem;
-  border-color: #0f172a;
-  color: #f8fafc;
-  background: #0f172a;
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
-}
-.save-role-button:hover {
-  border-color: #1e293b;
-  background: #1e293b;
-}
 .load-more { justify-content: center; }
 .help-tooltip { position: relative; }
 .help-tooltip summary {
