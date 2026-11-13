@@ -237,6 +237,7 @@ class UnreadCountAndMarkReadTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("core:dashboard"))
         self.assertContains(response, "2")
+        self.assertContains(response, "sidebar-notification-dot")
 
     def test_following_notification_link_marks_it_read(self):
         n = self._notif()
@@ -263,6 +264,7 @@ class UnreadCountAndMarkReadTests(TestCase):
         self.client.post(reverse("notifications:mark_all_read"))
         response = self.client.get(reverse("notifications:list"))
         self.assertEqual(response.context["unread_count"], 0)
+        self.assertNotContains(response, "sidebar-notification-dot")
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
