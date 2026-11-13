@@ -767,3 +767,38 @@ class RecordsWithoutHistoryTests(TestCase):
         self.application.refresh_from_db()
         self.assertEqual(self.application.status, ApplicationStatus.REJECTED)
         self.assertEqual([entry["action"] for entry in self.application.history], ["rejected"])
+
+
+# ---------------------------------------------------------------------------
+# human_datetime template filter
+# ---------------------------------------------------------------------------
+
+class HumanDatetimeFilterTests(TestCase):
+    """The audit page's timestamp filter handles naive, aware and bad values."""
+
+    def setUp(self):
+        from core.templatetags.help_tags import human_datetime
+        self.human_datetime = human_datetime
+
+    def test_naive_iso_string_is_treated_as_utc(self):
+        with timezone.override("UTC"):
+            self.assertEqual(
+                self.human_datetime("2026-10-01T09:00:00"), "Oct 1, 2026, 9:00 AM"
+            )
+
+    def test_naive_datetime_is_treated_as_utc(self):
+        with timezone.override("UTC"):
+            self.assertEqual(
+                self.human_datetime(datetime(2026, 10, 1, 14, 5)), "Oct 1, 2026, 2:05 PM"
+            )
+
+    def test_aware_iso_string_is_converted_to_local_time(self):
+        with timezone.override("America/Chicago"):
+            self.assertEqual(
+                self.human_datetime("2026-10-01T14:00:00+00:00"), "Oct 1, 2026, 9:00 AM"
+            )
+
+    def test_empty_and_unparseable_values(self):
+        self.assertEqual(self.human_datetime(""), "")
+        self.assertEqual(self.human_datetime(None), "")
+        self.assertEqual(self.human_datetime("not a date"), "not a date")

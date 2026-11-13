@@ -712,6 +712,95 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
   gap: 1rem;
   margin-top: 1rem;
 }
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  width: auto;
+  margin-right: 0;
+  margin-left: 0;
+}
+.audit-filters > div {
+  min-width: 10rem;
+  text-align: center;
+}
+.audit-filters label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.audit-filters input,
+.audit-filters select {
+  min-height: 2.25rem;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--surface);
+  color: var(--text);
+}
+.audit-filters select {
+  appearance: auto;
+  padding-right: 2rem;
+}
+html.dark .audit-filters input[type="date"] {
+  color-scheme: dark;
+}
+html.dark .audit-filters input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+.filter-submit-button {
+  min-height: 2.5rem;
+  padding: 0.65rem 1.15rem;
+  border-color: #0f172a;
+  color: #f8fafc;
+  background: #0f172a;
+  font-weight: 700;
+}
+.filter-submit-button:hover {
+  border-color: #1e293b;
+  background: #1e293b;
+}
+.audit-table-wrap { margin-top: 1rem; }
+.audit-content {
+  width: 100%;
+}
+.audit-help {
+  display: flex;
+  width: max-content;
+  min-height: 0;
+  justify-content: flex-end;
+  margin: 0 0 0.5rem;
+  margin-left: auto;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+}
+.audit-help summary { background: transparent !important; }
+.audit-help [role="tooltip"] {
+  right: 0;
+}
+.audit-table .users-col-account { width: 18%; }
+.audit-table .users-col-role { width: 14%; }
+.audit-table .users-col-status { width: 18%; }
+.audit-table .users-col-change { width: 25%; }
+.audit-table .users-col-actions { width: 25%; }
+.audit-table th:first-child { width: 18%; }
+.audit-table th:nth-child(2) { width: 15%; }
+.audit-table th:nth-child(3) { width: 18%; }
+.audit-table th:nth-child(4) { width: 27%; }
+.audit-table th:nth-child(5) { width: 22%; }
 .save-role-button {
   padding: 0.7rem 1.15rem;
   border-color: #0f172a;
