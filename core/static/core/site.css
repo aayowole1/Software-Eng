@@ -476,6 +476,9 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
 html.dark .sidebar-account-card { background: #172235; }
 html.dark .sidebar-account-link { border-color: #475569; color: #cbd5e1; }
 html.dark .sidebar-account-link:hover { color: #ffffff; background: #273449; }
+html.dark .sidebar-signup-link { background: rgba(251, 191, 36, 0.14) !important; border-color: rgba(251, 191, 36, 0.45) !important; }
+html.dark .sidebar-signup-link:hover { background: rgba(251, 191, 36, 0.24) !important; }
+html.dark .sidebar-signup-link svg { color: #fbbf24 !important; }
 html.dark .sidebar-signout-button,
 html.dark .header-signout-button {
   border-color: #fb7185;
@@ -689,6 +692,13 @@ h1, h2, h3, h4 { font-family: var(--font-family-heading); }
   border-color: color-mix(in srgb, var(--error) 35%, var(--border));
   color: var(--error);
 }
+html.dark .event-badge-cancelled {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(251, 113, 133, 0.45);
+  color: #fda4af;
+}
+.notification-unread { background: #eef4ff; }
+html.dark .notification-unread { background: #1e3a5f; }
 .event-detail-card { border-left: 4px solid var(--color-brand-accent); }
 .event-detail-summary h1 { margin-top: 0; }
 .event-warning { margin-left: 0; margin-right: 0; }
@@ -845,6 +855,7 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
   gap: 0.75rem;
 }
 .account-profile-header { justify-content: space-between; }
+.account-signup { margin-top: 1.25rem; }
 .account-profile-header h2 { margin: 0; }
 .account-details {
   display: grid;
@@ -854,6 +865,12 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
 }
 .account-details dt { color: var(--muted); font-size: 0.875rem; }
 .account-details dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+.google-signin-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+/* Google shows a placeholder button and then adds its real button in an
+   iframe right after it; hide the placeholder once the iframe is there so
+   only one button is visible. */
+.g_id_signin { min-height: 44px; }
+.g_id_signin div:has(+ iframe) { display: none; }
 
 button, .button {
   display: inline-block;
@@ -1565,7 +1582,8 @@ html.dark .announcement-page .announcement-primary-button {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    text-align: center;
+    margin-bottom: 0;
+    text-align: left;
 }
 
 .summary-card strong {
@@ -1574,10 +1592,68 @@ html.dark .announcement-page .announcement-primary-button {
     line-height: 1.1;
 }
 
+@media (max-width: 900px) {
+    .summary-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 600px) {
     .summary-cards {
         grid-template-columns: 1fr;
     }
+}
+
+/* Dashboard layout. Tailwind's reset removes heading sizes, link colors and
+   list spacing from plain elements, so the dashboard sets them here. */
+.dashboard { max-width: 72rem; }
+.dashboard h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 1rem; }
+.dashboard h2 { font-size: 1.15rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+.dashboard h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.dashboard .card > h2:first-child { margin-top: 0; }
+.dashboard a:not(.button) { color: var(--accent); font-weight: 500; }
+.dashboard a:not(.button):hover { text-decoration: underline; }
+.dashboard p { margin: 0.5rem 0; }
+.dashboard ol { list-style: decimal; padding-left: 1.25rem; }
+.dashboard ol li + li { margin-top: 0.35rem; }
+.dashboard-join { margin: 1.25rem 0; }
+.dashboard-welcome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1.25rem !important;
+    color: var(--muted);
+}
+.dashboard-welcome strong { color: var(--text); }
+.summary-card a,
+.summary-card > span:first-of-type { color: var(--muted) !important; font-weight: 500; }
+.summary-card a:hover { color: var(--accent) !important; }
+.summary-card-links { font-size: 0.85rem; }
+.summary-card-links a { color: var(--accent) !important; }
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+    gap: 1rem;
+    align-items: stretch;
+    margin-top: 1rem;
+}
+.dashboard-overdue { color: var(--error); margin-left: 0.35rem; }
+html.dark .dashboard-overdue { color: #fda4af; }
+.dashboard-grid .card { margin-bottom: 0; padding: 1.1rem 1.25rem; }
+.dashboard-grid .card h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+.dashboard-grid .card ul { list-style: none; margin: 0; padding: 0; }
+.dashboard-grid .card li { padding: 0.55rem 0; border-top: 1px solid var(--border); }
+.dashboard-grid .card li:first-child { border-top: 0; padding-top: 0; }
+.dashboard-grid .card li .badge,
+.dashboard-grid .card p .badge { margin-left: 0.35rem; font-size: 0.75rem; }
+.dashboard-grid .card p { margin: 0 0 0.65rem; }
+.dashboard-grid .card p:last-child { margin-bottom: 0; }
+.dashboard-more {
+    margin-top: 0.85rem !important;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
 }
 
 
@@ -1832,25 +1908,124 @@ html.dark .officer-table th { background: #273449; color: var(--text); }
 }
 
 .benefits-list {
-    margin: 0.25rem 0 0 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    max-width: 44rem;
+    margin: 0.6rem 0 0;
     padding: 0;
+    list-style: none;
 }
 
-.benefits-list li + li {
-    margin-top: 0.25rem;
+@media (max-width: 640px) {
+    .benefits-list { grid-template-columns: 1fr; }
+}
+
+.benefits-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* Check mark in a filled circle before each benefit. */
+.benefits-list li::before {
+    content: "";
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 0.95rem no-repeat,
+        var(--color-brand-accent, #d4a017);
+}
+
+.contact-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.85rem;
+    margin-top: 1.25rem;
+}
+
+.dashboard .contact-line h3 { margin: 0; }
+.dashboard .contact-line a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.8rem 0.3rem 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    font-weight: 600;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.dashboard .contact-line a:hover {
+    text-decoration: none;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+/* Envelope in an amber circle before the email. */
+.contact-line a::before {
+    content: "";
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='M3 7l9 6 9-6'/%3E%3C/svg%3E") center / 0.85rem no-repeat,
+        var(--color-brand-accent, #f59e0b);
 }
 
 .status-guide {
-    margin: 0.5rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 0.75rem 0 0;
 }
 
+.status-guide-item {
+    --status-color: #64748b;
+    padding: 0.85rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--status-color) 30%, var(--border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--status-color) 8%, var(--surface));
+}
+
+.status-guide-pending { --status-color: #b45309; }
+.status-guide-approved { --status-color: #15803d; }
+.status-guide-rejected { --status-color: #be123c; }
+html.dark .status-guide-pending { --status-color: #fbbf24; }
+html.dark .status-guide-approved { --status-color: #4ade80; }
+html.dark .status-guide-rejected { --status-color: #fb7185; }
+
 .status-guide dt {
-    font-weight: 600;
-    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    color: var(--status-color);
+}
+
+.status-guide-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: var(--status-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 22%, transparent);
 }
 
 .status-guide dd {
-    margin: 0.2rem 0 0 0;
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text);
 }
 
 @media (max-width: 375px) {

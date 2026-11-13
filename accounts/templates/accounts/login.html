@@ -10,14 +10,16 @@
     <div class="account-field">{{ form.password.label_tag }} {{ form.password }} {{ form.password.errors }}</div>
     <input type="hidden" name="next" value="{{ next }}">
     <div class="account-actions">
-      <button type="submit">Sign in</button>
-      <a href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
+      <button class="button" type="submit">Sign in</button>
+      <a class="button secondary" href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
     </div>
   </form>
   {% if google_enabled %}
-    <p>Or sign in with Google</p>
-    {% include "accounts/_google_button.html" with button_text="signin_with" %}
+    {% include "accounts/_google_button.html" with button_text="signin_with" lead_text="or" %}
   {% endif %}
-  <p>New here? <a href="{% url 'accounts:register' %}">Create an account and apply to join</a></p>
+  <div class="account-actions account-signup">
+    <span>New here?</span>
+    <a class="button secondary" href="{% url 'accounts:register' %}">Create an account and apply to join</a>
+  </div>
 </div>
 {% endblock %}

@@ -11,12 +11,15 @@
       <p>{{ field.label_tag }} {{ field }}{% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}{{ field.errors }}</p>
       {% if field.name == "password" %}<p class="muted">Passwords need at least 8 characters and can't be all numbers or a common password.</p>{% endif %}
     {% endfor %}
-    <button type="submit">Create account and apply</button>
+    <button class="button" type="submit">Create account and apply</button>
   </form>
   {% if google_enabled %}
-    <p>Or sign up with Google. You'll answer the same question next.</p>
+    <p class="muted">Or use Google. You'll answer the same question next.</p>
     {% include "accounts/_google_button.html" with button_text="signup_with" %}
   {% endif %}
-  <p>Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a></p>
+  <div class="account-actions account-signup">
+    <span>Already have an account?</span>
+    <a class="button secondary" href="{% url 'accounts:login' %}">Sign in</a>
+  </div>
 </div>
 {% endblock %}

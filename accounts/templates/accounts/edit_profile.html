@@ -7,7 +7,7 @@
     {% csrf_token %}
     {{ form.as_p }}
     <div class="account-actions">
-      <button type="submit">Save profile</button>
+      <button class="button" type="submit">Save profile</button>
       <a class="button secondary" href="{% url 'accounts:profile' %}">Cancel</a>
     </div>
   </form>
