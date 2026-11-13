@@ -21,7 +21,10 @@
   {% elif event.cancelled %}
     <p class="muted">This event was cancelled.</p>
   {% else %}
-    <p class="muted">This event has started, so RSVPs are closed.{% if my_rsvp %} You answered {{ my_rsvp.get_response_display|lower }}.{% endif %}</p>
+    <div class="event-warning" role="status">
+      <strong>RSVPs are closed</strong>
+      <span>This event has started.{% if my_rsvp %} You answered {{ my_rsvp.get_response_display|lower }}.{% endif %}</span>
+    </div>
   {% endif %}
 
   {% if is_officer %}
@@ -51,13 +54,14 @@
             </tbody>
           </table>
         </div>
-        <p></p>
-        <button type="submit">Save attendance</button>
+        <div class="form-actions">
+          <button type="submit">Save attendance</button>
+        </div>
       </form>
     {% endif %}
 
     <h2>Manage</h2>
-    <p>
+    <div class="event-manage-actions">
       <a class="button" href="{% url 'events:edit' event.pk %}">Edit event</a>
       {% if event.accepts_rsvps %}
         <form method="post" action="{% url 'events:cancel' event.pk %}" class="inline">
@@ -65,8 +69,10 @@
           <button type="submit" class="danger">Cancel event</button>
         </form>
       {% endif %}
-    </p>
+    </div>
   {% endif %}
 
-  <p><a class="button secondary" href="{% url 'events:list' %}">Back to events</a></p>
+  <div class="event-back-actions">
+    <a class="button secondary" href="{% url 'events:list' %}">Back to events</a>
+  </div>
 {% endblock %}

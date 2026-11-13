@@ -573,6 +573,38 @@ h1, h2, h3, h4 { font-family: var(--font-family-heading); }
   color: var(--error);
 }
 .event-detail-card { border-left: 4px solid var(--color-brand-accent); }
+.event-detail-card button {
+  min-width: 9rem;
+  padding: 10px 18px;
+}
+.event-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 16px 0;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, var(--border));
+  border-left: 4px solid var(--error);
+  border-radius: var(--radius-base);
+  background: color-mix(in srgb, var(--error) 10%, var(--surface));
+  color: var(--error);
+}
+.event-warning span { color: var(--text); }
+.event-manage-actions,
+.event-back-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+.event-manage-actions .button,
+.event-manage-actions button,
+.event-back-actions .button {
+  min-width: 9rem;
+  padding: 10px 18px;
+  text-align: center;
+}
 .event-form input[type=text],
 .event-form input[type=datetime-local],
 .event-form textarea { max-width: none; }
