@@ -1,13 +1,13 @@
-{% extends "base.html" %}
+{% extends "tasks/base.html" %}
 {% load static %}
 {% block title %}{{ heading }}{% endblock %}
 {% block page_heading %}{{ heading }}{% endblock %}
-{% block content %}
-  <h1>{{ heading }}</h1>
-  <form method="post" class="card" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}{{ form.as_p }}
+{% block tasks_content %}
+  <header class="tasks-heading"><div><h1>{{ heading }}</h1><p class="muted">Set the details, assignment and deadline for this task.</p></div></header>
+  <form method="post" class="card tasks-editor" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}<div class="tasks-form-fields">{{ form.as_p }}</div>
     {% include "tasks/assignment_feedback.html" %}
-    <button type="submit">Save task</button>
-    {% if task %}<a href="{% url 'tasks:detail' task.pk %}">Cancel</a>{% else %}<a href="{% url 'tasks:list' %}">Cancel</a>{% endif %}
+    <div class="tasks-form-actions"><button class="tasks-button" type="submit">Save task</button>
+    {% if task %}<a class="button tasks-button tasks-button--secondary" href="{% url 'tasks:detail' task.pk %}">Cancel</a>{% else %}<a class="button tasks-button tasks-button--secondary" href="{% url 'tasks:list' %}">Cancel</a>{% endif %}</div>
   </form>
   <script src="{% static 'tasks/assignment.js' %}" defer></script>
 {% endblock %}

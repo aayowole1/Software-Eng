@@ -1,17 +1,15 @@
-{% extends "base.html" %}
+{% extends "tasks/base.html" %}
 {% load static %}
 {% block title %}Create tasks from meeting{% endblock %}
 {% block page_heading %}Create tasks from meeting{% endblock %}
-{% block content %}
-  <h1>Create tasks from {{ draft.title }}</h1>
-  <p><a href="{% url 'meetings:detail' draft.pk %}">Return to meeting draft</a></p>
-  <p>Only accepted actions from an approved draft become tasks. Existing tasks are kept when you retry.</p>
+{% block tasks_content %}
+  <p class="tasks-back"><a href="{% url 'meetings:detail' draft.pk %}">← Return to meeting draft</a></p>
+  <header class="tasks-heading"><div><h1>Create tasks from {{ draft.title }}</h1><p class="muted">Only accepted actions from an approved draft become tasks. Existing tasks are kept when you retry.</p></div></header>
   {% if draft_error %}<p class="errorlist" role="alert">{{ draft_error }}</p>{% endif %}
-  <h2>Accepted actions</h2>
-  <ul>{% for item in items %}<li>{{ item.description }}</li>{% empty %}<li>No accepted actions.</li>{% endfor %}</ul>
-  <form method="post" class="card" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}{{ form.as_p }}
+  <section class="card tasks-import-actions"><h2>Accepted actions</h2><ul>{% for item in items %}<li>{{ item.description }}</li>{% empty %}<li>No accepted actions.</li>{% endfor %}</ul></section>
+  <form method="post" class="card tasks-editor" data-assignment-form data-assignees-url="{% url 'tasks:assignees' %}">{% csrf_token %}<div class="tasks-form-fields">{{ form.as_p }}</div>
     {% include "tasks/assignment_feedback.html" %}
-    {% if approved %}<button type="submit">Confirm and create tasks</button>{% endif %}
+    <div class="tasks-form-actions">{% if approved %}<button class="tasks-button" type="submit">Confirm and create tasks</button>{% endif %}<a class="button tasks-button tasks-button--secondary" href="{% url 'meetings:detail' draft.pk %}">Cancel</a></div>
   </form>
   <script src="{% static 'tasks/assignment.js' %}" defer></script>
 {% endblock %}
