@@ -573,21 +573,26 @@ h1, h2, h3, h4 { font-family: var(--font-family-heading); }
   color: var(--error);
 }
 .event-detail-card { border-left: 4px solid var(--color-brand-accent); }
+.event-detail-summary h1 { margin-top: 0; }
+.event-warning { margin-left: 0; margin-right: 0; }
 .event-detail-card button {
   min-width: 9rem;
   padding: 10px 18px;
 }
 .event-warning {
+  width: 100%;
+  max-width: 80rem;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 16px 0;
+  margin: 16px auto;
   padding: 12px 16px;
   border: 1px solid color-mix(in srgb, var(--error) 45%, var(--border));
   border-left: 4px solid var(--error);
   border-radius: var(--radius-base);
   background: color-mix(in srgb, var(--error) 10%, var(--surface));
   color: var(--error);
+  font-weight: 600;
 }
 .event-warning span { color: var(--text); }
 .event-manage-actions,
@@ -631,6 +636,45 @@ h1, h2, h3, h4 { font-family: var(--font-family-heading); }
 html.dark .event-card:hover { box-shadow: 0 4px 12px rgb(0 0 0 / 0.3); }
 html.dark .event-form input[type=datetime-local] {
   color-scheme: dark;
+  color: var(--text);
+}
+html.dark .event-warning {
+  background: #451a1a;
+  border-color: #f87171;
+  border-left-color: #fca5a5;
+  color: #fecaca;
+}
+html.dark .event-warning span { color: #f8fafc; }
+html.dark .event-detail-card input[type=checkbox] {
+  appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0.1rem 0;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.25rem;
+  background: #0f172a;
+  vertical-align: middle;
+}
+html.dark .event-detail-card input[type=checkbox]:checked {
+  border-color: #fbbf24;
+  background-color: #fbbf24;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5 6.5 12 13 4.5' fill='none' stroke='%230f172a' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.9rem;
+}
+html.dark .event-detail-card input[type=checkbox]:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+html.dark .event-form input,
+html.dark .event-form textarea {
+  background: #172235;
+  border-color: #64748b;
+  color: var(--text);
+}
+html.dark .event-form label,
+html.dark .event-form .helptext {
   color: var(--text);
 }
 
