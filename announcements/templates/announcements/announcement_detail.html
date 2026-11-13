@@ -208,10 +208,36 @@
           {% for comment in comments %}
             <div class="border-b border-slate-100 pb-3 last:border-0">
               <div class="flex items-center justify-between text-xs">
-                <strong class="text-slate-800">{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                <strong class="text-slate-800">
+                  {{ comment.author.get_full_name|default:comment.author.username }}
+                  {% if comment.moderation_status == "flagged" %}<span class="text-amber-700">(Flagged for review)</span>{% endif %}
+                </strong>
                 <time class="text-slate-400">{{ comment.created_at|localtime|date:"M j, Y g:i A" }}</time>
               </div>
               <p class="text-sm text-slate-600 mt-1 whitespace-pre-line">{{ comment.content }}</p>
+              <div class="mt-2 flex items-end justify-between gap-2">
+                {% if comment.can_delete_comment %}
+                  <form method="post" action="{% url 'announcements:comment_delete' announcement.id comment.id %}">
+                    {% csrf_token %}
+                    {% if comment.delete_warning %}
+                      <p class="mb-1 text-xs text-rose-700">{{ comment.delete_warning }}</p>
+                    {% endif %}
+                    <button type="submit" class="inline-flex items-center gap-1 text-xs text-rose-700 hover:text-rose-900" aria-label="Delete comment">
+                      <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12m-9 0v10m6-10v10M9 7l1-3h4l1 3m-8 0h10l-.7 13H7.7L7 7z"/>
+                      </svg>
+                      Delete
+                    </button>
+                  </form>
+                {% endif %}
+                {% if can_publish and comment.moderation_status == "flagged" %}
+                  <form method="post" action="{% url 'announcements:comment_moderate' announcement.id comment.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit" class="text-xs text-emerald-700 underline">Approve</button>
+                  </form>
+                {% endif %}
+              </div>
             </div>
           {% empty %}
             <p class="text-sm text-slate-500">No comments yet.</p>
