@@ -7,10 +7,8 @@
 <script src="{% static 'reports/charts.js' %}" defer></script>
 {% endblock %}
 {% block content %}
-<h1>Participation &amp; Engagement Report</h1>
-
-<section aria-label="Date range">
-  <form method="get" action="">
+<section class="officer-panel report-filter-panel" aria-label="Date range">
+  <form method="get" action="" class="officer-filter-form">
     <div>
       <label for="{{ form.start_date.id_for_label }}">Start date</label>
       {{ form.start_date }}
@@ -29,13 +27,13 @@
         </ul>
       {% endif %}
     </div>
-    <button type="submit">Generate report</button>
+    <button type="submit" class="officer-action-button">Generate report</button>
   </form>
 </section>
 
 {% if data %}
 
-<section aria-labelledby="download-heading">
+<section class="officer-panel report-download-panel" aria-labelledby="download-heading">
   <h2 id="download-heading">Download CSV</h2>
   <form method="get" action="{% url 'reports:download' %}" class="report-download">
     <input type="hidden" name="start_date" value="{{ data.start_date|date:'Y-m-d' }}">
@@ -47,7 +45,7 @@
       <option value="members">Members</option>
       <option value="committees">Committees</option>
     </select>
-    <button type="submit">Download</button>
+    <button type="submit" class="officer-action-button">Download</button>
   </form>
   <p class="muted">Downloads use the date range above. "All reports" is a ZIP file with the Events, Members and Committees CSVs.</p>
 </section>
@@ -67,8 +65,8 @@
 
 {{ chart_data|json_script:"chart-data" }}
 
-<section aria-label="Charts" class="report-charts">
-  <h2>Charts</h2>
+<section aria-label="Charts" class="report-charts report-section">
+  <h2 class="report-section-heading">Charts</h2>
   <p id="charts-no-data" hidden>No data for this range.</p>
 
   <div class="report-chart-grid">
@@ -100,11 +98,11 @@
   </div>
 </section>
 
-<section aria-label="Events in range">
+<section aria-label="Events in range" class="report-section report-table-section">
   <h2>Events ({{ data.start_date }} – {{ data.end_date }})</h2>
   <p>Events held (non-cancelled): <strong>{{ data.events_held }}</strong></p>
   {% if data.per_event %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Event</th>
@@ -123,16 +121,16 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No events were held in this range.</p>
   {% endif %}
 </section>
 
-<section aria-label="Per-member report">
+<section aria-label="Per-member report" class="report-section report-table-section">
   <h2>Per-member report</h2>
   {% if data.per_member %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Member</th>
@@ -157,16 +155,16 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No roster members found.</p>
   {% endif %}
 </section>
 
-<section aria-label="Per-committee report">
+<section aria-label="Per-committee report" class="report-section report-table-section">
   <h2>Per-committee report</h2>
   {% if data.per_committee %}
-    <table>
+    <div class="table-wrap officer-table-wrap"><table class="officer-table">
       <thead>
         <tr>
           <th>Committee</th>
@@ -189,7 +187,7 @@
           </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   {% else %}
     <p>No committees found.</p>
   {% endif %}

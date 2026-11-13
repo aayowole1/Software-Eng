@@ -120,6 +120,46 @@
     border-radius: 12px;
     box-shadow: 0 4px 14px rgba(31, 50, 81, 0.08);
 }
+html.dark .note-list-panel,
+html.dark .meeting-review-columns > .card,
+html.dark .note-review-panel,
+html.dark .meeting-form-card {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+}
+html.dark .note-list-table th {
+    background: #273449;
+    color: var(--text);
+}
+html.dark .note-list-table td,
+html.dark .note-review-meta,
+html.dark .eyebrow {
+    color: var(--muted);
+}
+html.dark .note-list-table tbody tr:hover { background: #223451; }
+html.dark .note-list-title,
+html.dark .meeting-review-columns > .card h2 { color: #bfdbfe; }
+html.dark .meeting-form-card input,
+html.dark .meeting-form-card textarea,
+html.dark .meeting-review-columns textarea {
+    background: #172235;
+    border-color: #64748b;
+    color: var(--text);
+}
+.meeting-review-actions,
+.note-review-secondary-action {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+.meeting-review-actions button,
+.note-review-secondary-action .button {
+    min-height: 2.75rem;
+    padding: 0.7rem 1.15rem;
+}
 
 .note-list-table {
     margin: 0;

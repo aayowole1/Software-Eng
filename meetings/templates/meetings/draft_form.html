@@ -6,7 +6,6 @@
   <link rel="stylesheet" href="{% static 'meetings/style.css' %}">
 {% endblock %}
 {% block content %}
-  <h1>{{ heading }}</h1>
   <form method="post" {% if request.resolver_match.url_name != 'revise' %}action="{% url 'meetings:processing_start' %}"{% endif %} class="card meeting-form-card" novalidate id="meeting-form" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.transcript }}

@@ -7,9 +7,7 @@
 {% block page_heading %}Membership Applications{% endblock %}
 {% block content %}
 
-<h1>Membership Applications</h1>
-
-<p class="muted">
+<p class="muted officer-intro">
   Review requests to join the organization or become an officer.
 </p>
 
@@ -35,7 +33,7 @@
   </div>
 </div>
 
-<form method="get" action="{% url 'membership:application_list' %}">
+<form method="get" action="{% url 'membership:application_list' %}" class="officer-panel application-filter-panel">
   <div class="roster-filters">
 
     <div>
@@ -78,8 +76,8 @@
     </div>
 
     <div class="roster-actions">
-      <button type="submit">Search / Filter</button>
-      <a href="{% url 'membership:application_list' %}">Reset</a>
+      <button type="submit" class="officer-action-button">Search / Filter</button>
+      <a class="button secondary" href="{% url 'membership:application_list' %}">Reset</a>
     </div>
 
   </div>
@@ -89,7 +87,7 @@
   <h2>Pending Applications ({{ pending|length }})</h2>
 
   {% for a in pending %}
-    <div class="card">
+    <div class="card application-card">
       <p>
         <strong>{{ a.user.email|default:a.user.username }}</strong>
         <span class="badge">{% if a.is_officer_application %}Officer{% else %}Member{% endif %}</span>
@@ -108,7 +106,7 @@
 
         {% if a.approval_in_progress %}
           <p>Approval started. Finish it to confirm the role update.</p>
-          <button type="submit" name="decision" value="approve">Finish approval</button>
+          <button class="officer-action-button" type="submit" name="decision" value="approve">Finish approval</button>
         {% else %}
         <label for="note-{{ a.pk }}">
           Reason (required when rejecting)
@@ -122,14 +120,14 @@
 
         <p></p>
 
-        <button type="submit" name="decision" value="approve">
+        <button class="officer-action-button" type="submit" name="decision" value="approve">
           Approve
         </button>
 
         <button type="submit"
                 name="decision"
                 value="reject"
-                class="secondary">
+                class="secondary officer-secondary-button">
           Reject
         </button>
         {% endif %}
@@ -144,8 +142,8 @@
 {% if not selected_status or selected_status == "approved" or selected_status == "rejected" %}
   <h2>Reviewed Applications</h2>
 
-  <div class="table-wrap">
-    <table>
+  <div class="table-wrap users-table-wrap application-table-wrap">
+    <table class="officer-table users-table">
       <thead>
         <tr>
           <th scope="col">Applicant</th>
@@ -170,7 +168,7 @@
             <td>{% if a.access_update_pending %}
               <p>Decision recorded; access update pending.</p>
               <form method="post" action="{% url 'membership:finish_review_access' a.pk %}">
-                {% csrf_token %}<button type="submit">Finish account access</button>
+                {% csrf_token %}<button class="officer-action-button" type="submit">Finish account access</button>
               </form>
             {% else %}No pending update{% endif %}</td>
           </tr>
