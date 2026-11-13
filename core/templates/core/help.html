@@ -4,34 +4,79 @@
 {% block page_heading %}Help{% endblock %}
 {% block extra_css %}
   <style>
-    /* The layout's reset removes list numbering and heading sizes; restore them here. */
-    .help-page h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 .25rem; }
-    .help-page h2 { font-size: 1.2rem; font-weight: 700; margin: 1.75rem 0 .25rem; }
-    .help-page .card h2 { margin-top: 0; }
-    .help-page h3 { font-size: 1rem; font-weight: 600; margin: 0 0 .5rem; }
+    .help-page { max-width: 62rem; margin: 0 auto; }
+    .help-page h2 { font-size: 1.2rem; font-weight: 700; margin: 0; }
+    .help-page h3 { font-size: 1rem; font-weight: 600; margin: 0; }
     .help-page ol { list-style: decimal; padding-left: 1.5rem; margin: 0; }
     .help-page ol li { margin: .25rem 0; }
-    .help-page .help-contents ul { list-style: disc; padding-left: 1.25rem; margin: .25rem 0; }
-    .help-page .help-contents ul ul { list-style: circle; }
-    .help-page article.card { margin-bottom: .75rem; }
+    .help-page .help-contents { padding: 0; overflow: hidden; }
+    .help-page > .help-contents { margin-bottom: 0; }
+    .help-page .help-section > summary,
+    .help-page .help-guide > summary,
+    .help-page .help-faq > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      list-style: none;
+    }
+    .help-page summary::-webkit-details-marker { display: none; }
+    .help-page summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-size: 1.3rem;
+      font-weight: 400;
+    }
+    .help-page details[open] > summary::after { content: "−"; }
+    .help-page .help-contents-header { display: block; padding: .75rem 1rem; border-bottom: 1px solid var(--border); color: var(--accent); font-size: 1rem; }
+    .help-page .help-contents ul { list-style: none; padding: .35rem 1rem .65rem; margin: 0; }
+    .help-page .help-contents li { border-bottom: 1px solid var(--border); }
+    .help-page .help-contents li:last-child { border-bottom: 0; }
+    .help-page .help-contents a { display: block; padding: .45rem 0; font-weight: 600; text-decoration: none; }
+    .help-page .help-contents .help-subcontents { padding-left: 1rem; }
+    .help-page .help-contents .help-subcontents a { padding: .3rem 0; font-size: .9rem; font-weight: 500; }
+    .help-page .help-section { margin-top: 1rem; background: transparent; box-shadow: none; }
+    .help-page .help-section > summary { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--surface); }
+    .help-page .help-section:not([open]) > summary { border: 1px solid var(--border); background: var(--surface); }
+    .help-page .help-section[open] > summary { border-radius: .6rem .6rem 0 0; border-bottom: 0; }
+    .help-page .help-section[open] { padding: .75rem; border: 1px solid var(--border); border-radius: .6rem; background: transparent; }
+    .help-page .help-section[open] > summary { margin: -.75rem -.75rem 0; border: 0; border-bottom: 1px solid var(--border); }
+    .help-page .help-guide { margin: .5rem 1rem 0; padding: 0 .65rem; border: 1px solid var(--border); border-radius: .45rem; background: var(--surface); box-shadow: none; }
+    .help-page .help-guide > summary { padding: .65rem 0; }
+    .help-page .help-guide-content { padding: 0 0 .75rem; }
     .help-page .help-note { margin: .5rem 0 0; }
-    .help-page dt { margin-top: .75rem; }
-    .help-page dt:first-child { margin-top: 0; }
-    .help-page dd { margin: .25rem 0 0; }
+    .help-page .help-faq { background: transparent; box-shadow: none; }
+    .help-page .help-faq-list { margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+    .help-page .help-faq-list p { margin: .5rem 0 0; color: var(--muted); }
+    .help-page .badge { margin-left: .35rem; font-size: .75rem; }
+    .help-top-button {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 5rem;
+      z-index: 10;
+      padding: .65rem .9rem;
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-text);
+      box-shadow: 0 4px 12px rgb(15 23 42 / .2);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .help-top-button:hover { opacity: .9; }
   </style>
 {% endblock %}
 {% block content %}
-<div class="help-page">
-  <h1>Help</h1>
-  <p class="muted">Step-by-step guides and answers to common questions. You see the guides for your role.</p>
-
+<div class="help-page" id="help-top">
   <nav aria-label="Help contents" class="card help-contents">
-    <h2>Contents</h2>
+    <strong class="help-contents-header">Table of contents</strong>
     <ul>
       {% for section in sections %}
         <li>
           <a href="#{{ section.guides.0.audience }}-guides">{{ section.title }}</a>
-          <ul>
+          <ul class="help-subcontents">
             {% for guide in section.guides %}
               <li><a href="#{{ guide.slug }}">{{ guide.title }}</a>{% if guide.coming_soon %} <span class="badge">Coming soon</span>{% endif %}</li>
             {% endfor %}
@@ -43,31 +88,51 @@
   </nav>
 
   {% for section in sections %}
-    <section aria-labelledby="{{ section.guides.0.audience }}-guides">
-      <h2 id="{{ section.guides.0.audience }}-guides">{{ section.title }}</h2>
-      <p class="muted">{{ section.intro }}</p>
+    <details class="help-section" id="{{ section.guides.0.audience }}-guides">
+      <summary><h2>{{ section.title }}</h2></summary>
       {% for guide in section.guides %}
-        <article class="card" id="{{ guide.slug }}">
-          <h3>{{ guide.title }}{% if guide.coming_soon %} <span class="badge">Coming soon</span>{% endif %}</h3>
-          <ol>
-            {% for step in guide.steps %}<li>{{ step|help_text }}</li>{% endfor %}
-          </ol>
-          {% for note in guide.notes %}
-            <p class="muted help-note">{% if note.coming_soon %}<span class="badge">Coming soon</span> {% endif %}{{ note.text|help_text }}</p>
-          {% endfor %}
-        </article>
+        <details class="help-guide" id="{{ guide.slug }}">
+          <summary><h3>{{ guide.title }}{% if guide.coming_soon %} <span class="badge">Coming soon</span>{% endif %}</h3></summary>
+          <div class="help-guide-content">
+            <ol>
+              {% for step in guide.steps %}<li>{{ step|help_text }}</li>{% endfor %}
+            </ol>
+            {% for note in guide.notes %}
+              <p class="muted help-note">{% if note.coming_soon %}<span class="badge">Coming soon</span> {% endif %}{{ note.text|help_text }}</p>
+            {% endfor %}
+          </div>
+        </details>
       {% endfor %}
-    </section>
+    </details>
   {% endfor %}
 
-  <section aria-labelledby="faq">
-    <h2 id="faq">Frequently asked questions</h2>
-    <dl class="card">
-      {% for question, answer in faq %}
-        <dt><strong>{{ question }}</strong></dt>
-        <dd>{{ answer }}</dd>
-      {% endfor %}
-    </dl>
-  </section>
+  <details class="help-section help-faq" id="faq">
+    <summary><h2>Frequently asked questions</h2></summary>
+    <div class="help-faq-list">
+    {% for question, answer in faq %}
+      <details class="help-guide">
+        <summary><strong>{{ question }}</strong></summary>
+        <p>{{ answer }}</p>
+      </details>
+    {% endfor %}
+    </div>
+  </details>
+  <a class="help-top-button" href="#help-top">Back to top</a>
 </div>
+<script>
+    document.querySelectorAll('.help-contents a[href^="#"]').forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const target = document.querySelector(link.hash);
+        if (!target) return;
+        event.preventDefault();
+        let details = target.closest("details");
+        while (details) {
+          details.open = true;
+          details = details.parentElement.closest("details");
+        }
+        window.history.replaceState(null, "", link.hash);
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+</script>
 {% endblock %}

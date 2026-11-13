@@ -119,11 +119,11 @@ GUIDES = [
         "available": "roster_filters",
         "steps": [
             "Open **Roster**.",
-            "Under **Search members**, type a name, username or email. You can also filter by **Organization role** and **Committee**. Choose **Search / Filter**, or **Reset** to clear the filters.",
+            "Under **Name, email or username**, type a name, username or email and choose **Search**. Picking an **Organization role** or **Committee** filters the list straight away. Choose **Clear** to remove the filters.",
             "Officers and Admins can also filter by **Status** (Active, Suspended, Pending approval or Disabled) and see a Status column.",
         ],
         "coming_soon_steps": [
-            "Open **Roster** to search by username or email and filter by **Organization role**, then choose **Search / Filter**.",
+            "Open **Roster** to search by username or email and filter by **Organization role**, then choose **Search**.",
             "Coming soon: search by name, filter by committee, and (for Officers and Admins) filter by account status.",
         ],
     },

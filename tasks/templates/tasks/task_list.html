@@ -1,35 +1,39 @@
-{% extends "base.html" %}
+{% extends "tasks/base.html" %}
 {% block title %}Tasks{% endblock %}
 {% block page_heading %}Tasks{% endblock %}
-{% block content %}
-  <h1>Tasks</h1>
-  <p class="muted">Members see tasks in their committees and organization tasks assigned to them. Committee Chairs manage their committee's tasks. Officers and admins manage all tasks.</p>
-  {% if can_manage %}<p><a class="button" href="{% url 'tasks:create' %}">New task</a></p>{% endif %}
-  <div class="application-summary" role="group" aria-label="Tasks you can access">
+{% block tasks_content %}
+  <header class="tasks-heading">
+    <div><h1>Tasks</h1><p class="muted">Plan committee work and keep track of progress.</p></div>
+    <div class="tasks-actions">
+      <details class="tasks-help"><summary aria-label="Task permissions">?</summary><p>Members see tasks in their committees and organization tasks assigned to them. Committee Chairs manage their committee's tasks. Officers and admins manage all tasks.</p></details>
+      {% if can_manage %}<a class="button tasks-button" href="{% url 'tasks:create' %}">New task</a>{% endif %}
+    </div>
+  </header>
+  <div class="application-summary tasks-summary" role="group" aria-label="Tasks you can access">
     <div class="card"><strong>{{ counts.total }}</strong><span>Visible tasks</span></div>
     <div class="card"><strong>{{ counts.completed }}</strong><span>Completed</span></div>
     <div class="card"><strong>{{ counts.overdue }}</strong><span>Overdue</span></div>
   </div>
-  <form method="get" class="card" aria-label="Filter tasks">
-    {{ filter_form.as_p }}
-    <button type="submit">Filter tasks</button> <a href="{% url 'tasks:list' %}">Clear filters</a>
+  <form method="get" class="card tasks-filters" aria-label="Filter tasks">
+    <div class="tasks-form-fields">{{ filter_form.as_p }}</div>
+    <div class="tasks-actions"><button class="tasks-button" type="submit">Filter tasks</button> <a class="button tasks-button tasks-button--secondary" href="{% url 'tasks:list' %}">Clear filters</a></div>
   </form>
-  <p>{{ page_obj.paginator.count }} matching task{{ page_obj.paginator.count|pluralize }}.</p>
-  <div class="table-wrap">
-    <table>
+  <p class="tasks-results muted">{{ page_obj.paginator.count }} matching task{{ page_obj.paginator.count|pluralize }}.</p>
+  <div class="table-wrap tasks-table-wrap" tabindex="0" role="region" aria-label="Task results">
+    <table class="tasks-table">
       <caption class="visually-hidden">Tasks matching your filters</caption>
       <thead><tr><th scope="col">Task</th><th scope="col">Committee</th><th scope="col">Assignee</th><th scope="col">Due</th><th scope="col">Priority</th><th scope="col">Status</th></tr></thead>
       <tbody>{% for task in page_obj %}<tr>
-        <td><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a></td>
+        <td class="tasks-title"><a href="{% url 'tasks:detail' task.pk %}">{{ task.title }}</a></td>
         <td>{% if task.committee_id %}{{ task.committee|default:"Missing committee" }}{% else %}Organization{% endif %}</td><td>{{ task.assignee|default:"Unassigned" }}</td>
-        <td>{{ task.due_date|date:"M j, Y"|default:"No due date" }}{% if task.is_overdue %} <strong class="badge">Overdue</strong>{% endif %}</td>
-        <td>{{ task.get_priority_display }}</td><td>{{ task.get_status_display }}</td>
-      </tr>{% empty %}<tr><td colspan="6">No tasks match these filters.</td></tr>{% endfor %}</tbody>
+        <td>{{ task.due_date|date:"M j, Y"|default:"No due date" }}{% if task.is_overdue %} <strong class="tasks-pill tasks-pill--overdue">Overdue</strong>{% endif %}</td>
+        <td><span class="tasks-pill tasks-priority--{{ task.priority }}">{{ task.get_priority_display }}</span></td><td><span class="tasks-pill tasks-status--{{ task.status }}">{{ task.get_status_display }}</span></td>
+      </tr>{% empty %}<tr><td colspan="6" class="tasks-empty">No tasks match these filters.</td></tr>{% endfor %}</tbody>
     </table>
   </div>
-  {% if page_obj.has_other_pages %}<nav aria-label="Task pages">
-    {% if page_obj.has_previous %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+  {% if page_obj.has_other_pages %}<nav class="tasks-pagination" aria-label="Task pages">
+    {% if page_obj.has_previous %}<a class="button tasks-button tasks-button--secondary" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
     <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+    {% if page_obj.has_next %}<a class="button tasks-button tasks-button--secondary" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
   </nav>{% endif %}
 {% endblock %}

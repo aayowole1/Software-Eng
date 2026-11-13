@@ -61,7 +61,7 @@ _For everyone with an account._
 ### Find people in the roster
 
 1. Open **Roster**.
-2. Under **Search members**, type a name, username or email. You can also filter by **Organization role** and **Committee**. Choose **Search / Filter**, or **Reset** to clear the filters.
+2. Under **Name, email or username**, type a name, username or email and choose **Search**. Picking an **Organization role** or **Committee** filters the list straight away. Choose **Clear** to remove the filters.
 3. Officers and Admins can also filter by **Status** (Active, Suspended, Pending approval or Disabled) and see a Status column.
 
 ### Edit your profile
