@@ -4,8 +4,8 @@ import re
 from datetime import datetime, timezone as dt_timezone
 
 from django import template
-from django.utils.html import escape
 from django.utils.formats import date_format
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils import timezone
 

@@ -39,7 +39,11 @@ class ProfileEditTests(TestCase):
         self.assertEqual(other.first_name, "")
         self.assertContains(self.client.get(reverse("membership:roster")), "Ada Lovelace")
         detail_url = reverse("membership:member_detail", args=[profile.pk])
-        self.assertContains(self.client.get(detail_url), "<h1>Ada Lovelace</h1>", html=True)
+        self.assertContains(
+            self.client.get(detail_url),
+            '<h1 class="site-page-title">Ada Lovelace</h1>',
+            html=True,
+        )
 
         self.assertRedirects(self.client.post(self.url, {
             **self.data, "graduation_year": "",

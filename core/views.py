@@ -18,6 +18,7 @@ from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
 from announcements.permissions import effective_role, visible_announcements
+from announcements.models import AnnouncementCommentAudit
 
 
 def dashboard(request):
@@ -96,11 +97,39 @@ def dashboard(request):
     return render(request, "core/dashboard.html", context)
 
 
+def public_info_page(request, page):
+    """Render public information pages that do not require authentication."""
+    pages = {
+        "about": {
+            "title": "About OrgFlow",
+            "eyebrow": "Our story",
+            "intro": "OrgFlow is a student-led organization helping other student organizations find their flow.",
+        },
+        "accessibility": {
+            "title": "Accessibility",
+            "eyebrow": "Everyone belongs here",
+            "intro": "OrgFlow is committed to making organization tools and information usable by as many people as possible.",
+        },
+        "bylaws": {
+            "title": "Bylaws & Governance",
+            "eyebrow": "How we work",
+            "intro": "These guidelines describe the principles we use to operate OrgFlow and support the organizations we serve.",
+        },
+        "privacy": {
+            "title": "Privacy",
+            "eyebrow": "Your information",
+            "intro": "We collect and use information thoughtfully so OrgFlow can support organization operations without losing sight of student privacy.",
+        },
+    }
+    return render(request, "core/public_info.html", {"page": pages[page], "page_key": page})
+
+
 AUDIT_TYPES = [
     ("role", "Role change"),
     ("membership", "Membership"),
     ("attendance", "Attendance"),
     ("task", "Task"),
+    ("comment", "Comment"),
 ]
 AUDIT_DISPLAY_LIMIT = 500
 
@@ -225,6 +254,22 @@ def audit_history(request):
                 ),
                 "detail": "",
             })
+
+    # --- Announcement comment history ---
+    for audit in (
+        AnnouncementCommentAudit.objects.select_related("announcement", "author", "actor")
+        .order_by("-created_at") if wanted("comment") else []
+    ):
+        entries.append({
+            "type": "comment",
+            "type_label": "Comment",
+            "at": audit.created_at.isoformat() if audit.created_at else "",
+            "actor": audit.actor.get_username() if audit.actor else "Unknown",
+            "description": (
+                f'Comment on "{audit.announcement.title}": {audit.action.capitalize()}'
+            ),
+            "detail": audit.detail or "",
+        })
 
     if start or end:
         dated = [(entry, _audit_local_date(entry["at"])) for entry in entries]

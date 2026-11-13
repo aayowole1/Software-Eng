@@ -40,11 +40,16 @@
     </div>
 
     <!-- Date info -->
-    <div class="text-xs text-slate-500 flex items-center gap-2">
+    <div class="announcement-card-header-actions text-xs text-slate-500 flex items-center gap-2">
       {% if item.status == "published" %}
         <time datetime="{{ item.published_at|localtime|date:'c' }}">{{ item.published_at|localtime|timesince }} ago</time>
       {% else %}
         <time datetime="{{ item.created_at|localtime|date:'c' }}">{{ item.created_at|localtime|timesince }} ago</time>
+      {% endif %}
+      {% if can_publish %}
+        <a href="{% url 'announcements:edit' item.id %}" class="announcement-icon-action" aria-label="Edit {{ item.title }}" title="Edit announcement">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16-.8 4.8L8 20l11.5-11.5a2.1 2.1 0 0 0-3-3L5 17m9-9 3 3"/></svg>
+        </a>
       {% endif %}
     </div>
   </div>
@@ -101,10 +106,6 @@
       {% else %}
         <span class="text-slate-400">Read statistics available after publication</span>
       {% endif %}
-
-      <div class="flex items-center gap-2">
-        <a href="{% url 'announcements:edit' item.id %}" class="px-2.5 py-1 text-slate-700 hover:bg-slate-100 rounded border border-slate-200 font-medium">Edit</a>
-      </div>
     {% endif %}
 
     {% if item.status == "published" and item.author_id != user.id %}
@@ -122,11 +123,11 @@
         </button>
       </div>
 
-      <a href="{% url 'announcements:detail' item.id %}" class="font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
+      <a href="{% url 'announcements:detail' item.id %}" class="announcement-read-link font-medium inline-flex items-center gap-1">
         Read full notice &rarr;
       </a>
     {% else %}
-      <a href="{% url 'announcements:detail' item.id %}" class="font-medium text-blue-600 hover:text-blue-800 inline-flex items-center gap-1">
+      <a href="{% url 'announcements:detail' item.id %}" class="announcement-read-link font-medium inline-flex items-center gap-1">
         Read full notice &rarr;
       </a>
     {% endif %}

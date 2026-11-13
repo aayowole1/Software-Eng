@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }}{% endblock %}
+{% block content %}
+<article class="public-info-page">
+  <header class="public-info-page-header">
+    <h1>{{ page.title }}</h1>
+  </header>
+  <header class="public-info-hero">
+    <p class="public-info-eyebrow">{{ page.eyebrow }}</p>
+    <p class="public-info-intro">{{ page.intro }}</p>
+  </header>
+
+  {% if page_key == "about" %}
+    <section class="public-info-section">
+      <h2>Helping organizations work with purpose</h2>
+      <p>Student organizations do some of the most meaningful work on campus, but the behind-the-scenes work can be hard to coordinate. OrgFlow brings membership, committees, tasks, events, announcements, and shared knowledge into one welcoming place.</p>
+      <p>We are students building for students: practical enough for a busy semester, thoughtful enough to support healthy leadership transitions, and flexible enough for every organization to find a rhythm that fits.</p>
+    </section>
+    <section class="public-info-grid" aria-label="What guides us">
+      <div class="public-info-card">
+        <h2>Clarity</h2>
+        <p>Make the next step visible, from joining an organization to finishing a task.</p>
+      </div>
+      <div class="public-info-card">
+        <h2>Continuity</h2>
+        <p>Capture the context that helps the next group of student leaders start strong.</p>
+      </div>
+      <div class="public-info-card">
+        <h2>Community</h2>
+        <p>Support collaboration, belonging, and the people who make organizations matter.</p>
+      </div>
+    </section>
+    <section class="public-info-section">
+      <h2>Built around your flow</h2>
+      <p>There is no single right way to run a student organization. OrgFlow gives officers and members a shared foundation while leaving room for each group’s own culture, priorities, and voice.</p>
+      <p class="public-info-cta"><a class="button" href="{% url 'accounts:register' %}">Join the flow</a></p>
+    </section>
+  {% elif page_key == "accessibility" %}
+    <section class="public-info-section">
+      <h2>Our accessibility commitment</h2>
+      <p>OrgFlow aims to follow the Web Content Accessibility Guidelines (WCAG) 2.2 at the AA level. We work toward content that is perceivable, operable, understandable, and robust across devices and assistive technologies.</p>
+      <h2>What we prioritize</h2>
+      <ul>
+        <li>Keyboard navigation and visible focus indicators.</li>
+        <li>Meaningful headings, labels, link text, and alternative text.</li>
+        <li>Readable contrast in light and dark themes.</li>
+        <li>Responsive layouts that remain usable when zoomed or resized.</li>
+        <li>Clear status messages and instructions for important actions.</li>
+      </ul>
+    </section>
+    <section class="public-info-callout" aria-labelledby="accessibility-help">
+      <h2 id="accessibility-help">Need an accommodation or found a barrier?</h2>
+      <p>We want to hear from you. Contact an OrgFlow officer through your organization or the contact method provided on the dashboard. Please include the page, task, and assistive technology or browser involved when possible.</p>
+    </section>
+  {% elif page_key == "bylaws" %}
+    <section class="public-info-section">
+      <h2>Our governance principles</h2>
+      <p>OrgFlow is a student organization, and our governance is grounded in service, transparency, and shared responsibility. Officers steward the platform and help set priorities; members contribute feedback and shape how the community grows.</p>
+      <h2>How decisions work</h2>
+      <ol>
+        <li><strong>Listen first.</strong> We gather input from the organizations and students who use OrgFlow.</li>
+        <li><strong>Document decisions.</strong> Significant operational and policy decisions should have a clear owner and an accessible record.</li>
+        <li><strong>Use least privilege.</strong> Access to member and organization information is limited to what a role needs.</li>
+        <li><strong>Plan for continuity.</strong> Processes and knowledge should be transferable when student leaders change.</li>
+      </ol>
+    </section>
+    <section class="public-info-section">
+      <h2>Community expectations</h2>
+      <p>We expect participants to communicate respectfully, protect private information, resolve disagreements in good faith, and use OrgFlow for legitimate organization work. Officers may review access or activity when needed to keep the community safe and operational.</p>
+      <p>Questions about governance can be raised with an OrgFlow officer.</p>
+    </section>
+  {% else %}
+    <section class="public-info-section">
+      <h2>Information we handle</h2>
+      <p>Depending on how you use OrgFlow, we may handle account details, membership applications, organization activity, event responses, tasks, and messages you choose to share. We use this information to provide the platform, support organization operations, maintain security, and improve the student experience.</p>
+      <h2>Our privacy practices</h2>
+      <ul>
+        <li>We request information relevant to the feature being used.</li>
+        <li>We use role-based access controls to limit administrative visibility.</li>
+        <li>We do not sell personal information.</li>
+        <li>We retain information only as long as it supports operational, safety, or recordkeeping needs.</li>
+        <li>We investigate suspected misuse and take reasonable steps to protect the service.</li>
+      </ul>
+    </section>
+    <section class="public-info-callout" aria-labelledby="privacy-questions">
+      <h2 id="privacy-questions">Questions about your information?</h2>
+      <p>Contact an OrgFlow officer to ask about your account, request a correction, or raise a privacy concern. We may need to verify your identity before discussing account-specific information.</p>
+    </section>
+  {% endif %}
+
+</article>
+{% endblock %}

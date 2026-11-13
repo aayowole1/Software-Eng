@@ -26,5 +26,15 @@ urlpatterns = [
     path("<str:pk>/delete/", views.announcement_delete, name="delete"),
     path("<str:pk>/read/", views.announcement_mark_read, name="mark_read"),
     path("<str:pk>/comments/", views.announcement_comment_create, name="comment_create"),
+    path(
+        "<str:pk>/comments/<str:comment_pk>/delete/",
+        views.announcement_comment_delete,
+        name="comment_delete",
+    ),
+    path(
+        "<str:pk>/comments/<str:comment_pk>/moderate/",
+        views.announcement_comment_moderate,
+        name="comment_moderate",
+    ),
     path("<str:pk>/", views.announcement_detail, name="detail"),
 ]
