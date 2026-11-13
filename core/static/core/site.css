@@ -1639,6 +1639,7 @@ html.dark .announcement-page .announcement-primary-button {
     margin-top: 1rem;
 }
 .dashboard-overdue { color: var(--error); margin-left: 0.35rem; }
+html.dark .dashboard-overdue { color: #fda4af; }
 .dashboard-grid .card { margin-bottom: 0; padding: 1.1rem 1.25rem; }
 .dashboard-grid .card h2 { margin: 0 0 0.75rem; font-size: 1rem; }
 .dashboard-grid .card ul { list-style: none; margin: 0; padding: 0; }
