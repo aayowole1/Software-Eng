@@ -57,6 +57,7 @@
     {% endif %}
 
     <div class="filter-action-slot">
+      <button class="users-action-button" type="submit">Search</button>
       {% if search_query or selected_role or selected_committee or selected_status %}
         <a class="button secondary" href="{% url 'membership:roster' %}">Clear</a>
       {% endif %}
@@ -140,15 +141,6 @@
     form.querySelectorAll("select").forEach((select) => {
       select.addEventListener("change", () => form.submit());
     });
-
-    const search = form.querySelector('input[name="q"]');
-    if (search) {
-      let timeout;
-      search.addEventListener("input", () => {
-        window.clearTimeout(timeout);
-        timeout = window.setTimeout(() => form.submit(), 350);
-      });
-    }
   })();
 </script>
 {% endblock %}
