@@ -109,7 +109,7 @@
     <form method="post" action="{% url 'committees:add_member' committee.pk %}" class="card">
       {% csrf_token %}
       {{ add_form.as_p }}
-      <button type="submit">Add</button>
+      <button class="button" type="submit">Add</button>
     </form>
   {% endif %}
 

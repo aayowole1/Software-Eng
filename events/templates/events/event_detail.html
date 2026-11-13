@@ -14,7 +14,7 @@
     <form method="post" action="{% url 'events:rsvp' event.pk %}" class="card event-detail-card">
       {% csrf_token %}
       <p>{% if my_rsvp %}You answered <strong>{{ my_rsvp.get_response_display }}</strong>. You can change it below.{% else %}Will you be there?{% endif %}</p>
-      <button type="submit" name="response" value="going">Going</button>
+      <button class="button" type="submit" name="response" value="going">Going</button>
       <button type="submit" name="response" value="not_going" class="secondary">Not going</button>
     </form>
   {% elif event.cancelled %}
@@ -54,7 +54,7 @@
           </table>
         </div>
         <div class="form-actions">
-          <button type="submit">Save attendance</button>
+          <button class="button" type="submit">Save attendance</button>
         </div>
       </form>
     {% endif %}

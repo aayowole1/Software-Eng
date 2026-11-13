@@ -33,7 +33,7 @@
           <p><label for="retry-name">Name</label><input id="retry-name" name="name" maxlength="100" value="{{ name }}" required></p>
           <p><label for="retry-description">Description</label><textarea id="retry-description" name="description">{{ description }}</textarea></p>
           <p>Retry checks this attempt's saved committee first. An existing committee requires review before a missing Chair membership can be added.</p>
-          <button type="submit">Check or retry this creation attempt</button>
+          <button class="button" type="submit">Check or retry this creation attempt</button>
         </form>
       {% endif %}
     {% endif %}

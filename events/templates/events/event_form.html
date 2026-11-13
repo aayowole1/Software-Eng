@@ -7,7 +7,7 @@
     {% csrf_token %}
     {{ form.as_p }}
     <div class="form-actions">
-      <button type="submit">{% if editing %}Save event{% else %}Create event{% endif %}</button>
+      <button class="button" type="submit">{% if editing %}Save event{% else %}Create event{% endif %}</button>
       {% if editing %}
         <a class="button danger" href="{% url 'events:detail' event.pk %}">Cancel</a>
       {% else %}

@@ -27,7 +27,7 @@
         {% csrf_token %}
         <input type="hidden" name="creation_intent" value="{{ creation_intent }}">
         {{ form.as_p }}
-        <button type="submit">Confirm: add me as committee Chair</button>
+        <button class="button" type="submit">Confirm: add me as committee Chair</button>
       </form>
     {% endif %}
   </main>

@@ -19,7 +19,7 @@
       {% csrf_token %}
       <p class="muted">Tell the officers why you want to join and how you would like to take part.</p>
       {{ form.as_p }}
-      <button type="submit">{% if applications %}Apply again{% else %}Submit application{% endif %}</button>
+      <button class="button" type="submit">{% if applications %}Apply again{% else %}Submit application{% endif %}</button>
     </form>
   {% elif has_access_update %}
     <section class="card"><h2>Account update pending</h2><p>Your application has been reviewed. An officer still needs to finish updating your account access.</p></section>
