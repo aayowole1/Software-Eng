@@ -680,6 +680,28 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 .users-table td,
 .users-table th { overflow-wrap: anywhere; }
 .users-table select { max-width: 10rem; }
+.membership-filters > div { min-width: min(12rem, 100%); }
+.membership-actions,
+.membership-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.membership-toolbar {
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.membership-toolbar p { margin: 0; }
+.membership-toolbar .button { margin-inline-start: auto; }
+.membership-review-actions { margin-top: 0.75rem; }
+.membership-table-wrap { overflow-x: auto; }
+.membership-table-wrap .users-table { min-width: 36rem; }
+.membership-actions .button.secondary,
+.membership-toolbar .button.secondary {
+  background: var(--surface);
+  color: var(--accent);
+}
 .user-secondary {
   display: block;
   margin-top: 0.2rem;

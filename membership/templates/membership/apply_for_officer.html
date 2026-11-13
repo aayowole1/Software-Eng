@@ -2,13 +2,15 @@
 {% block title %}Officer application{% endblock %}
 {% block page_heading %}Officer application{% endblock %}
 {% block content %}
-  <h1>Officer application</h1>
   {% if can_apply %}
     <form method="post" class="card">
       {% csrf_token %}
+      <p class="muted">Describe the responsibilities you’d like to take on and how you would support the organization. An admin will review your application.</p>
       {{ form.as_p }}
       <button type="submit">Submit officer application</button>
     </form>
+  {% elif user_role == "member" %}
+    <section class="card"><h2>Pending review</h2><p>An admin will review your application. You can see the decision here.</p></section>
   {% endif %}
   <h2>My officer applications</h2>
   {% for application in applications %}

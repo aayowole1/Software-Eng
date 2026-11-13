@@ -111,7 +111,8 @@ def apply(request):
     # After a rejection there's a short wait before applying again.
     wait_until = next_application_allowed_at(request.user)
     has_access_update = applications.filter(access_update_pending=True).exists()
-    can_apply = get_role(request.user) == Role.APPLICANT and not has_pending and not has_access_update and wait_until is None
+    role = get_role(request.user)
+    can_apply = role == Role.APPLICANT and not has_pending and not has_access_update and wait_until is None
 
     form = ApplicationForm(request.POST or None)
     if request.method == "POST":
@@ -131,7 +132,14 @@ def apply(request):
     return render(
         request,
         "membership/apply.html",
-        {"form": form, "applications": applications, "can_apply": can_apply, "wait_until": wait_until},
+        {
+            "form": form,
+            "applications": applications,
+            "can_apply": can_apply,
+            "wait_until": wait_until,
+            "is_member": role in ROSTER_ROLES,
+            "has_access_update": has_access_update,
+        },
     )
 
 

@@ -4,7 +4,7 @@
 {% block title %}Member Details{% endblock %}
 
 
-{% block page_heading %}Member Details{% endblock %}
+{% block page_heading %}{{ member.user.get_full_name|default:member.user.username }}{% endblock %}
 {% block content %}
 
 <p>
@@ -12,8 +12,6 @@
     Back to member roster
   </a>
 </p>
-
-<h1>{{ member.user.get_full_name|default:member.user.username }}</h1>
 
 <div class="card">
   <h2>Member Information</h2>
@@ -25,7 +23,7 @@
 
   <p>
     <strong>Organization Role:</strong>
-    {{ member.get_role_display }}
+    <span class="role-pill role-pill--{{ member.role }}">{{ member.get_role_display }}</span>
   </p>
 
   <p>
@@ -34,10 +32,10 @@
   </p>
 </div>
 
-<h2>Committee Participation</h2>
+<h2>Committee participation <span class="muted">({{ committee_memberships|length }})</span></h2>
 
-<div class="table-wrap">
-  <table>
+<div class="table-wrap users-table-wrap membership-table-wrap">
+  <table class="users-table">
     <thead>
       <tr>
         <th scope="col">Committee</th>

@@ -7,14 +7,12 @@
 {% block page_heading %}Member Roster{% endblock %}
 {% block content %}
 
-<h1>Organization Members</h1>
-
 <p class="muted">
-  View organization members, their roles, and committee memberships.
+  Find a member by name, username or email. Open their profile for contact and committee details.
 </p>
 
 <form method="get" action="{% url 'membership:roster' %}">
-  <div class="roster-filters">
+  <div class="user-filters membership-filters">
 
     <div>
       <label for="member-search">Search members</label>
@@ -63,23 +61,26 @@
     </div>
     {% endif %}
 
-    <div class="roster-actions">
-      <button type="submit">Search / Filter</button>
-      <a href="{% url 'membership:roster' %}">Reset</a>
+    <div class="membership-actions">
+      <button type="submit">Apply filters</button>
+      <a class="button secondary" href="{% url 'membership:roster' %}">Clear</a>
     </div>
 
   </div>
 </form>
 
-{% if is_admin %}
-<div class="roster-export">
-  <a href="{% url 'membership:export_roster_csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
-</div>
+<div class="membership-toolbar">
+{% if page_obj.paginator.count %}
+  <p class="muted">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} matching member{{ page_obj.paginator.count|pluralize }}.</p>
 {% endif %}
+{% if is_admin %}
+  <a class="button secondary" href="{% url 'membership:export_roster_csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
+{% endif %}
+</div>
 
-<div class="table-wrap">
-  <p>{{ page_obj.paginator.count }} member{{ page_obj.paginator.count|pluralize }} found.</p>
-  <table>
+<div class="table-wrap users-table-wrap membership-table-wrap">
+  <table class="users-table">
+    <caption class="visually-hidden">Organization member roster</caption>
     <thead>
       <tr>
         <th scope="col">Member</th>
@@ -101,7 +102,7 @@
          </td>
           <td>{{ p.user.email|default:"—" }}</td>
 
-          <td>{{ p.get_role_display }}</td>
+          <td><span class="role-pill role-pill--{{ p.role }}">{{ p.get_role_display }}</span></td>
 
           <td>
             {% for committee_member in p.user.committee_memberships.all %}
@@ -123,7 +124,7 @@
       {% empty %}
         <tr>
           <td colspan="{% if can_see_status %}6{% else %}5{% endif %}" class="muted">
-            No members found matching your search.
+            No members found. Try clearing a filter or searching for a different name.
           </td>
         </tr>
       {% endfor %}
@@ -132,7 +133,7 @@
 </div>
 
 {% if page_obj.has_other_pages %}
-<nav aria-label="Roster pages">
+<nav class="users-table-footer" aria-label="Roster pages">
   {% if page_obj.has_previous %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
   <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
   {% if page_obj.has_next %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}

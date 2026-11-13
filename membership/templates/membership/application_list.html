@@ -7,10 +7,8 @@
 {% block page_heading %}Membership Applications{% endblock %}
 {% block content %}
 
-<h1>Membership Applications</h1>
-
 <p class="muted">
-  Review requests to join the organization or become an officer.
+  Review requests to join the organization or become an officer. Use the status and type filters to find applications that need your attention.
 </p>
 
 <div class="application-summary">
@@ -36,7 +34,7 @@
 </div>
 
 <form method="get" action="{% url 'membership:application_list' %}">
-  <div class="roster-filters">
+  <div class="user-filters membership-filters">
 
     <div>
       <label for="application-search">Search applicants</label>
@@ -77,9 +75,9 @@
       </select>
     </div>
 
-    <div class="roster-actions">
-      <button type="submit">Search / Filter</button>
-      <a href="{% url 'membership:application_list' %}">Reset</a>
+    <div class="membership-actions">
+      <button type="submit">Apply filters</button>
+      <a class="button secondary" href="{% url 'membership:application_list' %}">Clear</a>
     </div>
 
   </div>
@@ -120,8 +118,7 @@
           rows="2"
         ></textarea>
 
-        <p></p>
-
+        <div class="membership-actions membership-review-actions">
         <button type="submit" name="decision" value="approve">
           Approve
         </button>
@@ -132,20 +129,22 @@
                 class="secondary">
           Reject
         </button>
+        </div>
         {% endif %}
       </form>
       {% endif %}
     </div>
   {% empty %}
-    <p class="muted">No pending applications found.</p>
+    <p class="muted">No pending applications match these filters.</p>
   {% endfor %}
 {% endif %}
 
 {% if not selected_status or selected_status == "approved" or selected_status == "rejected" %}
   <h2>Reviewed Applications</h2>
 
-  <div class="table-wrap">
-    <table>
+  <div class="table-wrap users-table-wrap membership-table-wrap">
+    <table class="users-table">
+      <caption class="visually-hidden">Reviewed applications</caption>
       <thead>
         <tr>
           <th scope="col">Applicant</th>
@@ -163,7 +162,7 @@
           <tr>
             <td>{{ a.user.email|default:a.user.username }}</td>
             <td>{% if a.is_officer_application %}Officer{% else %}Member{% endif %}</td>
-            <td>{{ a.get_status_display }}</td>
+            <td><span class="status-pill {% if a.status == 'approved' %}status-pill--active{% else %}status-pill--inactive{% endif %}">{{ a.get_status_display }}</span></td>
             <td>{{ a.reviewed_by.email|default:"—" }}</td>
             <td>{{ a.reviewed_at|date:"M j, Y" }}</td>
             <td>{{ a.review_note|default:"—" }}</td>

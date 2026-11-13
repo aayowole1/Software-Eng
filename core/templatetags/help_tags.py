@@ -4,6 +4,7 @@ import re
 from datetime import datetime, timezone as dt_timezone
 
 from django import template
+from django.utils.formats import date_format
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils import timezone
@@ -31,4 +32,4 @@ def human_datetime(value):
             return value
     if timezone.is_naive(moment):
         moment = moment.replace(tzinfo=dt_timezone.utc)
-    return timezone.localtime(moment).strftime("%b %-d, %Y, %-I:%M %p")
+    return date_format(timezone.localtime(moment), "M j, Y, g:i A")
