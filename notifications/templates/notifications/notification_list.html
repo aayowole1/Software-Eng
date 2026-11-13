@@ -9,14 +9,14 @@
   <div style="margin-bottom:1rem;">
     <form method="post" action="{% url 'notifications:mark_all_read' %}" style="display:inline;">
       {% csrf_token %}
-      <button type="submit" class="btn">Mark all as read</button>
+      <button type="submit" class="button secondary">Mark all as read</button>
     </form>
   </div>
 
   <ul class="notification-list" style="list-style:none;padding:0;">
     {% for n in notifications %}
       <li class="notification-item {% if not n.is_read %}notification-unread{% endif %}"
-          style="padding:0.75rem 1rem;margin-bottom:0.5rem;border:1px solid var(--border,#dee2e6);border-radius:4px;{% if not n.is_read %}background:#eef4ff;{% endif %}">
+          style="padding:0.75rem 1rem;margin-bottom:0.5rem;border:1px solid var(--border,#dee2e6);border-radius:4px;">
         <a href="{% url 'notifications:read' pk=n.pk %}" style="text-decoration:none;color:inherit;">
           <span style="font-weight:{% if not n.is_read %}600{% else %}400{% endif %};">{{ n.headline }}</span>
           <br>

@@ -476,6 +476,9 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
 html.dark .sidebar-account-card { background: #172235; }
 html.dark .sidebar-account-link { border-color: #475569; color: #cbd5e1; }
 html.dark .sidebar-account-link:hover { color: #ffffff; background: #273449; }
+html.dark .sidebar-signup-link { background: rgba(251, 191, 36, 0.14) !important; border-color: rgba(251, 191, 36, 0.45) !important; }
+html.dark .sidebar-signup-link:hover { background: rgba(251, 191, 36, 0.24) !important; }
+html.dark .sidebar-signup-link svg { color: #fbbf24 !important; }
 html.dark .sidebar-signout-button,
 html.dark .header-signout-button {
   border-color: #fb7185;
@@ -689,6 +692,13 @@ h1, h2, h3, h4 { font-family: var(--font-family-heading); }
   border-color: color-mix(in srgb, var(--error) 35%, var(--border));
   color: var(--error);
 }
+html.dark .event-badge-cancelled {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(251, 113, 133, 0.45);
+  color: #fda4af;
+}
+.notification-unread { background: #eef4ff; }
+html.dark .notification-unread { background: #1e3a5f; }
 .event-detail-card { border-left: 4px solid var(--color-brand-accent); }
 .event-detail-summary h1 { margin-top: 0; }
 .event-warning { margin-left: 0; margin-right: 0; }
@@ -854,6 +864,9 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
 }
 .account-details dt { color: var(--muted); font-size: 0.875rem; }
 .account-details dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+/* Google shows a placeholder button while its real button loads in an iframe
+   below it; keep the area one button tall so only one is visible at a time. */
+.g_id_signin { height: 40px; overflow-y: clip; }
 
 button, .button {
   display: inline-block;
