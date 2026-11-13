@@ -18,6 +18,9 @@
     <p class="muted">or</p>
     {% include "accounts/_google_button.html" with button_text="signin_with" %}
   {% endif %}
-  <p>New here? <a href="{% url 'accounts:register' %}">Create an account and apply to join</a></p>
+  <div class="account-actions account-signup">
+    <span>New here?</span>
+    <a class="button secondary" href="{% url 'accounts:register' %}">Create an account and apply to join</a>
+  </div>
 </div>
 {% endblock %}

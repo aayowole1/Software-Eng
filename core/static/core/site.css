@@ -855,6 +855,7 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
   gap: 0.75rem;
 }
 .account-profile-header { justify-content: space-between; }
+.account-signup { margin-top: 1.25rem; }
 .account-profile-header h2 { margin: 0; }
 .account-details {
   display: grid;
