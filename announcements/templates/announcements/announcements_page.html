@@ -53,10 +53,10 @@
     </div>
 
     <!-- Main Grid: Announcement Cards + Side Rail -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="announcement-content-grid grid grid-cols-1 {% if can_publish %}lg:grid-cols-3{% endif %} gap-6">
 
       <!-- Primary Announcements Feed Column -->
-      <div class="lg:col-span-2">
+      <div class="{% if can_publish %}lg:col-span-2{% endif %}">
         {% for announcement in announcements %}
           {% include "announcements/partials/_card.html" with item=announcement can_publish=can_publish %}
         {% empty %}
@@ -84,10 +84,6 @@
               <li class="flex justify-between py-1 border-b border-slate-100">
                 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Officers and admins</span>
                 <strong>{{ stats.officer_total }}</strong>
-              </li>
-              <li class="flex justify-between py-1">
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Applicants</span>
-                <strong>{{ stats.applicant_total }}</strong>
               </li>
             </ul>
           </div>
