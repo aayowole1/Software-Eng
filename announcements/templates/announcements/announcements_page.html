@@ -9,11 +9,11 @@
   <div class="p-6 lg:p-8 max-w-7xl mx-auto">
 
     <!-- Top Breadcrumbs & Search Bar -->
-    <div class="flex items-center justify-between pb-6 border-b border-slate-200 mb-6">
+    <div class="announcement-search-row flex items-center justify-between pb-6 border-b border-slate-200 mb-6">
       <div class="text-xs text-slate-500 font-medium">
         <span>Portal</span> &rsaquo; <span class="text-slate-800">Workspace</span>
       </div>
-      <form method="get" class="relative w-72 flex items-center gap-2">
+      <form method="get" class="announcement-search-form relative flex items-center gap-2" role="search">
         {% if can_publish and status_filter != "all" %}
           <input type="hidden" name="status" value="{{ status_filter }}">
         {% endif %}
@@ -23,57 +23,33 @@
         <label for="announcement-tag" class="sr-only">Tag</label>
         <input type="text" id="announcement-tag" name="tag" value="{{ selected_tag }}" maxlength="32" placeholder="Tag" class="w-24 text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
         <input type="text" name="q" value="{{ search_query }}" placeholder="Search announcements..." class="w-full text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-800 focus:outline-none shadow-sm">
-        {% if search_query %}
-          <button type="button" class="text-xs font-medium text-slate-500 hover:text-slate-900" onclick="this.form.querySelector('[name=q]').value=''; this.form.submit();">Clear</button>
+        <button type="submit" class="announcement-search-button">Search</button>
+        {% if search_query or selected_tag %}
+          <a href="{% url 'announcements:list' %}" class="announcement-clear-button">Clear</a>
         {% endif %}
       </form>
     </div>
 
-    <!-- Header Block: Admin View vs Member View -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <h1 class="text-2xl font-bold text-slate-900">
-            {% if can_publish %}Announcements Management{% else %}Announcements{% endif %}
-          </h1>
-          <span class="text-xs px-2 py-0.5 rounded-full font-medium {% if can_publish %}bg-blue-100 text-blue-800{% else %}bg-slate-100 text-slate-600{% endif %}">
-            {% if can_publish %}Admin Portal{% else %}Member View (Read Only){% endif %}
-          </span>
-        </div>
-        <p class="text-sm text-slate-500">
-          {% if is_officer %}
-            Create, broadcast, schedule, and manage club-wide announcements, meeting reminders, and council communications.
-          {% else %}
-            Official updates, executive briefings, meeting agendas, and institutional records from MyOrg leadership.
-          {% endif %}
-        </p>
-      </div>
-
-      {% if is_officer %}
-        <!-- Admin Primary Action Buttons -->
-        <div class="flex items-center gap-3">
-          <a href="{% url 'announcements:create' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition">
-            <span>+</span> Create announcement
-          </a>
-        </div>
-      {% endif %}
-    </div>
-
     <!-- Filter & Category Pills Bar -->
-    <div class="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
+    <div class="announcement-filter-bar flex flex-wrap items-center gap-2 mb-6 border-b border-slate-200 pb-4">
       {% if can_publish %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'all' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ stats.total }})</a>
-        <a href="?status=published" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'published' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Published ({{ stats.total_published }})</a>
-        <a href="?status=draft" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'draft' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Drafts ({{ stats.active_drafts }})</a>
-        <a href="?status=scheduled" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if status_filter == 'scheduled' %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">Scheduled ({{ stats.scheduled_queue }})</a>
+        <a class="announcement-filter-pill {% if status_filter == 'all' %}is-active{% endif %}" href="{% url 'announcements:list' %}">All announcements ({{ stats.total }})</a>
+        <a class="announcement-filter-pill {% if status_filter == 'published' %}is-active{% endif %}" href="?status=published">Published ({{ stats.total_published }})</a>
+        <a class="announcement-filter-pill {% if status_filter == 'draft' %}is-active{% endif %}" href="?status=draft">Drafts ({{ stats.active_drafts }})</a>
+        <a class="announcement-filter-pill {% if status_filter == 'scheduled' %}is-active{% endif %}" href="?status=scheduled">Scheduled ({{ stats.scheduled_queue }})</a>
       {% else %}
-        <a href="{% url 'announcements:list' %}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if not current_category %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">All announcements ({{ announcements|length }})</a>
+        <a href="{% url 'announcements:list' %}" class="announcement-filter-pill {% if not current_category %}is-active{% endif %}">All announcements ({{ announcements|length }})</a>
       {% endif %}
       {% for cat in categories %}
-        <a href="?category={{ cat.slug }}" class="px-3 py-1.5 rounded-lg text-xs font-medium {% if current_category == cat.slug %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-50{% endif %}">
+        <a href="?category={{ cat.slug }}" class="announcement-filter-pill {% if current_category == cat.slug %}is-active{% endif %}">
           {{ cat.name }}
         </a>
       {% endfor %}
+      {% if is_officer %}
+        <a href="{% url 'announcements:create' %}" class="announcement-primary-button inline-flex items-center gap-2 text-xs font-semibold shadow-sm transition">
+          <span aria-hidden="true">+</span> Create announcement
+        </a>
+      {% endif %}
     </div>
 
     <!-- Main Grid: Announcement Cards + Side Rail -->
