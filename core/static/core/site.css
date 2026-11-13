@@ -238,6 +238,7 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
   line-height: 1.25rem;
   text-decoration: none;
   transition: color 0.15s ease, background-color 0.15s ease;
+  position: relative;
 }
 .sidebar-nav-link:hover {
   color: #0f172a;
@@ -268,6 +269,16 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
   font-weight: 700;
   line-height: 1;
 }
+.sidebar-notification-dot {
+  display: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: auto;
+  border: 2px solid var(--surface);
+  border-radius: 9999px;
+  background: #e11d48;
+  box-shadow: 0 0 0 1px #881337;
+}
 .sidebar.collapsed {
   width: 4.75rem;
   flex-basis: 4.75rem;
@@ -291,6 +302,13 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
 .sidebar.collapsed .sidebar-notification-count {
   display: none;
 }
+.sidebar.collapsed .sidebar-notification-dot {
+  display: block;
+  position: absolute;
+  top: 0.35rem;
+  right: 0.55rem;
+  margin-left: 0;
+}
 .sidebar.collapsed .sidebar-brand-row .brand {
   justify-content: center;
   padding-right: 0;
@@ -313,15 +331,34 @@ html.dark .sidebar-account-link:hover { color: #ffffff; }
 }
 .sidebar.collapsed .sidebar-footer {
   padding: 0.5rem;
+  background: transparent;
+  border-top-color: transparent;
 }
 .sidebar.collapsed .sidebar-footer > div {
-  padding: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 .sidebar.collapsed .sidebar-footer > div > a {
   justify-content: center;
 }
 .sidebar.collapsed .sidebar-account-card {
-  padding: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.sidebar.collapsed .sidebar-account-profile {
+  justify-content: center;
+  padding: 0.25rem;
+}
+.sidebar.collapsed .sidebar-account-profile > div:first-child {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid var(--surface);
+  border-radius: 9999px;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.22);
 }
 .sidebar.collapsed .sidebar-account-actions {
   display: none;
