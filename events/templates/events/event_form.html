@@ -3,9 +3,16 @@
 {% block page_heading %}{{ heading }}{% endblock %}
 {% block content %}
   <h1>{{ heading }}</h1>
-  <form method="post" class="card" novalidate>
+  <form method="post" class="card event-form" novalidate>
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">Save event</button>
+    <div class="form-actions">
+      <button type="submit">{% if editing %}Save event{% else %}Create event{% endif %}</button>
+      {% if editing %}
+        <a class="button danger" href="{% url 'events:detail' event.pk %}">Cancel</a>
+      {% else %}
+        <a class="button danger" href="{% url 'events:list' %}">Cancel</a>
+      {% endif %}
+    </div>
   </form>
 {% endblock %}
