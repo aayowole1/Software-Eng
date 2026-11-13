@@ -18,12 +18,14 @@
         {% endfor %}
       </ul>
       {% endif %}
-      <h3>Contact leadership</h3>
-      {% if org_contact_email %}
-        <p>Contact an officer: <a href="mailto:{{ org_contact_email }}" aria-label="Email the organization officers">{{ org_contact_email }}</a></p>
-      {% else %}
-        <p>Contact an officer after you sign in.</p>
-      {% endif %}
+      <div class="contact-line">
+        <h3>Contact leadership</h3>
+        {% if org_contact_email %}
+          <a href="mailto:{{ org_contact_email }}" aria-label="Email the organization officers">{{ org_contact_email }}</a>
+        {% else %}
+          <span class="muted">Contact an officer after you sign in.</span>
+        {% endif %}
+      </div>
     </section>
     <div class="account-actions dashboard-join">
       <a class="button" href="{% url 'accounts:register' %}">Create an account and apply</a>
