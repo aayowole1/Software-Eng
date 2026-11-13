@@ -11,12 +11,11 @@
     <input type="hidden" name="next" value="{{ next }}">
     <div class="account-actions">
       <button class="button" type="submit">Sign in</button>
-      <a href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
+      <a class="button secondary" href="{% url 'accounts:password_reset' %}">Forgot your password?</a>
     </div>
   </form>
   {% if google_enabled %}
-    <p class="muted">or</p>
-    {% include "accounts/_google_button.html" with button_text="signin_with" %}
+    {% include "accounts/_google_button.html" with button_text="signin_with" lead_text="or" %}
   {% endif %}
   <div class="account-actions account-signup">
     <span>New here?</span>

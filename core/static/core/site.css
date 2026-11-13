@@ -865,9 +865,12 @@ input[type=text], input[type=email], input[type=password], input[type=date], sel
 }
 .account-details dt { color: var(--muted); font-size: 0.875rem; }
 .account-details dd { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
-/* Google shows a placeholder button while its real button loads in an iframe
-   below it; keep the area one button tall so only one is visible at a time. */
-.g_id_signin { height: 40px; overflow-y: clip; }
+.google-signin-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+/* Google shows a placeholder button and then adds its real button in an
+   iframe right after it; hide the placeholder once the iframe is there so
+   only one button is visible. */
+.g_id_signin { min-height: 44px; }
+.g_id_signin div:has(+ iframe) { display: none; }
 
 button, .button {
   display: inline-block;
