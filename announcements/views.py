@@ -24,6 +24,7 @@ from .models import (
     Announcement,
     AnnouncementAttachment,
     AnnouncementComment,
+    AnnouncementCommentAudit,
     AnnouncementReadReceipt,
     Category,
 )
@@ -33,6 +34,7 @@ from .permissions import (
     effective_role,
     visible_announcements,
 )
+from .moderation import moderate_comment
 
 
 # === HELPERS
@@ -43,6 +45,16 @@ def is_officer_or_admin(user) -> bool:
         and (
             get_role(user) in {Role.OFFICER, Role.ADMIN}
         )
+    )
+
+
+def can_delete_comment(user, comment) -> bool:
+    """Authors may remove their own comments; superusers may remove any comment."""
+    if comment.author_id == user.id or user.is_superuser:
+        return True
+    return (
+        is_officer_or_admin(user)
+        and get_role(comment.author) == Role.MEMBER
     )
 
 
@@ -441,6 +453,22 @@ def announcement_detail(request, pk):
             if can_receive_announcement(request.user, item)
         ]
 
+    visible_comments = announcement.comments.all()
+    if not is_admin:
+        visible_comments = [
+            comment for comment in visible_comments
+            if comment.moderation_status == "visible" or comment.author_id == request.user.id
+        ]
+    for comment in visible_comments:
+        comment.can_delete_comment = can_delete_comment(request.user, comment)
+        comment.delete_warning = (
+            "You are deleting another member's comment."
+            if comment.author_id != request.user.id
+            and not request.user.is_superuser
+            and can_delete_comment(request.user, comment)
+            else ""
+        )
+
     context = {
         "announcement": announcement,
         "can_publish": is_admin,
@@ -451,7 +479,7 @@ def announcement_detail(request, pk):
         ),
         "is_read_by_user": is_read_by_user,
         "related_announcements": related_announcements,
-        "comments": announcement.comments.all(),
+        "comments": visible_comments,
         "comment_form": AnnouncementCommentForm(),
     }
 
@@ -542,13 +570,96 @@ def announcement_comment_create(request, pk):
         comment = form.save(commit=False)
         comment.announcement = announcement
         comment.author = request.user
+        moderation = moderate_comment(comment.content)
+        comment.moderation_status = "flagged" if moderation.flagged else "visible"
+        comment.moderation_reason = moderation.reason
+        comment.moderation_provider = moderation.provider
         comment.save()
-        Announcement.objects.filter(pk=announcement.pk).update(
-            comments_count=F("comments_count") + 1
+        AnnouncementCommentAudit.objects.create(
+            announcement=announcement,
+            comment_id=str(comment.pk),
+            author=request.user,
+            actor=request.user,
+            action="flagged" if moderation.flagged else "created",
+            content=comment.content,
+            detail=moderation.reason,
         )
+        if not moderation.flagged:
+            Announcement.objects.filter(pk=announcement.pk).update(
+                comments_count=F("comments_count") + 1
+            )
+            messages.success(request, "Your comment was posted.")
+        else:
+            messages.warning(
+                request,
+                "Your comment was flagged for officer review and is hidden from other members.",
+            )
         return redirect("announcements:detail", pk=announcement.pk)
 
     messages.error(request, "Please enter a comment before posting.")
     return redirect("announcements:detail", pk=announcement.pk)
 
     return redirect("announcements:list")
+
+
+@login_required
+@require_POST
+def announcement_comment_delete(request, pk, comment_pk):
+    """Allow comment authors to delete their comments; officers can delete any."""
+    comment = get_object_or_404(
+        AnnouncementComment.objects.select_related("announcement", "author"),
+        pk=comment_pk,
+        announcement_id=pk,
+    )
+    if not can_delete_comment(request.user, comment):
+        raise PermissionDenied("You do not have permission to delete this comment.")
+    AnnouncementCommentAudit.objects.create(
+        announcement=comment.announcement,
+        comment_id=str(comment.pk),
+        author=comment.author,
+        actor=request.user,
+        action="deleted",
+        content=comment.content,
+        detail="Deleted by author" if comment.author_id == request.user.id else "Deleted by officer",
+    )
+    if comment.moderation_status == "visible":
+        Announcement.objects.filter(
+            pk=comment.announcement_id, comments_count__gt=0
+        ).update(comments_count=F("comments_count") - 1)
+    announcement_id = comment.announcement_id
+    comment.delete()
+    messages.success(request, "Comment deleted.")
+    return redirect("announcements:detail", pk=announcement_id)
+
+
+@officer_view_access
+@require_POST
+def announcement_comment_moderate(request, pk, comment_pk):
+    """Approve or delete a flagged comment."""
+    comment = get_object_or_404(
+        AnnouncementComment.objects.select_related("announcement", "author"),
+        pk=comment_pk,
+        announcement_id=pk,
+    )
+    action = request.POST.get("action")
+    if action == "approve":
+        if comment.moderation_status == "flagged":
+            comment.moderation_status = "visible"
+            comment.save(update_fields=["moderation_status"])
+            Announcement.objects.filter(pk=comment.announcement_id).update(
+                comments_count=F("comments_count") + 1
+            )
+            AnnouncementCommentAudit.objects.create(
+                announcement=comment.announcement,
+                comment_id=str(comment.pk),
+                author=comment.author,
+                actor=request.user,
+                action="approved",
+                content=comment.content,
+            )
+            messages.success(request, "Comment approved.")
+    elif action == "delete":
+        return announcement_comment_delete(request, pk, comment_pk)
+    else:
+        raise PermissionDenied("Unsupported comment moderation action.")
+    return redirect("announcements:detail", pk=pk)

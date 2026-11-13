@@ -223,6 +223,13 @@ class AnnouncementComment(models.Model):
         related_name="announcement_comments",
     )
     content = models.TextField(max_length=2000)
+    moderation_status = models.CharField(
+        max_length=16,
+        choices=[("visible", "Visible"), ("flagged", "Flagged")],
+        default="visible",
+    )
+    moderation_reason = models.CharField(max_length=500, blank=True)
+    moderation_provider = models.CharField(max_length=32, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -230,3 +237,21 @@ class AnnouncementComment(models.Model):
 
     def __str__(self) -> str:
         return f"Comment by {self.author} on {self.announcement}"
+
+
+class AnnouncementCommentAudit(models.Model):
+    """Immutable history for comment creation, moderation, and deletion."""
+
+    announcement = models.ForeignKey(
+        Announcement, on_delete=models.CASCADE, related_name="comment_audits",
+    )
+    comment_id = models.CharField(max_length=32)
+    author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
+    actor = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
+    action = models.CharField(max_length=16)
+    content = models.TextField(max_length=2000)
+    detail = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]

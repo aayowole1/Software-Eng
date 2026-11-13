@@ -2,7 +2,6 @@
 {% block title %}Membership application{% endblock %}
 {% block page_heading %}Membership application{% endblock %}
 {% block content %}
-  <h1>Membership application</h1>
   {% with latest=applications.0 %}
     {% if latest and latest.status == "rejected" and not is_member %}
       <div class="card">
@@ -18,15 +17,18 @@
   {% if can_apply %}
     <form method="post" class="card" novalidate>
       {% csrf_token %}
+      <p class="muted">Tell the officers why you want to join and how you would like to take part.</p>
       {{ form.as_p }}
       <button type="submit">{% if applications %}Apply again{% else %}Submit application{% endif %}</button>
     </form>
+  {% elif has_access_update %}
+    <section class="card"><h2>Account update pending</h2><p>Your application has been reviewed. An officer still needs to finish updating your account access.</p></section>
   {% elif is_member %}
-    <p>You're already a member.</p>
+    <section class="card"><h2>Membership active</h2><p>You’re already a member. <a href="{% url 'membership:roster' %}">Browse the member roster</a>.</p></section>
   {% elif wait_until %}
     {# Reapply time is shown in the rejection card above; this branch keeps the action area consistent. #}
   {% else %}
-    <p>Your application is waiting for an officer to review it.</p>
+    <section class="card"><h2>Pending review</h2><p>An officer will review your application. Check this page for the decision.</p></section>
   {% endif %}
 
   {% if applications %}

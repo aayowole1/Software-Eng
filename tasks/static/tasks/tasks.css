@@ -1,0 +1,98 @@
+/* Module-scoped styles use the shared OrgFlow light/dark theme. */
+.tasks-page { min-width: 0; color: var(--text); }
+.tasks-page h1 { margin: 0 0 .4rem; font-size: clamp(1.4rem, 2.5vw, 1.85rem); font-weight: 800; overflow-wrap: anywhere; }
+.tasks-page h2 { margin: 0 0 1rem; font-size: 1.05rem; font-weight: 750; }
+.tasks-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.tasks-heading > div { min-width: 0; }
+.tasks-heading p { margin: 0; max-width: 65ch; }
+.tasks-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; }
+.tasks-page .tasks-button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.6rem; padding: .6rem 1rem; border: 1px solid var(--accent); border-radius: .55rem; color: var(--accent-text); background: var(--accent); font-size: .85rem; font-weight: 700; line-height: 1.3; text-align: center; }
+.tasks-page .tasks-button--secondary { color: var(--text); background: var(--surface); border-color: var(--border); }
+.tasks-page .tasks-button:hover { filter: brightness(.94); }
+.tasks-page .tasks-button--secondary:hover { background: var(--bg); }
+.tasks-page .card { padding: 1.25rem; border-radius: .75rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgb(15 23 42 / .04); }
+.tasks-page .tasks-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 1.25rem; gap: 1rem; }
+.tasks-summary .card { margin: 0; text-align: left; align-items: flex-start; }
+.tasks-summary span { color: var(--muted); font-size: .8rem; font-weight: 650; }
+.tasks-summary strong { font-family: var(--font-family-heading); line-height: 1.15; }
+.tasks-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.1rem 1.25rem; }
+.tasks-form-fields > p { min-width: 0; margin: 0; }
+.tasks-editor .tasks-form-fields > p:has(input[name=title]), .tasks-editor .tasks-form-fields > p:has(textarea) { grid-column: 1 / -1; }
+.tasks-page label { margin-bottom: .4rem; font-size: .8rem; font-weight: 700; }
+.tasks-page input:not([type=hidden]), .tasks-page select, .tasks-page textarea { width: 100%; max-width: none; min-height: 2.65rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: .5rem; color: var(--text); background: var(--surface); font: inherit; font-size: .875rem; }
+.tasks-page textarea { min-height: 7rem; resize: vertical; }
+.tasks-page .helptext { margin-top: .4rem; font-size: .78rem; line-height: 1.5; }
+.tasks-page .errorlist { font-size: .85rem; }
+.tasks-filters .tasks-form-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tasks-filters .tasks-actions { margin-top: 1.1rem; }
+.tasks-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1.5rem; padding-top: 1.15rem; border-top: 1px solid var(--border); }
+.tasks-results { margin: 0 0 .75rem; font-size: .85rem; }
+.tasks-table-wrap { border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
+.tasks-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tasks-table { min-width: 48rem; }
+.tasks-table th { padding: .85rem 1rem; background: var(--bg); color: var(--muted); font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }
+.tasks-table th:nth-child(2) { min-width: 8.5rem; }
+.tasks-table th:nth-child(3) { min-width: 9.5rem; }
+.tasks-table th:nth-child(4) { min-width: 9rem; }
+.tasks-table td { padding: 1rem; color: var(--text); font-size: .85rem; overflow-wrap: anywhere; }
+.tasks-table tbody tr:last-child td { border-bottom: 0; }
+.tasks-table tbody tr:hover { background: var(--bg); }
+.tasks-title { width: 30%; min-width: 13rem; }
+.tasks-title a { color: var(--accent); font-weight: 700; text-decoration: none; }
+.tasks-title a:hover { text-decoration: underline; }
+.tasks-page .tasks-empty { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
+.tasks-pill { display: inline-block; max-width: 100%; padding: .2rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); color: var(--text); font-size: .72rem; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.tasks-table td > .tasks-pill--overdue { margin-top: .3rem; }
+.tasks-priority--urgent, .tasks-pill--overdue { color: #9f1239; background: #fff1f2; border-color: #fecdd3; }
+.tasks-priority--high { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.tasks-status--in_progress { color: #1e40af; background: #eff6ff; border-color: #bfdbfe; }
+.tasks-status--under_review { color: #6b21a8; background: #faf5ff; border-color: #e9d5ff; }
+.tasks-status--done { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+html.dark .tasks-priority--urgent, html.dark .tasks-pill--overdue { color: #fecdd3; background: #4c1d2b; border-color: #9f1239; }
+html.dark .tasks-priority--high { color: #fde68a; background: #422b16; border-color: #92400e; }
+html.dark .tasks-status--in_progress { color: #bfdbfe; background: #172f52; border-color: #1e40af; }
+html.dark .tasks-status--under_review { color: #e9d5ff; background: #352047; border-color: #6b21a8; }
+html.dark .tasks-status--done { color: #a7f3d0; background: #11392e; border-color: #065f46; }
+.tasks-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.25rem; font-size: .85rem; }
+.tasks-back { margin: 0 0 1.25rem; font-size: .85rem; }
+.tasks-back a { font-weight: 650; text-decoration: none; }
+.tasks-details { display: grid; grid-template-columns: minmax(7rem, .4fr) minmax(0, 1fr); gap: .8rem 1.5rem; margin: 0; }
+.tasks-details dt { color: var(--muted); font-size: .8rem; font-weight: 650; }
+.tasks-details dd { margin: 0; font-size: .9rem; font-weight: 600; overflow-wrap: anywhere; }
+.tasks-description { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.tasks-description p { margin: 0 0 .75rem; line-height: 1.7; }
+.tasks-description p:last-child { margin-bottom: 0; }
+.tasks-progress { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 1rem; }
+.tasks-progress > div { flex: 1 1 15rem; max-width: 24rem; }
+.tasks-progress p { margin: 0; }
+.tasks-claim { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.tasks-claim p { margin: 0; }
+.tasks-history > h2 { margin-top: 1.75rem; margin-bottom: .75rem; }
+.tasks-history-note { color: var(--muted); font-size: .78rem; margin-bottom: 1rem; }
+.tasks-history-note summary { cursor: pointer; }
+.tasks-history-note p { margin: .5rem 0; }
+.tasks-history ol { list-style: none; padding: 0; margin: 0; }
+.tasks-history li { overflow-wrap: anywhere; }
+.tasks-history-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .5rem; font-size: .85rem; }
+.tasks-history time { font-size: .75rem; }
+.tasks-history ul, .tasks-import-actions ul { margin: .75rem 0 0; padding-left: 1.2rem; list-style: disc; font-size: .85rem; }
+.tasks-history ul li + li, .tasks-import-actions li + li { margin-top: .4rem; }
+.tasks-import-actions li { overflow-wrap: anywhere; }
+.tasks-help { position: relative; flex-shrink: 0; }
+.tasks-help summary { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--border); border-radius: 50%; color: var(--text); background: var(--surface); cursor: pointer; list-style: none; font-weight: 750; }
+.tasks-help summary::-webkit-details-marker { display: none; }
+.tasks-help p { position: absolute; top: 2.5rem; right: 0; z-index: 10; width: min(22rem, 75vw); padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); color: var(--text); box-shadow: 0 6px 18px rgb(15 23 42 / .15); font-size: .8rem; }
+@media (max-width: 900px) {
+  .tasks-filters .tasks-form-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .tasks-heading { flex-direction: column; }
+  .tasks-page .tasks-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+  .tasks-summary .card { padding: .85rem .65rem; }
+  .tasks-summary span { font-size: .7rem; }
+  .tasks-summary strong { font-size: 1.5rem; }
+  .tasks-form-fields, .tasks-filters .tasks-form-fields { grid-template-columns: 1fr; }
+  .tasks-page .card { padding: 1rem; }
+  .tasks-claim { align-items: flex-start; flex-direction: column; }
+  .tasks-help p { right: auto; left: 0; }
+}

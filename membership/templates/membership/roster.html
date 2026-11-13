@@ -6,18 +6,11 @@
 
 {% block page_heading %}Member Roster{% endblock %}
 {% block content %}
-
-<h1>Organization Members</h1>
-
-<p class="muted">
-  View organization members, their roles, and committee memberships.
-</p>
-
-<form method="get" action="{% url 'membership:roster' %}">
-  <div class="roster-filters">
+<section class="users-page roster-page">
+<form method="get" action="{% url 'membership:roster' %}" class="user-filters" aria-label="Filter members">
 
     <div>
-      <label for="member-search">Search members</label>
+      <label for="member-search">Name, email or username</label>
       <input
         type="search"
         id="member-search"
@@ -63,23 +56,28 @@
     </div>
     {% endif %}
 
-    <div class="roster-actions">
-      <button type="submit">Search / Filter</button>
-      <a href="{% url 'membership:roster' %}">Reset</a>
+    <div class="filter-action-slot">
+      <button class="users-action-button" type="submit">Search</button>
+      {% if search_query or selected_role or selected_committee or selected_status %}
+        <a class="button secondary" href="{% url 'membership:roster' %}">Clear</a>
+      {% endif %}
     </div>
-
-  </div>
 </form>
 
-{% if is_admin %}
-<div class="roster-export">
-  <a href="{% url 'membership:export_roster_csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
-</div>
+{% if page_obj.paginator.count %}
+  <p class="muted">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} matching member{{ page_obj.paginator.count|pluralize }}.</p>
 {% endif %}
-
-<div class="table-wrap">
-  <p>{{ page_obj.paginator.count }} member{{ page_obj.paginator.count|pluralize }} found.</p>
-  <table>
+<div class="table-wrap users-table-wrap membership-table-wrap">
+  <table class="users-table roster-table{% if can_see_status %} roster-table--with-status{% endif %}">
+    <caption class="visually-hidden">Organization member roster</caption>
+    <colgroup>
+      <col class="roster-col-member">
+      <col class="roster-col-email">
+      <col class="roster-col-role">
+      <col class="roster-col-committees">
+      <col class="roster-col-since">
+      {% if can_see_status %}<col class="roster-col-status">{% endif %}
+    </colgroup>
     <thead>
       <tr>
         <th scope="col">Member</th>
@@ -94,22 +92,16 @@
     <tbody>
       {% for p in members %}
         <tr>
-          <td>
-               <a href="{% url 'membership:member_detail' p.pk %}">
-                 {{ p.user.get_full_name|default:p.user.username }}
-               </a>
-         </td>
+          <td><a href="{% url 'membership:member_detail' p.pk %}"><strong>{{ p.user.get_full_name|default:p.user.username }}</strong></a><span class="user-secondary">{{ p.user.username }}</span></td>
           <td>{{ p.user.email|default:"—" }}</td>
 
-          <td>{{ p.get_role_display }}</td>
+          <td><span class="role-pill role-pill--{% if p.role == 'admin' %}admin{% elif p.role == 'officer' %}officer{% else %}member{% endif %}">{{ p.get_role_display }}</span></td>
 
           <td>
             {% for committee_member in p.user.committee_memberships.all %}
-              <div>
+              <div class="roster-committee">
                 {{ committee_member.committee.name }}
-                <span class="muted">
-                  ({{ committee_member.get_role_display }})
-                </span>
+                <span class="user-secondary">{{ committee_member.get_role_display }}</span>
               </div>
             {% empty %}
               <span class="muted">No committee</span>
@@ -123,7 +115,7 @@
       {% empty %}
         <tr>
           <td colspan="{% if can_see_status %}6{% else %}5{% endif %}" class="muted">
-            No members found matching your search.
+            No members found. Try clearing a filter or searching for a different name.
           </td>
         </tr>
       {% endfor %}
@@ -132,11 +124,26 @@
 </div>
 
 {% if page_obj.has_other_pages %}
-<nav aria-label="Roster pages">
+<nav class="users-table-footer" aria-label="Roster pages">
   {% if page_obj.has_previous %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
   <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
   {% if page_obj.has_next %}<a href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
 </nav>
 {% endif %}
+{% if is_admin %}
+<div class="roster-export">
+  <a class="users-action-button" href="{% url 'membership:export_roster_csv' %}{% if query_string %}?{{ query_string }}{% endif %}">Export CSV</a>
+</div>
+{% endif %}
+</section>
+<script>
+  (() => {
+    const form = document.querySelector(".roster-page .user-filters");
+    if (!form) return;
 
+    form.querySelectorAll("select").forEach((select) => {
+      select.addEventListener("change", () => form.submit());
+    });
+  })();
+</script>
 {% endblock %}

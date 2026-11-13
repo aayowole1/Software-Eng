@@ -2,12 +2,11 @@
 {% block title %}{% if editing %}Edit committee{% else %}New committee{% endif %}{% endblock %}
 {% block page_heading %}{% if editing %}Edit committee{% else %}New committee{% endif %}{% endblock %}
 {% block content %}
-  <h1>{% if editing %}Edit committee{% else %}New committee{% endif %}</h1>
-  <form method="post" class="card" novalidate>
+  <form method="post" class="card committee-form" novalidate>
     {% csrf_token %}
     {{ form.as_p }}
     {% if not editing %}<p class="muted">You'll be added as the committee chair. If setup is interrupted, review the saved committee before confirming Chair setup.</p>{% endif %}
-    <button type="submit">{% if editing %}Save committee{% else %}Create committee{% endif %}</button>
-    {% if editing %}<a href="{% url 'committees:detail' committee.pk %}">Cancel</a>{% endif %}
+    <button class="users-action-button" type="submit">{% if editing %}Save committee{% else %}Create committee{% endif %}</button>
+    <a class="button danger" href="{% if editing %}{% url 'committees:detail' committee.pk %}{% else %}{% url 'committees:list' %}{% endif %}">Cancel</a>
   </form>
 {% endblock %}

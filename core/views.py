@@ -18,6 +18,7 @@ from meetings.models import DraftStatus, MeetingDraft
 from membership.models import ApplicationStatus, MembershipApplication, next_application_allowed_at
 from tasks.models import Task, TaskStatus
 from announcements.permissions import effective_role, visible_announcements
+from announcements.models import AnnouncementCommentAudit
 
 
 def dashboard(request):
@@ -101,6 +102,7 @@ AUDIT_TYPES = [
     ("membership", "Membership"),
     ("attendance", "Attendance"),
     ("task", "Task"),
+    ("comment", "Comment"),
 ]
 AUDIT_DISPLAY_LIMIT = 500
 
@@ -225,6 +227,22 @@ def audit_history(request):
                 ),
                 "detail": "",
             })
+
+    # --- Announcement comment history ---
+    for audit in (
+        AnnouncementCommentAudit.objects.select_related("announcement", "author", "actor")
+        .order_by("-created_at") if wanted("comment") else []
+    ):
+        entries.append({
+            "type": "comment",
+            "type_label": "Comment",
+            "at": audit.created_at.isoformat() if audit.created_at else "",
+            "actor": audit.actor.get_username() if audit.actor else "Unknown",
+            "description": (
+                f'Comment on "{audit.announcement.title}": {audit.action.capitalize()}'
+            ),
+            "detail": audit.detail or "",
+        })
 
     if start or end:
         dated = [(entry, _audit_local_date(entry["at"])) for entry in entries]

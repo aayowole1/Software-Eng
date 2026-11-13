@@ -41,6 +41,14 @@ class RosterFilterTests(TestCase):
         self.assertEqual(self.emails(self.mia, q="okafor")[0], {"mia@example.com"})
         self.assertEqual(self.emails(self.mia, q="Mia")[0], {"mia@example.com"})
 
+    def test_search_has_a_button_and_does_not_submit_while_typing(self):
+        _, response = self.emails(self.mia)
+        self.assertContains(response, '<button class="users-action-button" type="submit">Search</button>', html=True)
+        self.assertNotContains(response, 'addEventListener("input"')
+        self.assertNotContains(response, ">Clear</a>")
+        _, filtered = self.emails(self.mia, q="mia")
+        self.assertContains(filtered, ">Clear</a>")
+
     def test_committee_filter_is_available_to_members(self):
         emails, response = self.emails(self.mia, committee=str(self.events.pk))
         self.assertEqual(emails, {"mia@example.com"})
